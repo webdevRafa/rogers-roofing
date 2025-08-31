@@ -15,17 +15,22 @@
         ]
       }
     ],
-    "routes": [
+    "rewrites": [
       {
-        "handle": "filesystem"
+        "source": "/assets/(.*)",
+        "destination": "/assets/$1"
       },
       {
-        "src": "/api/(.*)",
-        "status": 404
+        "source": "/(.*)\\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|map)",
+        "destination": "/$1.$2"
       },
       {
-        "src": "/(.*)",
-        "dest": "/index.html"
+        "source": "/api/(.*)",
+        "destination": "/api/$1"
+      },
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
       }
     ]
   }

@@ -13,10 +13,54 @@ import { db } from "../firebase/firebaseConfig";
 import type { Job, JobStatus } from "../types/types";
 import { jobConverter } from "../types/types";
 import JobListItem from "../components/JobListItem";
-import { formatCurrency } from "../utils/money";
 import { recomputeJob, makeAddress } from "../utils/calc";
 
-// Support all statuses + "all" filter
+// Animation + money display (matching JobDetailPage style)
+import { motion, type MotionProps } from "framer-motion";
+import CountUp from "react-countup";
+
+// ---------- Animation helpers (same style as JobDetailPage) ----------
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+const fadeUp = (delay = 0): Partial<MotionProps> => ({
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.35, ease: EASE, delay },
+});
+
+const staggerParent: MotionProps["variants"] = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { staggerChildren: 0.08 } },
+};
+
+const item: MotionProps["variants"] = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+};
+
+// ---------- Money display (animated) ----------
+function CountMoney({
+  cents,
+  className = "",
+}: {
+  cents: number;
+  className?: string;
+}) {
+  const dollars = (cents ?? 0) / 100;
+  return (
+    <span className={className}>
+      <CountUp
+        key={cents}
+        end={dollars}
+        decimals={2}
+        prefix="$"
+        duration={0.6}
+      />
+    </span>
+  );
+}
+
+// Support all statuses + "all" filter (same set as your types)
 type StatusFilter = "all" | JobStatus;
 const STATUS_OPTIONS: JobStatus[] = [
   "draft",
@@ -72,7 +116,7 @@ export default function JobsPage() {
       const newRef = doc(collection(db, "jobs"));
       let job: Job = {
         id: newRef.id,
-        // Default to 'pending' until user explicitly starts it
+        // default stays the same as before
         status: "pending",
         address: makeAddress(address),
         earnings: {
@@ -112,8 +156,17 @@ export default function JobsPage() {
   const filters: StatusFilter[] = ["all", ...STATUS_OPTIONS];
 
   return (
-    <div className="mx-auto w-[min(1100px,92vw)] py-10">
-      <header className="mb-6 flex items-center justify-between">
+    <motion.div
+      className="mx-auto w-[min(1100px,92vw)] py-10"
+      variants={staggerParent}
+      initial="initial"
+      animate="animate"
+    >
+      {/* Header */}
+      <motion.header
+        className="mb-6 flex items-center justify-between"
+        {...fadeUp(0)}
+      >
         <h1 className="text-2xl font-bold text-[var(--color-text)]">Jobs</h1>
 
         <button
@@ -122,12 +175,15 @@ export default function JobsPage() {
         >
           + New Job
         </button>
-      </header>
+      </motion.header>
 
       {/* Filters */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <motion.div
+        className="mb-4 flex flex-wrap items-center gap-2"
+        {...fadeUp(0.05)}
+      >
         {filters.map((f) => (
-          <button
+          <motion.button
             key={f}
             onClick={() => setStatusFilter(f)}
             className={[
@@ -136,14 +192,21 @@ export default function JobsPage() {
                 ? "bg-[var(--color-primary)] border-transparent text-white shadow-sm"
                 : "bg-transparent border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
             ].join(" ")}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            variants={item}
           >
             {f}
-          </button>
+          </motion.button>
         ))}
-      </div>
+      </motion.div>
 
+      {/* Create Job form */}
       {openForm && (
-        <div className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+        <motion.section
+          className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+          {...fadeUp(0.08)}
+        >
           <div className="grid gap-3 sm:grid-cols-[1fr,120px]">
             <input
               value={address}
@@ -161,22 +224,34 @@ export default function JobsPage() {
             </button>
           </div>
           {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
-        </div>
+        </motion.section>
       )}
 
-      <div className="mb-3 text-sm text-[var(--color-text)] font-semibold">
+      {/* Totals */}
+      <motion.div
+        className="mb-3 text-sm text-[var(--color-text)] font-semibold"
+        {...fadeUp(0.1)}
+      >
         Total net across {filteredJobs.length} job
         {filteredJobs.length === 1 ? "" : "s"}:{" "}
         <span className="font-bold text-emerald-600">
-          {formatCurrency(totalNet)}
+          <CountMoney cents={totalNet} />
         </span>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-3">
+      {/* List */}
+      <motion.div
+        className="grid gap-3"
+        variants={staggerParent}
+        initial="initial"
+        animate="animate"
+      >
         {filteredJobs.map((job) => (
-          <JobListItem key={job.id} job={job} />
+          <motion.div key={job.id} variants={item}>
+            <JobListItem job={job} />
+          </motion.div>
         ))}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
