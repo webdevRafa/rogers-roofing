@@ -15,7 +15,14 @@ import { motion, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
 
 import { db } from "../firebase/firebaseConfig";
-import type { Job, Payout, MaterialExpense, Note, Photo } from "../types/types";
+import type {
+  Job,
+  Payout,
+  MaterialExpense,
+  Note,
+  Photo,
+  JobStatus,
+} from "../types/types";
 import { jobConverter } from "../types/types";
 import { toCents } from "../utils/money";
 import { recomputeJob } from "../utils/calc";
@@ -38,6 +45,37 @@ const item: MotionProps["variants"] = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
 };
+
+// ---------- Status helpers ----------
+const STATUS_OPTIONS: JobStatus[] = [
+  "draft",
+  "active",
+  "pending",
+  "invoiced",
+  "paid",
+  "closed",
+  "archived",
+];
+
+function statusClasses(status: JobStatus) {
+  switch (status) {
+    case "active":
+      return "bg-[var(--color-primary)]/15 text-[var(--color-primary)]";
+    case "pending":
+      return "bg-yellow-100 text-yellow-800";
+    case "invoiced":
+      return "bg-blue-100 text-blue-700";
+    case "paid":
+      return "bg-emerald-100 text-emerald-700";
+    case "closed":
+      return "bg-gray-200 text-gray-700";
+    case "archived":
+      return "bg-slate-200 text-slate-700";
+    case "draft":
+    default:
+      return "bg-neutral-100 text-neutral-700";
+  }
+}
 
 // ---------- Money display (animated) ----------
 function CountMoney({
@@ -132,6 +170,12 @@ export default function JobDetailPage() {
     });
     await setDoc(ref, next, { merge: true });
     setJob(next);
+  }
+
+  // ---- Status mutation ----
+  async function setStatus(status: JobStatus) {
+    if (!job) return;
+    await saveJob({ ...job, status });
   }
 
   // ---- Mutations ----
@@ -303,10 +347,38 @@ export default function JobDetailPage() {
             Last updated: {lastStr}
           </div>
         </div>
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-5 py-3 text-right">
-          <div className="text-xs text-[var(--color-muted)]">Net Profit</div>
-          <div className="text-2xl font-semibold text-[var(--color-text)]">
-            <CountMoney cents={totals.net} />
+        <div className="flex flex-col items-end gap-2">
+          {/* Status pill + selector */}
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">
+              Status:
+              <span
+                className={`ml-2 rounded-full px-2 py-0.5 ${statusClasses(
+                  job.status as JobStatus
+                )}`}
+              >
+                {job.status}
+              </span>
+            </span>
+            <select
+              value={job.status}
+              onChange={(e) => setStatus(e.target.value as JobStatus)}
+              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-1 text-xs text-[var(--color-text)] focus:ring-2 focus:ring-[var(--color-accent)]"
+              title="Change job status"
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-5 py-3 text-right">
+            <div className="text-xs text-[var(--color-muted)]">Net Profit</div>
+            <div className="text-2xl font-semibold text-[var(--color-text)]">
+              <CountMoney cents={totals.net} />
+            </div>
           </div>
         </div>
       </motion.div>

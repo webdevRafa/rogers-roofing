@@ -10,13 +10,23 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
-import type { Job } from "../types/types";
+import type { Job, JobStatus } from "../types/types";
 import { jobConverter } from "../types/types";
 import JobListItem from "../components/JobListItem";
 import { formatCurrency } from "../utils/money";
 import { recomputeJob, makeAddress } from "../utils/calc";
 
-type StatusFilter = "all" | "active" | "pending" | "completed";
+// Support all statuses + "all" filter
+type StatusFilter = "all" | JobStatus;
+const STATUS_OPTIONS: JobStatus[] = [
+  "draft",
+  "pending",
+  "active",
+  "invoiced",
+  "paid",
+  "closed",
+  "archived",
+];
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -62,7 +72,8 @@ export default function JobsPage() {
       const newRef = doc(collection(db, "jobs"));
       let job: Job = {
         id: newRef.id,
-        status: "active",
+        // Default to 'pending' until user explicitly starts it
+        status: "pending",
         address: makeAddress(address),
         earnings: {
           totalEarningsCents: 0,
@@ -98,7 +109,7 @@ export default function JobsPage() {
     }
   }
 
-  const filters: StatusFilter[] = ["all", "active", "pending", "completed"];
+  const filters: StatusFilter[] = ["all", ...STATUS_OPTIONS];
 
   return (
     <div className="mx-auto w-[min(1100px,92vw)] py-10">
@@ -120,9 +131,9 @@ export default function JobsPage() {
             key={f}
             onClick={() => setStatusFilter(f)}
             className={[
-              "rounded-full border px-3 py-1 text-xs uppercase tracking-wide",
+              "rounded-full border px-3 py-1 text-xs uppercase tracking-wide transition-colors",
               statusFilter === f
-                ? "bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text)]"
+                ? "bg-[var(--color-primary)] border-transparent text-white shadow-sm"
                 : "bg-transparent border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
             ].join(" ")}
           >

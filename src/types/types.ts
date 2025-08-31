@@ -105,6 +105,7 @@ export type JobAttachment = Photo | { url: string; label?: string };
 export type JobStatus =
   | "draft"
   | "active"
+  | "pending"
   | "invoiced"
   | "paid"
   | "closed"
