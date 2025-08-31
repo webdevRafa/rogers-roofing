@@ -15,6 +15,7 @@ import { jobConverter } from "../types/types";
 import JobListItem from "../components/JobListItem";
 import { formatCurrency } from "../utils/money";
 import { recomputeJob, makeAddress } from "../utils/calc";
+import AuthButton from "../components/AuthButton";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -93,6 +94,7 @@ export default function JobsPage() {
     <div className="mx-auto w-[min(1100px,92vw)] py-10">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[var(--color-text)]">Jobs</h1>
+        <AuthButton />
         <button
           onClick={() => setOpenForm((v) => !v)}
           className="rounded-xl bg-[var(--btn-bg)] text-[var(--btn-text)] px-4 py-2 text-sm hover:bg-[var(--btn-hover-bg)]"

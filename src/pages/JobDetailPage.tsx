@@ -7,6 +7,7 @@ import {
   getDoc,
   serverTimestamp,
   setDoc,
+  Timestamp, // <— use client timestamp for array elements
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import type { Job, Payout, MaterialExpense, Note, Photo } from "../types/types";
@@ -69,6 +70,7 @@ export default function JobDetailPage() {
     );
     const next = recomputeJob({
       ...updated,
+      // OK to use serverTimestamp() at top-level fields (NOT inside arrays)
       updatedAt: serverTimestamp() as any,
     });
     await setDoc(ref, next, { merge: true });
@@ -82,7 +84,8 @@ export default function JobDetailPage() {
       id: crypto.randomUUID(),
       payeeNickname: payout.payeeNickname.trim(),
       amountCents: toCents(Number(payout.amount)),
-      paidAt: serverTimestamp() as any,
+      // IMPORTANT: serverTimestamp() is NOT allowed inside arrays; use a concrete Timestamp instead
+      paidAt: Timestamp.now() as any,
       method: "check",
     };
     const updated: Job = {
@@ -122,7 +125,8 @@ export default function JobDetailPage() {
     const entry: Note = {
       id: crypto.randomUUID(),
       text: noteText.trim(),
-      createdAt: serverTimestamp() as any,
+      // Use client Timestamp for array elements
+      createdAt: Timestamp.now() as any,
     };
     const updated: Job = {
       ...job,
@@ -138,7 +142,8 @@ export default function JobDetailPage() {
     const entry: Photo = {
       id: crypto.randomUUID(),
       url: photoUrl.trim(),
-      createdAt: serverTimestamp() as any,
+      // Use client Timestamp for array elements
+      createdAt: Timestamp.now() as any,
     } as any;
     const updated: Job = {
       ...job,
