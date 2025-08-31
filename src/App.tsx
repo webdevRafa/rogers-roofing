@@ -11,8 +11,8 @@ export default function App() {
       <div className="min-h-screen bg-[var(--color-background)]">
         <nav className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-card)]/80 backdrop-blur">
           <div className="mx-auto w-[min(1100px,92vw)] flex items-center justify-between py-3">
-            <div className="text-lg font-semibold text-[var(--color-text)] flex justify-between w-full items-center">
-              Roger's Roofing — Job Tracker
+            <div className="text-lg font-bold text-[var(--color-text)] flex justify-between w-full items-center">
+              Roger's Roofing
               <img className="max-w-[80px]" src={logo} alt="" />
             </div>
           </div>
