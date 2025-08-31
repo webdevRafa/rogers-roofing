@@ -218,7 +218,7 @@ export default function JobsPage() {
             <button
               onClick={createJob}
               disabled={loading}
-              className="rounded-lg bg-[var(--btn-bg)] text-[var(--btn-text)] px-3 py-2 text-sm hover:bg-[var(--btn-hover-bg)] disabled:opacity-50"
+              className="rounded-lg bg-[var(--color-text)] text-[var(--btn-text)] px-3 py-2 text-sm hover:bg-[var(--btn-hover-bg)] disabled:opacity-50"
             >
               {loading ? "Saving..." : "Create"}
             </button>
