@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  --color-background: #FFFFFF;
+  --color-surface: #ECECE9;
+  --color-text: #040504;   /* dark black from logo */
+  --color-muted: #79726A;
+  --color-border: #B8B4AD;
+
+  --color-card: #FFFFFF;
+  --color-card-hover: #ECECE9;
+
+  --color-primary: #B10708;     /* red from logo */
+  --color-primary-600: #8E0808; /* darker red for hover */
+  --color-accent: #FCB500;      /* yellow from logo */
+
+  --btn-bg: var(--color-primary);
+  --btn-text: #FFFFFF;
+  --btn-hover-bg: var(--color-primary-600);
+  --btn-outline-border: var(--color-primary);
+  --btn-outline-text: var(--color-primary);
+  --btn-outline-hover-bg: rgba(177, 7, 8, 0.08);
+}
