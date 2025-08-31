@@ -1,46 +1,100 @@
 // src/components/JobListItem.tsx
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import CountUp from "react-countup";
 import type { Job } from "../types/types";
-import { formatCurrency } from "../utils/money";
 
 type Props = {
   job: Job;
 };
 
+// Easing & simple item variants (mirrors the style used on Job pages)
+const EASE = [0.16, 1, 0.3, 1] as const;
+const item = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+};
+
+function MoneyCount({
+  cents,
+  className = "",
+}: {
+  cents: number;
+  className?: string;
+}) {
+  const dollars = (cents ?? 0) / 100;
+  return (
+    <span className={className}>
+      <CountUp
+        key={cents}
+        end={dollars}
+        decimals={2}
+        prefix="$"
+        duration={0.6}
+      />
+    </span>
+  );
+}
+
+const MotionLink = motion(Link);
+
 export default function JobListItem({ job }: Props) {
   const last = job.updatedAt ?? job.createdAt ?? null;
   const net = job.computed?.netProfitCents ?? 0;
+
   return (
-    <Link
+    <MotionLink
       to={`/job/${job.id}`}
       className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-hover)] py-2 px-4 transition-colors"
+      variants={item}
+      initial="initial"
+      animate="animate"
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.995 }}
+      transition={{ duration: 0.25, ease: EASE }}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-base font-semibold text-[var(--color-text)]">
+          <motion.div
+            className="text-base font-semibold text-[var(--color-text)]"
+            variants={item}
+          >
             {job.address?.fullLine}
-          </div>
-          <div className="text-sm text-[var(--color-muted)]">
+          </motion.div>
+
+          <motion.div
+            className="text-sm text-[var(--color-muted)]"
+            variants={item}
+          >
             Last updated:{" "}
             {last
               ? new Date(
                   (last as any)?.toDate ? (last as any).toDate() : last
                 ).toLocaleString()
               : "—"}
-          </div>
-          <div className="mt-1 inline-flex items-center gap-2 text-xs uppercase tracking-wide text-[var(--color-muted)]">
-            <span className="rounded-full px-2 py-0.5 border border-white/20">
+          </motion.div>
+
+          <motion.div
+            className="mt-1 inline-flex items-center gap-2 text-xs uppercase tracking-wide text-[var(--color-muted)]"
+            variants={item}
+          >
+            <motion.span
+              className="rounded-full px-2 py-0.5 border border-white/20"
+              whileHover={{ scale: 1.04 }}
+              transition={{ duration: 0.2, ease: EASE }}
+            >
               {job.status}
-            </span>
-          </div>
+            </motion.span>
+          </motion.div>
         </div>
-        <div className="text-right">
+
+        <motion.div className="text-right" variants={item}>
           <div className="text-sm text-[var(--color-muted)]">Net Profit</div>
           <div className="text-xl font-semibold font-poppins text-emerald-600">
-            {formatCurrency(net)}
+            <MoneyCount cents={net} />
           </div>
-        </div>
+        </motion.div>
       </div>
-    </Link>
+    </MotionLink>
   );
 }

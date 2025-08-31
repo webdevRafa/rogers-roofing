@@ -417,7 +417,7 @@ export default function JobDetailPage() {
       {/* Quick edit / add panel */}
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         {/* Earnings */}
-        <MotionCard title="Set Earnings" delay={0.05}>
+        <MotionCard title="Earnings" delay={0.05}>
           <form
             className="grid grid-cols-[1fr_auto] gap-2"
             onSubmit={(e) => {
@@ -445,7 +445,7 @@ export default function JobDetailPage() {
         </MotionCard>
 
         {/* Payouts */}
-        <MotionCard title="Add Payout" delay={0.1}>
+        <MotionCard title="Payouts" delay={0.1}>
           <form
             className="grid gap-2 sm:grid-cols-[1fr_140px_90px]"
             onSubmit={(e) => {
@@ -521,7 +521,7 @@ export default function JobDetailPage() {
         </MotionCard>
 
         {/* Materials */}
-        <MotionCard title="Add Material" delay={0.15}>
+        <MotionCard title="Materials" delay={0.15}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
