@@ -655,7 +655,19 @@ export default function JobDetailPage() {
                   className="flex items-center justify-between p-3"
                   variants={item}
                 >
-                  <span>{n.text}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="font-medium text-[var(--color-text)]">
+                      {n.text}
+                    </span>
+                    <span className="ml-2 text-xs text-[var(--color-muted)]">
+                      {n.createdAt
+                        ? new Date(
+                            // supports Firestore Timestamp or plain Date/string
+                            (n.createdAt as any).toDate?.() ?? n.createdAt
+                          ).toLocaleDateString()
+                        : ""}
+                    </span>
+                  </div>
                   <button
                     onClick={() => removeNote(n.id)}
                     className="rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
