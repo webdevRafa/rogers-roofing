@@ -177,15 +177,18 @@ export default function JobDetailPage() {
       id: crypto.randomUUID(),
       name: material.name.trim(),
       amountCents: toCents(Number(material.amount)),
-      ...(vendor ? { vendor } : {}),
+      ...(vendor ? { vendor } : {}), // omit if blank
     } as MaterialExpense;
+
+    const currentMaterials = job.expenses?.materials ?? [];
     const updated: Job = {
       ...job,
       expenses: {
-        ...job.expenses,
-        materials: [...(job.expenses.materials ?? []), entry],
+        ...(job.expenses ?? {}),
+        materials: [...currentMaterials, entry],
       },
     };
+
     await saveJob(updated);
     setMaterial({ name: "", vendor: "", amount: "" });
     materialRef.current?.focus();
@@ -341,6 +344,7 @@ export default function JobDetailPage() {
 
       {/* Quick edit / add panel */}
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        {/* Earnings */}
         <MotionCard title="Set Earnings" delay={0.05}>
           <form
             className="grid grid-cols-[1fr_auto] gap-2"
@@ -368,6 +372,7 @@ export default function JobDetailPage() {
           </p>
         </MotionCard>
 
+        {/* Payouts */}
         <MotionCard title="Add Payout" delay={0.1}>
           <form
             className="grid gap-2 sm:grid-cols-[1fr_140px_90px]"
@@ -400,6 +405,7 @@ export default function JobDetailPage() {
               Add
             </button>
           </form>
+
           <ul className="mt-3 divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-white/70">
             {(job?.expenses?.payouts ?? []).map((p) => (
               <motion.li
@@ -442,17 +448,14 @@ export default function JobDetailPage() {
           </ul>
         </MotionCard>
 
+        {/* Materials */}
         <MotionCard title="Add Material" delay={0.15}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               addMaterial();
             }}
-            className="
-      grid items-start gap-2 max-w-full
-      md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_140px_auto]
-      sm:grid-cols-2
-    "
+            className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_140px_auto] sm:grid-cols-2"
           >
             <input
               ref={materialRef}
@@ -486,8 +489,49 @@ export default function JobDetailPage() {
               Add
             </button>
           </form>
+
+          {/* Materials list */}
+          <ul className="mt-3 divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-white/70">
+            {(job?.expenses?.materials ?? []).map((m) => (
+              <motion.li
+                key={m.id}
+                className="flex items-center justify-between p-3"
+                variants={item}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="font-medium text-[var(--color-text)]">
+                    {m.name}
+                  </span>
+                  {m.vendor && (
+                    <span className="ml-2 text-xs text-[var(--color-muted)]">
+                      • {m.vendor}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <CountMoney
+                    cents={m.amountCents}
+                    className="text-sm text-[var(--color-text)]"
+                  />
+                  <button
+                    onClick={() => removeMaterial(m.id)}
+                    className="rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                    title="Delete"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </motion.li>
+            ))}
+            {(job?.expenses?.materials ?? []).length === 0 && (
+              <li className="p-3 text-sm text-[var(--color-muted)]">
+                No materials added yet.
+              </li>
+            )}
+          </ul>
         </MotionCard>
 
+        {/* Notes */}
         <MotionCard title="Notes" delay={0.2}>
           <form
             className="grid grid-cols-[1fr_auto] gap-2"
@@ -535,6 +579,7 @@ export default function JobDetailPage() {
           </ul>
         </MotionCard>
 
+        {/* Photos */}
         <MotionCard title="Photos" delay={0.25}>
           <form
             className="grid grid-cols-[1fr_auto] gap-2"
