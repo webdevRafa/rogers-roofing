@@ -160,16 +160,38 @@ export default function JobDetailPage() {
     return { earnings, payouts, materials, expenses, net, expensePortion };
   }, [job]);
 
+  // Replace your entire function with this:
   async function saveJob(nextJob: Job) {
     const ref = doc(collection(db, "jobs"), nextJob.id).withConverter(
       jobConverter
     );
-    const next = recomputeJob({
-      ...nextJob,
-      updatedAt: serverTimestamp() as any, // top-level OK
-    });
-    await setDoc(ref, next, { merge: true });
-    setJob(next);
+    const previous = job; // keep a copy to roll back on error
+
+    try {
+      // 1) Optimistic UI: show a real Date *now* so we never render "Invalid Date"
+      const optimistic = recomputeJob({
+        ...nextJob,
+        updatedAt: Timestamp.now() as any,
+      });
+      setJob(optimistic);
+
+      // 2) Persist to Firestore with canonical server time
+      const toPersist = recomputeJob({
+        ...nextJob,
+        updatedAt: serverTimestamp() as any,
+      });
+      await setDoc(ref, toPersist, { merge: true });
+
+      // 3) Read back the authoritative doc (now has a concrete Firestore Timestamp)
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        setJob(snap.data());
+      }
+    } catch (err) {
+      console.error("Failed to save job", err);
+      // Roll back UI if the write fails
+      if (previous) setJob(previous);
+    }
   }
 
   // ---- Status mutation ----
