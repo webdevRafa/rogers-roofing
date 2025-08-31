@@ -1,9 +1,17 @@
 // src/pages/JobsPage.tsx
 import { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
-import type { Job } from "../types";
-import { jobConverter } from "../types";
+import type { Job } from "../types/types";
+import { jobConverter } from "../types/types";
 import JobListItem from "../components/JobListItem";
 import { formatCurrency } from "../utils/money";
 import { recomputeJob, makeAddress } from "../utils/calc";
@@ -12,12 +20,15 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [openForm, setOpenForm] = useState(false);
   const [address, setAddress] = useState("");
-  const [earnings, setEarnings] = useState<number | ''>("");
+  const [earnings, setEarnings] = useState<number | "">(""); // dollars
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, "jobs").withConverter(jobConverter), orderBy("updatedAt", "desc"));
+    const q = query(
+      collection(db, "jobs").withConverter(jobConverter),
+      orderBy("updatedAt", "desc")
+    );
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => d.data());
       setJobs(list);
@@ -37,19 +48,32 @@ export default function JobsPage() {
       if (!address.trim()) throw new Error("Please enter a job address.");
       const initialEarningsCents = Math.round(Number(earnings || 0) * 100);
 
-      // Prepare a typed doc with an id (so Job shape is complete at write time)
+      // Create a doc with a generated id
       const newRef = doc(collection(db, "jobs"));
       let job: Job = {
         id: newRef.id,
         status: "active",
         address: makeAddress(address),
-        earnings: { totalEarningsCents: initialEarningsCents, entries: [], currency: "USD" },
-        expenses: { totalPayoutsCents: 0, totalMaterialsCents: 0, payouts: [], materials: [], currency: "USD" },
+        earnings: {
+          totalEarningsCents: initialEarningsCents,
+          entries: [],
+          currency: "USD",
+        },
+        expenses: {
+          totalPayoutsCents: 0,
+          totalMaterialsCents: 0,
+          payouts: [],
+          materials: [],
+          currency: "USD",
+        },
         summaryNotes: "",
         attachments: [],
         createdAt: serverTimestamp() as any,
         updatedAt: serverTimestamp() as any,
-        computed: { totalExpensesCents: 0, netProfitCents: initialEarningsCents },
+        computed: {
+          totalExpensesCents: 0,
+          netProfitCents: initialEarningsCents,
+        },
       };
 
       job = recomputeJob(job);
@@ -108,7 +132,9 @@ export default function JobsPage() {
 
       <div className="mb-3 text-sm text-[var(--color-muted)]">
         Total net across {jobs.length} job{jobs.length === 1 ? "" : "s"}:{" "}
-        <span className="font-semibold text-[var(--color-text)]">{formatCurrency(totalNet)}</span>
+        <span className="font-semibold text-[var(--color-text)]">
+          {formatCurrency(totalNet)}
+        </span>
       </div>
 
       <div className="grid gap-3">
