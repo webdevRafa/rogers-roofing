@@ -27,12 +27,12 @@ export default function AuthButton() {
   if (user) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm text-[var(--color-muted)]">
+        <span className="text-xs text-[var(--color-muted)]">
           Hi, {user.displayName || user.email}
         </span>
         <button
           onClick={signout}
-          className="rounded-lg border border-[var(--btn-outline-border)] px-3 py-1.5 text-sm text-[var(--btn-outline-text)] hover:bg-[var(--btn-outline-hover-bg)]"
+          className="rounded-lg border border-[var(--btn-outline-border)] px-3 py-1.5 font-light text-xs text-[var(--btn-outline-text)] hover:bg-[var(--btn-outline-hover-bg)]"
         >
           Sign out
         </button>
@@ -43,7 +43,7 @@ export default function AuthButton() {
   return (
     <button
       onClick={signin}
-      className="rounded-lg bg-[var(--btn-bg)] text-[var(--btn-text)] px-4 py-2 text-sm hover:bg-[var(--btn-hover-bg)]"
+      className="rounded-lg bg-[var(--btn-bg)] text-[var(--btn-text)] px-4 py-2 text-xs hover:bg-[var(--btn-hover-bg)]"
     >
       Sign in with Google
     </button>

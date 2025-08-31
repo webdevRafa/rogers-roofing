@@ -13,7 +13,7 @@ export default function JobListItem({ job }: Props) {
   return (
     <Link
       to={`/job/${job.id}`}
-      className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-hover)] p-4 transition-colors"
+      className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-hover)] py-2 px-4 transition-colors"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -36,7 +36,7 @@ export default function JobListItem({ job }: Props) {
         </div>
         <div className="text-right">
           <div className="text-sm text-[var(--color-muted)]">Net Profit</div>
-          <div className="text-xl font-bold text-[var(--color-text)]">
+          <div className="text-xl font-semibold font-poppins text-emerald-600">
             {formatCurrency(net)}
           </div>
         </div>

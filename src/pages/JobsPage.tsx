@@ -15,15 +15,16 @@ import { jobConverter } from "../types/types";
 import JobListItem from "../components/JobListItem";
 import { formatCurrency } from "../utils/money";
 import { recomputeJob, makeAddress } from "../utils/calc";
-import AuthButton from "../components/AuthButton";
+
+type StatusFilter = "all" | "active" | "pending" | "completed";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [openForm, setOpenForm] = useState(false);
   const [address, setAddress] = useState("");
-  const [earnings, setEarnings] = useState<number | "">(""); // dollars
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   useEffect(() => {
     const q = query(
@@ -37,9 +38,18 @@ export default function JobsPage() {
     return () => unsub();
   }, []);
 
+  const filteredJobs = useMemo(() => {
+    if (statusFilter === "all") return jobs;
+    return jobs.filter((j) => j.status === statusFilter);
+  }, [jobs, statusFilter]);
+
   const totalNet = useMemo(
-    () => jobs.reduce((acc, j) => acc + (j.computed?.netProfitCents ?? 0), 0),
-    [jobs]
+    () =>
+      filteredJobs.reduce(
+        (acc, j) => acc + (j.computed?.netProfitCents ?? 0),
+        0
+      ),
+    [filteredJobs]
   );
 
   async function createJob() {
@@ -47,7 +57,6 @@ export default function JobsPage() {
     setError(null);
     try {
       if (!address.trim()) throw new Error("Please enter a job address.");
-      const initialEarningsCents = Math.round(Number(earnings || 0) * 100);
 
       // Create a doc with a generated id
       const newRef = doc(collection(db, "jobs"));
@@ -56,7 +65,7 @@ export default function JobsPage() {
         status: "active",
         address: makeAddress(address),
         earnings: {
-          totalEarningsCents: initialEarningsCents,
+          totalEarningsCents: 0,
           entries: [],
           currency: "USD",
         },
@@ -73,7 +82,7 @@ export default function JobsPage() {
         updatedAt: serverTimestamp() as any,
         computed: {
           totalExpensesCents: 0,
-          netProfitCents: initialEarningsCents,
+          netProfitCents: 0,
         },
       };
 
@@ -81,7 +90,6 @@ export default function JobsPage() {
 
       await setDoc(newRef.withConverter(jobConverter), job);
       setAddress("");
-      setEarnings("");
       setOpenForm(false);
     } catch (e: any) {
       setError(e.message || String(e));
@@ -90,11 +98,13 @@ export default function JobsPage() {
     }
   }
 
+  const filters: StatusFilter[] = ["all", "active", "pending", "completed"];
+
   return (
     <div className="mx-auto w-[min(1100px,92vw)] py-10">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[var(--color-text)]">Jobs</h1>
-        <AuthButton />
+
         <button
           onClick={() => setOpenForm((v) => !v)}
           className="rounded-xl bg-[var(--btn-bg)] text-[var(--btn-text)] px-4 py-2 text-sm hover:bg-[var(--btn-hover-bg)]"
@@ -103,9 +113,27 @@ export default function JobsPage() {
         </button>
       </header>
 
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {filters.map((f) => (
+          <button
+            key={f}
+            onClick={() => setStatusFilter(f)}
+            className={[
+              "rounded-full border px-3 py-1 text-xs uppercase tracking-wide",
+              statusFilter === f
+                ? "bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-text)]"
+                : "bg-transparent border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
+            ].join(" ")}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
       {openForm && (
         <div className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-          <div className="grid gap-3 sm:grid-cols-[1fr,160px,120px]">
+          <div className="grid gap-3 sm:grid-cols-[1fr,120px]">
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -125,15 +153,16 @@ export default function JobsPage() {
         </div>
       )}
 
-      <div className="mb-3 text-sm text-[var(--color-muted)]">
-        Total net across {jobs.length} job{jobs.length === 1 ? "" : "s"}:{" "}
-        <span className="font-semibold text-[var(--color-text)]">
+      <div className="mb-3 text-sm text-[var(--color-text)] font-semibold">
+        Total net across {filteredJobs.length} job
+        {filteredJobs.length === 1 ? "" : "s"}:{" "}
+        <span className="font-bold text-emerald-600">
           {formatCurrency(totalNet)}
         </span>
       </div>
 
       <div className="grid gap-3">
-        {jobs.map((job) => (
+        {filteredJobs.map((job) => (
           <JobListItem key={job.id} job={job} />
         ))}
       </div>
