@@ -1,11 +1,10 @@
 // src/utils/calc.ts
-import type { Job, Payout, MaterialExpense, Earnings, Expenses } from "../types";
-import { toCents } from "./money";
+import type { Job, Payout, MaterialExpense } from "../types/types";
 
 /** Recalculate cached totals & computed metrics on a Job */
 export function recomputeJob(job: Job): Job {
-  const payoutsCents = sumPayouts(job.expenses.payouts);
-  const materialsCents = sumMaterials(job.expenses.materials);
+  const payoutsCents = sumPayouts(job.expenses?.payouts);
+  const materialsCents = sumMaterials(job.expenses?.materials);
   const totalExpensesCents = payoutsCents + materialsCents;
   const totalEarningsCents = job.earnings?.totalEarningsCents ?? 0;
   const netProfitCents = totalEarningsCents - totalExpensesCents;
@@ -39,6 +38,6 @@ export function sumMaterials(materials?: MaterialExpense[] | null) {
   return (materials ?? []).reduce((acc, m) => acc + (m.amountCents ?? 0), 0);
 }
 
-export function makeAddress(fullLine: string) {
-  return { fullLine } as Job["address"];
+export function makeAddress(fullLine: string): Job["address"] {
+  return { fullLine };
 }
