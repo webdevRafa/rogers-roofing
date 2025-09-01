@@ -396,7 +396,7 @@ export default function JobDetailPage() {
             </select>
           </div>
 
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-5 py-3 text-right">
+          <div className="rounded-2xl shadow-md mt-5 px-5 py-3 text-right">
             <div className="text-xs text-[var(--color-muted)]">Net Profit</div>
             <div className="text-2xl font-semibold text-[var(--color-text)]">
               <CountMoney cents={totals.net} />
@@ -406,15 +406,12 @@ export default function JobDetailPage() {
       </motion.div>
 
       {/* Stat row + profit bar */}
-      <motion.div
-        className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-        {...fadeUp(0.05)}
-      >
-        <div className="grid gap-4 sm:grid-cols-4">
-          <Stat label="Earnings" cents={totals.earnings} />
+      <motion.div className="rounded-2xl shadow-md  p-4" {...fadeUp(0.05)}>
+        <div className="grid gap-4 sm:grid-cols-4 ">
           <Stat label="Payouts" cents={totals.payouts} />
           <Stat label="Materials" cents={totals.materials} />
           <Stat label="All Expenses" cents={totals.expenses} />
+          <Stat label="Earnings" cents={totals.earnings} />
         </div>
         <div className="mt-4">
           <div className="flex items-center justify-between text-xs text-[var(--color-muted)]">
@@ -500,11 +497,11 @@ export default function JobDetailPage() {
             </button>
           </form>
 
-          <ul className="mt-3 divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-white/70">
+          <ul className="mt-3  rounded-lg  bg-white/70">
             {(job?.expenses?.payouts ?? []).map((p) => (
               <motion.li
                 key={p.id}
-                className="flex items-center justify-between p-3"
+                className="flex items-center justify-between p-3 shadow-md rounded-lg bg-[var(--color-accent)]/5 mb-2"
                 variants={item}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -526,7 +523,7 @@ export default function JobDetailPage() {
                   />
                   <button
                     onClick={() => removePayout(p.id)}
-                    className="rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                    className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
                     title="Delete"
                   >
                     Delete
@@ -585,11 +582,11 @@ export default function JobDetailPage() {
           </form>
 
           {/* Materials list */}
-          <ul className="mt-3 divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-white/70">
+          <ul className="mt-3  rounded-lg ">
             {(job?.expenses?.materials ?? []).map((m) => (
               <motion.li
                 key={m.id}
-                className="flex items-center justify-between p-3"
+                className="flex items-center justify-between p-3 shadow-md rounded-lg mb-2 bg-[var(--color-accent)]/5"
                 variants={item}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -609,7 +606,7 @@ export default function JobDetailPage() {
                   />
                   <button
                     onClick={() => removeMaterial(m.id)}
-                    className="rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                    className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
                     title="Delete"
                   >
                     Delete
@@ -645,14 +642,14 @@ export default function JobDetailPage() {
               Add
             </button>
           </form>
-          <ul className="mt-3 divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-white/70">
+          <ul className="mt-3 ">
             {(job?.notes ?? [])
               .slice()
               .reverse()
               .map((n) => (
                 <motion.li
                   key={n.id}
-                  className="flex items-center justify-between p-3"
+                  className="flex items-center justify-between p-3  shadow-md rounded-lg mb-2 bg-[var(--color-accent)]/5"
                   variants={item}
                 >
                   <div className="flex min-w-0 items-center gap-2">
@@ -670,7 +667,7 @@ export default function JobDetailPage() {
                   </div>
                   <button
                     onClick={() => removeNote(n.id)}
-                    className="rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                    className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
                     title="Delete"
                   >
                     Delete
@@ -737,7 +734,7 @@ export default function JobDetailPage() {
 function Stat({ label, cents }: { label: string; cents: number }) {
   return (
     <motion.div
-      className="rounded-xl border border-[var(--color-border)] bg-white/70 p-3"
+      className="rounded-xl shadow-md bg-white/70 p-3"
       variants={item}
     >
       <div className="text-xs text-[var(--color-muted)]">{label}</div>
@@ -759,7 +756,7 @@ function MotionCard({
 }) {
   return (
     <motion.section
-      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+      className="rounded-2xl shadow-md bg-[var(--color-card)] p-4"
       {...fadeUp(delay)}
     >
       <h2 className="mb-3 text-lg font-semibold text-[var(--color-text)]">
