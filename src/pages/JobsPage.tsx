@@ -171,7 +171,7 @@ export default function JobsPage() {
 
         <button
           onClick={() => setOpenForm((v) => !v)}
-          className="rounded-xl bg-[var(--btn-bg)] text-[var(--btn-text)] px-4 py-2 text-sm hover:bg-[var(--btn-hover-bg)]"
+          className="rounded-xl bg-[var(--color-text)]  text-[var(--btn-text)] px-4 py-2 text-sm "
         >
           + New Job
         </button>
@@ -207,12 +207,12 @@ export default function JobsPage() {
           className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
           {...fadeUp(0.08)}
         >
-          <div className="grid gap-3 sm:grid-cols-[1fr,120px]">
+          <div className="flex w-full gap-5">
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Job address (e.g., 123 Main St, San Antonio, TX)"
-              className="rounded-lg border border-[var(--color-border)] bg-white/70 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className=" w-full rounded-lg border border-[var(--color-border)] bg-white/70 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
 
             <button
