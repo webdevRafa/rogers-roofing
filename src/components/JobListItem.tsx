@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
-import type { Job } from "../types/types";
+import type { Job, JobStatus } from "../types/types";
 
 type Props = {
   job: Job;
@@ -14,10 +14,29 @@ const item = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
 };
+function statusPillClasses(status: JobStatus) {
+  switch (status) {
+    case "active":
+      return "bg-[var(--color-primary)]/15 text-[var(--color-primary)]";
+    case "pending":
+      return "bg-yellow-100 text-yellow-800";
+    case "invoiced":
+      return "bg-blue-100 text-blue-700";
+    case "paid":
+      return "bg-emerald-100 text-emerald-700";
+    case "closed":
+      return "bg-gray-200 text-gray-700";
+    case "archived":
+      return "bg-slate-200 text-slate-700";
+    case "draft":
+    default:
+      return "bg-neutral-100 text-neutral-700";
+  }
+}
 
 function MoneyCount({
   cents,
-  className = "",
+  className = "text-sm",
 }: {
   cents: number;
   className?: string;
@@ -45,25 +64,25 @@ export default function JobListItem({ job }: Props) {
   return (
     <MotionLink
       to={`/job/${job.id}`}
-      className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-card-hover)] py-2 px-4 transition-colors"
+      className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[var(--color-accent)]/3 py-2 px-4 transition-colors"
       variants={item}
       initial="initial"
       animate="animate"
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -0.5 }}
       whileTap={{ scale: 0.995 }}
       transition={{ duration: 0.25, ease: EASE }}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
           <motion.div
-            className="text-base font-semibold text-[var(--color-text)]"
+            className="text-sm font-semibold text-[var(--color-text)]"
             variants={item}
           >
             {job.address?.fullLine}
           </motion.div>
 
           <motion.div
-            className="text-sm text-[var(--color-muted)]"
+            className="text-xs text-[var(--color-muted)]/70"
             variants={item}
           >
             Last updated:{" "}
@@ -79,17 +98,23 @@ export default function JobListItem({ job }: Props) {
             variants={item}
           >
             <motion.span
-              className="rounded-full px-2 py-0.5 border border-white/20"
+              className="rounded-full text-xs px-1 py-0.5 border border-white/20"
               whileHover={{ scale: 1.04 }}
               transition={{ duration: 0.2, ease: EASE }}
             >
-              {job.status}
+              <span
+                className={`text-xs lowercase px-2 py-0.5 rounded-md ${statusPillClasses(
+                  job.status as JobStatus
+                )}`}
+              >
+                {job.status}
+              </span>
             </motion.span>
           </motion.div>
         </div>
 
         <motion.div className="text-right" variants={item}>
-          <div className="text-sm text-[var(--color-muted)]">Net Profit</div>
+          <div className="text-xs text-[var(--color-muted)]">Net Profit</div>
           <div className="text-xl font-semibold font-poppins text-emerald-600">
             <MoneyCount cents={net} />
           </div>
