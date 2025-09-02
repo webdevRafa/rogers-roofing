@@ -397,7 +397,7 @@ export default function JobDetailPage() {
           </div>
 
           <div className="rounded-2xl shadow-md mt-5 px-5 py-3 text-right">
-            <div className="text-xs text-[var(--color-muted)]">Net Profit</div>
+            <div className="text-xs text-[var(--color-muted)]">Net Revenue</div>
             <div className="text-2xl font-semibold text-[var(--color-text)]">
               <CountMoney cents={totals.net} />
             </div>
@@ -454,7 +454,7 @@ export default function JobDetailPage() {
               placeholder="Total earnings for this job"
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <button className="rounded-lg bg-[var(--btn-bg)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
               Save
             </button>
           </form>
@@ -492,7 +492,7 @@ export default function JobDetailPage() {
               placeholder="Amount"
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <button className="rounded-lg bg-[var(--btn-bg)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+            <button className="rounded-lg bg-[var(--color-text)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
               Add
             </button>
           </form>
@@ -501,7 +501,7 @@ export default function JobDetailPage() {
             {(job?.expenses?.payouts ?? []).map((p) => (
               <motion.li
                 key={p.id}
-                className="flex items-center justify-between p-3 shadow-md rounded-lg bg-[var(--color-accent)]/5 mb-2"
+                className="flex items-center justify-between p-3 shadow-md rounded-lg bg-[var(--color-accent)]/2 mb-2"
                 variants={item}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -576,7 +576,7 @@ export default function JobDetailPage() {
               placeholder="Amount"
               className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] sm:col-span-2 md:col-span-1"
             />
-            <button className="shrink-0 w-full md:w-auto rounded-lg bg-[var(--btn-bg)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)] sm:col-span-2 md:col-auto">
+            <button className="shrink-0 w-full md:w-auto rounded-lg bg-[var(--color-text)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)] sm:col-span-2 md:col-auto">
               Add
             </button>
           </form>
@@ -586,7 +586,7 @@ export default function JobDetailPage() {
             {(job?.expenses?.materials ?? []).map((m) => (
               <motion.li
                 key={m.id}
-                className="flex items-center justify-between p-3 shadow-md rounded-lg mb-2 bg-[var(--color-accent)]/5"
+                className="flex items-center justify-between p-3 shadow-md rounded-lg mb-2 bg-[var(--color-accent)]/2"
                 variants={item}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -638,7 +638,7 @@ export default function JobDetailPage() {
               placeholder="Add a note"
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <button className="rounded-lg bg-[var(--btn-bg)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
               Add
             </button>
           </form>
@@ -649,7 +649,7 @@ export default function JobDetailPage() {
               .map((n) => (
                 <motion.li
                   key={n.id}
-                  className="flex items-center justify-between p-3  shadow-md rounded-lg mb-2 bg-[var(--color-accent)]/5"
+                  className="flex items-center justify-between p-3  shadow-md rounded-lg mb-2 bg-[var(--color-accent)]/2"
                   variants={item}
                 >
                   <div className="flex min-w-0 items-center gap-2">
@@ -698,7 +698,7 @@ export default function JobDetailPage() {
               placeholder="Paste a photo URL (upload coming next)"
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <button className="rounded-lg bg-[var(--btn-bg)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
               Add
             </button>
           </form>

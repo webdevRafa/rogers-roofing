@@ -114,7 +114,7 @@ export default function JobListItem({ job }: Props) {
         </div>
 
         <motion.div className="text-right" variants={item}>
-          <div className="text-xs text-[var(--color-muted)]">Net Profit</div>
+          <div className="text-xs text-[var(--color-muted)]">Net Revenue</div>
           <div className="text-xl font-semibold font-poppins text-emerald-600">
             <MoneyCount cents={net} />
           </div>

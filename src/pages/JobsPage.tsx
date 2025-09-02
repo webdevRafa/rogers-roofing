@@ -72,6 +72,24 @@ const STATUS_OPTIONS: JobStatus[] = [
   "archived",
 ];
 
+// Small util: yyyy-mm-dd from Date
+const toYMD = (d: Date) => d.toISOString().slice(0, 10);
+// Parse Firestore Timestamp | Date | string to millis (ms)
+function toMillis(x: any): number | null {
+  if (!x) return null;
+  try {
+    // Firestore Timestamp has toDate()
+    const dt = (x as any)?.toDate ? (x as any).toDate() : new Date(x);
+    const n = dt instanceof Date ? dt.getTime() : NaN;
+    return Number.isNaN(n) ? null : n;
+  } catch {
+    return null;
+  }
+}
+
+// ----------- Date Preset logic (auto-rolling) -----------
+type DatePreset = "custom" | "last7" | "thisMonth" | "ytd";
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [openForm, setOpenForm] = useState(false);
@@ -79,6 +97,62 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  // Date range filter state (YYYY-MM-DD)
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [datePreset, setDatePreset] = useState<DatePreset>("custom");
+
+  function recomputeDates(p: DatePreset, now = new Date()) {
+    if (p === "last7") {
+      const end = now;
+      const start = new Date(end);
+      start.setDate(end.getDate() - 6); // inclusive 7-day window
+      setStartDate(toYMD(start));
+      setEndDate(toYMD(end));
+    } else if (p === "thisMonth") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setStartDate(toYMD(start));
+      setEndDate(toYMD(end));
+    } else if (p === "ytd") {
+      const start = new Date(now.getFullYear(), 0, 1);
+      setStartDate(toYMD(start));
+      setEndDate(toYMD(now));
+    }
+  }
+
+  function applyPreset(p: DatePreset) {
+    setDatePreset(p);
+    if (p !== "custom") recomputeDates(p);
+  }
+
+  function msUntilNextMidnight() {
+    const now = new Date();
+    const next = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+      0,
+      0,
+      0,
+      50 // tiny buffer
+    );
+    return next.getTime() - now.getTime();
+  }
+
+  // Auto-roll the preset range at midnight.
+  useEffect(() => {
+    if (datePreset === "custom") return;
+    // compute now, then again every midnight
+    recomputeDates(datePreset);
+    let timer = setTimeout(function tick() {
+      recomputeDates(datePreset);
+      timer = setTimeout(tick, msUntilNextMidnight());
+    }, msUntilNextMidnight());
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datePreset]);
 
   useEffect(() => {
     const q = query(
@@ -92,10 +166,29 @@ export default function JobsPage() {
     return () => unsub();
   }, []);
 
+  // Status + Date filtering (client-side so we don't need new Firestore indexes)
   const filteredJobs = useMemo(() => {
-    if (statusFilter === "all") return jobs;
-    return jobs.filter((j) => j.status === statusFilter);
-  }, [jobs, statusFilter]);
+    const hasStart = Boolean(startDate);
+    const hasEnd = Boolean(endDate);
+    const startMs = hasStart
+      ? new Date(startDate + "T00:00:00").getTime()
+      : null;
+    const endMs = hasEnd ? new Date(endDate + "T23:59:59.999").getTime() : null;
+
+    return jobs.filter((j) => {
+      // status filter
+      if (statusFilter !== "all" && j.status !== statusFilter) return false;
+
+      // date filter against updatedAt (fallback to createdAt if missing)
+      const reference = j.updatedAt ?? j.createdAt ?? null;
+      const ts = toMillis(reference);
+      if (ts == null) return false;
+
+      if (startMs != null && ts < startMs) return false;
+      if (endMs != null && ts > endMs) return false;
+      return true;
+    });
+  }, [jobs, statusFilter, startDate, endDate]);
 
   const totalNet = useMemo(
     () =>
@@ -116,7 +209,6 @@ export default function JobsPage() {
       const newRef = doc(collection(db, "jobs"));
       let job: Job = {
         id: newRef.id,
-        // default stays the same as before
         status: "pending",
         address: makeAddress(address),
         earnings: {
@@ -171,13 +263,13 @@ export default function JobsPage() {
 
         <button
           onClick={() => setOpenForm((v) => !v)}
-          className="rounded-xl bg-[var(--color-text)]  text-[var(--btn-text)] px-4 py-2 text-sm "
+          className="rounded-xl bg-[var(--color-text)] text-[var(--btn-text)] px-4 py-2 text-sm"
         >
           + New Job
         </button>
       </motion.header>
 
-      {/* Filters */}
+      {/* Status Filters */}
       <motion.div
         className="mb-4 flex flex-wrap items-center gap-2"
         {...fadeUp(0.05)}
@@ -204,15 +296,15 @@ export default function JobsPage() {
       {/* Create Job form */}
       {openForm && (
         <motion.section
-          className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+          className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
           {...fadeUp(0.08)}
         >
-          <div className="flex w-full gap-5">
+          <div className="flex w-full gap-3">
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Job address (e.g., 123 Main St, San Antonio, TX)"
-              className=" w-full rounded-lg border border-[var(--color-border)] bg-white/70 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-white/70 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
 
             <button
@@ -227,9 +319,81 @@ export default function JobsPage() {
         </motion.section>
       )}
 
+      {/* Date range filters (always visible) */}
+      <motion.section
+        className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+        {...fadeUp(0.09)}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label className="mb-1 block text-xs text-[var(--color-muted)]">
+              Start date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setDatePreset("custom");
+                setStartDate(e.target.value);
+              }}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="mb-1 block text-xs text-[var(--color-muted)]">
+              End date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setDatePreset("custom");
+                setEndDate(e.target.value);
+              }}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 sm:ml-2">
+            <button
+              onClick={() => applyPreset("last7")}
+              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+            >
+              Last 7 days
+            </button>
+            <button
+              onClick={() => applyPreset("thisMonth")}
+              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+            >
+              This month
+            </button>
+            <button
+              onClick={() => applyPreset("ytd")}
+              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+            >
+              Year to date
+            </button>
+            <button
+              onClick={() => {
+                setDatePreset("custom");
+                setStartDate("");
+                setEndDate("");
+              }}
+              className="rounded-lg bg-[var(--color-text)] px-3 py-2 text-xs text-white"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-[var(--color-muted)]">
+          Filters use each job's <strong>last updated</strong> date (falls back
+          to created date).
+        </p>
+      </motion.section>
+
       {/* Totals */}
       <motion.div
-        className="mb-3 text-sm text-[var(--color-text)] font-semibold"
+        className="mb-3 text-sm font-semibold text-[var(--color-text)]"
         {...fadeUp(0.1)}
       >
         Total net across {filteredJobs.length} job
@@ -251,6 +415,11 @@ export default function JobsPage() {
             <JobListItem job={job} />
           </motion.div>
         ))}
+        {filteredJobs.length === 0 && (
+          <div className="text-sm text-[var(--color-muted)]">
+            No jobs match the current filters.
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
