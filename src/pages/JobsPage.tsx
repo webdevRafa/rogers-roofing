@@ -189,7 +189,7 @@ export default function JobsPage() {
             className={[
               "rounded-full border px-3 py-1 text-xs uppercase tracking-wide transition-colors",
               statusFilter === f
-                ? "bg-[var(--color-primary)] border-transparent text-white shadow-sm"
+                ? "bg-[var(--color-text)] border-transparent text-white shadow-sm"
                 : "bg-transparent border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
             ].join(" ")}
             whileHover={{ y: -1 }}
