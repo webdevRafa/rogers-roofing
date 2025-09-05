@@ -698,7 +698,7 @@ export default function JobDetailPage() {
               placeholder="Paste a photo URL (upload coming next)"
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)]  hover:bg-[var(--btn-hover-bg)]">
               Add
             </button>
           </form>
