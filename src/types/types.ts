@@ -13,7 +13,7 @@ export type MoneyCents = number;
 export type CurrencyCode = "USD" | "CAD";
 export type ID = string;
 export type FSDate = Timestamp | Date | FieldValue | null;
-
+export type FirestoreTime = Timestamp | Date | FieldValue | null;
 // ---------- Address ----------
 export type Address = {
   /** Full display line, e.g. "123 Main St, San Antonio, TX 78205" */
@@ -43,7 +43,7 @@ export type Earnings = {
   entries?: EarningEntry[];
   currency?: CurrencyCode;
 };
-
+export type PayoutCategory = "shingles" | "felt" | "technician";
 // ---------- Expenses ----------
 export type PaymentMethod =
   | "cash"
@@ -61,19 +61,38 @@ export type Payout = {
   payeeId?: ID;
   paidAt?: FSDate;
   method?: PaymentMethod;
+  category?: PayoutCategory;
+  sqft?: number; 
+  ratePerSqFt?: number;
   memo?: string;
   attachmentUrls?: string[]; // photos of checks/receipts
 };
+export type MaterialCategory =
+  | "coilNails"
+  | "tinCaps"
+  | "plasticJacks"
+  | "counterFlashing"
+  | "jFlashing"
+  | "rainDiverter";
+
 
 export type MaterialExpense = {
   id: ID;
-  name: string;  // e.g., "Shingles - Landmark Moire Black"
+  category: MaterialCategory;
+  unitPriceCents: number;
+  quantity: number; 
+  name?: string;  // e.g., "Shingles - Landmark Moire Black"
   vendor?: string; // e.g., "ABC Supply"
+  createdAt?: FirestoreTime;
   amountCents: MoneyCents;
   purchasedAt?: FSDate;
   receiptUrl?: string;
 };
-
+export type JobPricing = {
+  sqft: number;                 // >= 0
+  ratePerSqFt: 31 | 35;         // your two allowed rates
+  feeCents?: number;            // default 3500 for the +$35 fee
+};
 export type Expenses = {
   /** Cached sums for fast UI */
   totalPayoutsCents: MoneyCents;
@@ -98,6 +117,53 @@ export type Photo = {
   uploadedBy?: ID | null;
   createdAt?: FSDate;
 };
+// types.ts (additions)
+
+export type InvoiceStatus = "draft" | "sent" | "paid" | "void";
+
+export interface InvoiceMoney {
+  materialsCents: number;  // snapshot of job.expenses.totalMaterialsCents
+  laborCents: number;      // sum of payouts at creation time
+  extraCents: number;      // any extra expenses included on invoice (optional)
+  subtotalCents: number;
+  taxCents: number;        // if you later add tax rules; for now 0
+  totalCents: number;
+}
+
+export interface InvoiceLine {
+  id: string;
+  label: string;           // e.g., "Labor (payouts)", "Coil Nails (3 x $45)", "Extra: Dumpster"
+  amountCents: number;
+}
+
+export type InvoiceKind = "invoice" | "receipt";
+
+export interface InvoiceDoc {
+  id: string;
+  kind: InvoiceKind;       // "invoice" or "receipt"
+  jobId: string;
+  number: string;          // e.g., INV-2025-000123
+  customer?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
+  addressSnapshot?: {
+    fullLine?: string;
+    line1?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
+  description?: string;    // user-entered description for the work performed
+  lines: InvoiceLine[];    // human-friendly rolled-up lines
+  money: InvoiceMoney;     // computed totals
+  createdAt: Timestamp | Date | FieldValue;
+  updatedAt?: Timestamp | Date | FieldValue;
+  status: InvoiceStatus;
+  // For receipts, store how it was paid if you want:
+  paymentNote?: string;    // e.g. "Paid by check #1023"
+}
 
 export type JobAttachment = Photo | { url: string; label?: string };
 
@@ -129,7 +195,7 @@ export type Job = {
   id: ID;
   orgId?: ID; // multi-tenant future-proofing
   status: JobStatus;
-
+pricing?: JobPricing;
   address: Address;
 
   earnings: Earnings;
@@ -161,8 +227,9 @@ export type JobDraft = Omit<Job, "id" | keyof AuditFields | "computed"> & {
 // ---------- Firestore Converter ----------
 export const jobConverter: FirestoreDataConverter<Job> = {
   toFirestore(job: WithFieldValue<Job>): DocumentData {
-    // Do not store the document id as a field
-    const { id, ...rest } = job as Job;
+    // drop the 'id' field from what we write to Firestore
+    const { id: _omit, ...rest } = job as Job;
+    void _omit; // mark as intentionally unused (silences no-unused-vars)
     return rest as DocumentData;
   },
   fromFirestore(snapshot: QueryDocumentSnapshot, options: SnapshotOptions): Job {

@@ -14,6 +14,7 @@ const item = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
 };
+
 function statusPillClasses(status: JobStatus) {
   switch (status) {
     case "active":
@@ -44,18 +45,33 @@ function MoneyCount({
   const dollars = (cents ?? 0) / 100;
   return (
     <span className={className}>
-      <CountUp
-        key={cents}
-        end={dollars}
-        decimals={2}
-        prefix="$"
-        duration={0.6}
-      />
+      <CountUp key={cents} end={dollars} decimals={2} prefix="$" duration={0.6} />
     </span>
   );
 }
 
 const MotionLink = motion(Link);
+
+// ---- timestamp helpers (no `any`) ----
+type FsTimestampLike = { toDate: () => Date };
+function isFsTimestamp(x: unknown): x is FsTimestampLike {
+  return typeof (x as FsTimestampLike)?.toDate === "function";
+}
+function toMillis(x: unknown): number | null {
+  if (x == null) return null;
+  let d: Date | null = null;
+  if (isFsTimestamp(x)) d = x.toDate();
+  else if (x instanceof Date) d = x;
+  else if (typeof x === "string" || typeof x === "number") {
+    const parsed = new Date(x);
+    if (!Number.isNaN(parsed.getTime())) d = parsed;
+  }
+  return d ? d.getTime() : null;
+}
+function fmtDateTime(x: unknown): string {
+  const ms = toMillis(x);
+  return ms == null ? "—" : new Date(ms).toLocaleString();
+}
 
 export default function JobListItem({ job }: Props) {
   const last = job.updatedAt ?? job.createdAt ?? null;
@@ -85,12 +101,7 @@ export default function JobListItem({ job }: Props) {
             className="text-xs text-[var(--color-muted)]/70"
             variants={item}
           >
-            Last updated:{" "}
-            {last
-              ? new Date(
-                  (last as any)?.toDate ? (last as any).toDate() : last
-                ).toLocaleString()
-              : "—"}
+            Last updated: {fmtDateTime(last)}
           </motion.div>
 
           <motion.div
@@ -110,6 +121,13 @@ export default function JobListItem({ job }: Props) {
                 {job.status}
               </span>
             </motion.span>
+
+            {/* persisted summary if present */}
+            {job.pricing && (
+              <span className="ml-1 text-xs text-[var(--color-muted)] whitespace-nowrap">
+                {job.pricing.sqft.toLocaleString()} sq.ft @ ${job.pricing.ratePerSqFt}
+              </span>
+            )}
           </motion.div>
         </div>
 

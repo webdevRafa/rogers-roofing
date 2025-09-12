@@ -1,6 +1,6 @@
 // src/pages/JobDetailPage.tsx
 // NOTE: This page uses framer-motion and react-countup.
-// Install:  npm i framer-motion react-countup
+// Install:  npm i framer-motion react-countup lucide-react
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -10,9 +10,13 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
+  FieldValue,
 } from "firebase/firestore";
 import { motion, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
+import { Pencil } from "lucide-react"; // ✏️ edit icon
+import InvoiceCreateModal from "../components/InvoiceCreateModal";
+
 
 import { db } from "../firebase/firebaseConfig";
 import type {
@@ -20,27 +24,34 @@ import type {
   Payout,
   MaterialExpense,
   Note,
-  Photo,
   JobStatus,
+  JobAttachment,
+  MaterialCategory,
 } from "../types/types";
 import { jobConverter } from "../types/types";
 import { toCents } from "../utils/money";
 import { recomputeJob } from "../utils/calc";
 
-// ---------- Animation helpers (typed) ----------
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+// Optional label helper for union JobAttachment
+function getAttachmentLabel(p: JobAttachment): string {
+  if ("label" in p && typeof p.label === "string") return p.label;
+  if ("caption" in p && typeof (p as { caption?: unknown }).caption === "string") {
+    return (p as { caption: string }).caption;
+  }
+  return "";
+}
 
+// ---------- Animation helpers ----------
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 const fadeUp = (delay = 0): Partial<MotionProps> => ({
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.35, ease: EASE, delay },
 });
-
 const staggerParent: MotionProps["variants"] = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
-
 const item: MotionProps["variants"] = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
@@ -77,26 +88,35 @@ function statusClasses(status: JobStatus) {
   }
 }
 
-// ---------- Money display (animated) ----------
-function CountMoney({
-  cents,
-  className = "",
-}: {
-  cents: number;
-  className?: string;
-}) {
+// ---------- Money display ----------
+function CountMoney({ cents, className = "" }: { cents: number; className?: string }) {
   const dollars = (cents ?? 0) / 100;
   return (
     <span className={className}>
-      <CountUp
-        key={cents}
-        end={dollars}
-        decimals={2}
-        prefix="$"
-        duration={0.6}
-      />
+      <CountUp key={cents} end={dollars} decimals={2} prefix="$" duration={0.6} />
     </span>
   );
+}
+
+// ---------- Timestamp helpers ----------
+type FsTimestampLike = { toDate: () => Date };
+function isFsTimestamp(x: unknown): x is FsTimestampLike {
+  return typeof (x as FsTimestampLike)?.toDate === "function";
+}
+function toMillis(x: unknown): number | null {
+  if (x == null) return null;
+  let d: Date | null = null;
+  if (isFsTimestamp(x)) d = x.toDate();
+  else if (x instanceof Date) d = x;
+  else if (typeof x === "string" || typeof x === "number") {
+    const parsed = new Date(x);
+    if (!Number.isNaN(parsed.getTime())) d = parsed;
+  }
+  return d ? d.getTime() : null;
+}
+function fmtDate(x: unknown): string {
+  const ms = toMillis(x);
+  return ms == null ? "—" : new Date(ms).toLocaleString();
 }
 
 export default function JobDetailPage() {
@@ -104,42 +124,90 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
 
-  // Form state
-  const [earningsInput, setEarningsInput] = useState<string>("");
-  const [payout, setPayout] = useState({ payeeNickname: "", amount: "" });
-  const [material, setMaterial] = useState({
-    name: "",
+  // --- NEW: pricing edit toggle ---
+  const [editingPricing, setEditingPricing] = useState(false);
+
+  // --- Pricing calculator state (used only while editing/initial apply) ---
+  const [sqft, setSqft] = useState<string>("");
+  const [rate, setRate] = useState<31 | 35>(31); // $31 or $35
+  const totalJobPayCentsPreview = useMemo(() => {
+    const nSqft = Math.max(0, Number(sqft) || 0);
+    return Math.round((nSqft * rate + 35) * 100);
+  }, [sqft, rate]);
+
+  // --- CHANGED: material form state (category + unit price + quantity + vendor)
+  const [material, setMaterial] = useState<{
+    category: MaterialCategory;
+    unitPrice: string; // dollars
+    quantity: string; // integer
+    vendor: string;
+  }>({
+    category: "coilNails",
+    unitPrice: "",
+    quantity: "",
     vendor: "",
-    amount: "",
   });
+
   const [noteText, setNoteText] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
-
+  const [photoLabel, setPhotoLabel] = useState("");
+  // Tabs for payouts
+  type PayoutTab = "shingles" | "felt" | "technician";
+  const [payoutTab, setPayoutTab] = useState<PayoutTab>("shingles");
   const payeeRef = useRef<HTMLInputElement | null>(null);
-  const materialRef = useRef<HTMLInputElement | null>(null);
+  const materialRef = useRef<HTMLSelectElement | null>(null);
   const noteRef = useRef<HTMLInputElement | null>(null);
   const photoRef = useRef<HTMLInputElement | null>(null);
+  // Keep separate inputs per tab (name, sqft, rate)
+  const [payoutInputs, setPayoutInputs] = useState<
+    Record<PayoutTab, { payeeNickname: string; sqft: string; rate: string; amount: string }>
+>({
+  shingles: { payeeNickname: "", sqft: "", rate: "", amount: "" },
+  felt:      { payeeNickname: "", sqft: "", rate: "", amount: "" },
+  technician:{ payeeNickname: "", sqft: "", rate: "", amount: "" }, // amount is used here
+});
+
+  // Convenience getter/setter for the active tab’s inputs
+  const activePayout = payoutInputs[payoutTab];
+  function setActivePayout(
+  next: Partial<{ payeeNickname: string; sqft: string; rate: string; amount: string }>
+) {
+  setPayoutInputs((s) => ({ ...s, [payoutTab]: { ...s[payoutTab], ...next } }));
+}
+
+const payoutAmountCents = useMemo(() => {
+  if (payoutTab === "technician") {
+    const amt = Number(activePayout.amount) || 0;
+    return Math.round(Math.max(0, amt) * 100);
+  }
+  const sqft = Number(activePayout.sqft) || 0;
+  const rate = Number(activePayout.rate) || 0;
+  return Math.round(Math.max(0, sqft * rate) * 100);
+}, [payoutTab, activePayout.amount, activePayout.sqft, activePayout.rate]);
+
 
   // Load job
   useEffect(() => {
     let cancelled = false;
     async function run() {
       try {
-        const ref = doc(collection(db, "jobs"), id as string).withConverter(
-          jobConverter
-        );
+        const ref = doc(collection(db, "jobs"), id as string).withConverter(jobConverter);
         const snap = await getDoc(ref);
         if (!snap.exists()) throw new Error("Job not found");
         const data = snap.data();
         if (!cancelled) {
           setJob(data);
-          setEarningsInput(
-            String((data.earnings?.totalEarningsCents ?? 0) / 100)
-          );
+
+          // Initialize local pricing state from persisted pricing (for edit mode)
+          if (data.pricing) {
+            setSqft(String(data.pricing.sqft ?? ""));
+            setRate((data.pricing.ratePerSqFt as 31 | 35) ?? 31);
+          }
         }
-      } catch (e: any) {
-        if (!cancelled) setError(e.message || String(e));
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -160,36 +228,28 @@ export default function JobDetailPage() {
     return { earnings, payouts, materials, expenses, net, expensePortion };
   }, [job]);
 
-  // Replace your entire function with this:
+  // Save (optimistic, typed)
   async function saveJob(nextJob: Job) {
-    const ref = doc(collection(db, "jobs"), nextJob.id).withConverter(
-      jobConverter
-    );
-    const previous = job; // keep a copy to roll back on error
+    const ref = doc(collection(db, "jobs"), nextJob.id).withConverter(jobConverter);
+    const previous = job;
 
     try {
-      // 1) Optimistic UI: show a real Date *now* so we never render "Invalid Date"
-      const optimistic = recomputeJob({
-        ...nextJob,
-        updatedAt: Timestamp.now() as any,
-      });
+      // Optimistic: client-time to avoid "Invalid Date"
+      const optimistic = recomputeJob({ ...nextJob, updatedAt: Timestamp.now() });
       setJob(optimistic);
 
-      // 2) Persist to Firestore with canonical server time
+      // Persist with server time
       const toPersist = recomputeJob({
         ...nextJob,
-        updatedAt: serverTimestamp() as any,
+        updatedAt: serverTimestamp() as FieldValue,
       });
       await setDoc(ref, toPersist, { merge: true });
 
-      // 3) Read back the authoritative doc (now has a concrete Firestore Timestamp)
+      // Re-read authoritative doc
       const snap = await getDoc(ref);
-      if (snap.exists()) {
-        setJob(snap.data());
-      }
+      if (snap.exists()) setJob(snap.data());
     } catch (err) {
       console.error("Failed to save job", err);
-      // Roll back UI if the write fails
       if (previous) setJob(previous);
     }
   }
@@ -201,50 +261,80 @@ export default function JobDetailPage() {
   }
 
   // ---- Mutations ----
-  async function setEarnings() {
-    if (!job) return;
-    const amt = Number(earningsInput);
-    if (Number.isNaN(amt) || amt < 0) return;
-    const updated: Job = {
-      ...job,
-      earnings: {
-        ...job.earnings,
-        totalEarningsCents: toCents(amt),
-      },
+async function addPayout() {
+  if (!job) return;
+
+  const name = activePayout.payeeNickname.trim();
+  if (!name) return;
+
+  let entry: Payout;
+
+  if (payoutTab === "technician") {
+    const amt = Number(activePayout.amount);
+    if (!Number.isFinite(amt) || amt <= 0) return;
+
+    entry = {
+      id: crypto.randomUUID(),
+      payeeNickname: name,
+      amountCents: payoutAmountCents,
+      method: "check",
+      paidAt: Timestamp.now(),
+      category: "technician",
     };
-    await saveJob(updated);
+  } else {
+    const sqft = Number(activePayout.sqft);
+    const rate = Number(activePayout.rate);
+    if (!Number.isFinite(sqft) || !Number.isFinite(rate) || sqft <= 0 || rate <= 0) return;
+
+    entry = {
+      id: crypto.randomUUID(),
+      payeeNickname: name,
+      amountCents: payoutAmountCents,
+      method: "check",
+      paidAt: Timestamp.now(),
+      sqft,
+      ratePerSqFt: rate,
+      category: payoutTab,
+    };
   }
 
-  async function addPayout() {
-    if (!job || !payout.payeeNickname || !payout.amount) return;
-    const entry: Payout = {
-      id: crypto.randomUUID(),
-      payeeNickname: payout.payeeNickname.trim(),
-      amountCents: toCents(Number(payout.amount)),
-      method: "check",
-      paidAt: Timestamp.now() as any, // cannot use serverTimestamp inside arrays
-    };
-    const updated: Job = {
-      ...job,
-      expenses: {
-        ...job.expenses,
-        payouts: [...(job.expenses.payouts ?? []), entry],
-      },
-    };
-    await saveJob(updated);
-    setPayout({ payeeNickname: "", amount: "" });
-    payeeRef.current?.focus();
-  }
+  const updated: Job = {
+    ...job,
+    expenses: {
+      ...job.expenses,
+      payouts: [...(job.expenses.payouts ?? []), entry],
+    },
+  };
+
+  await saveJob(updated);
+
+  // clear only the active tab’s form
+  setPayoutInputs((s) => ({
+    ...s,
+    [payoutTab]: { payeeNickname: "", sqft: "", rate: "", amount: "" },
+  }));
+  payeeRef.current?.focus();
+}
+
 
   async function addMaterial() {
-    if (!job || !material.name || !material.amount) return;
+    if (!job) return;
+
+    const qty = Number(material.quantity);
+    const unit = Number(material.unitPrice);
+    if (!Number.isFinite(qty) || !Number.isFinite(unit) || qty <= 0 || unit < 0) return;
+
     const vendor = material.vendor?.trim();
+
     const entry: MaterialExpense = {
       id: crypto.randomUUID(),
-      name: material.name.trim(),
-      amountCents: toCents(Number(material.amount)),
-      ...(vendor ? { vendor } : {}), // omit if blank
-    } as MaterialExpense;
+      category: material.category,
+      unitPriceCents: toCents(unit),
+      quantity: Math.floor(qty),
+      ...(vendor ? { vendor } : {}),
+      createdAt: Timestamp.now(),
+      amountCents: toCents(unit * qty),
+    };
 
     const currentMaterials = job.expenses?.materials ?? [];
     const updated: Job = {
@@ -256,7 +346,8 @@ export default function JobDetailPage() {
     };
 
     await saveJob(updated);
-    setMaterial({ name: "", vendor: "", amount: "" });
+
+    setMaterial({ category: "coilNails", unitPrice: "", quantity: "", vendor: "" });
     materialRef.current?.focus();
   }
 
@@ -265,7 +356,7 @@ export default function JobDetailPage() {
     const entry: Note = {
       id: crypto.randomUUID(),
       text: noteText.trim(),
-      createdAt: Timestamp.now() as any,
+      createdAt: Timestamp.now(),
     };
     const updated: Job = { ...job, notes: [...(job.notes ?? []), entry] };
     await saveJob(updated);
@@ -273,75 +364,81 @@ export default function JobDetailPage() {
     noteRef.current?.focus();
   }
 
+  // ------- Attachments (JobAttachment[]) -------
   async function addPhoto() {
     if (!job || !photoUrl.trim()) return;
-    const entry: Photo = {
-      id: crypto.randomUUID(),
+    const entry: JobAttachment = {
       url: photoUrl.trim(),
-      createdAt: Timestamp.now() as any,
-    } as any;
+      ...(photoLabel.trim() ? { label: photoLabel.trim() } : {}),
+    };
     const updated: Job = {
       ...job,
       attachments: [...(job.attachments ?? []), entry],
     };
     await saveJob(updated);
     setPhotoUrl("");
+    setPhotoLabel("");
     photoRef.current?.focus();
   }
 
-  async function removePayout(id: string) {
+  async function removePhoto(url: string) {
+    if (!job) return;
+    const updated: Job = {
+      ...job,
+      attachments: (job.attachments ?? []).filter((p) => p.url !== url),
+    };
+    await saveJob(updated);
+  }
+
+  async function removePayout(pid: string) {
     if (!job) return;
     const updated: Job = {
       ...job,
       expenses: {
         ...job.expenses,
-        payouts: (job.expenses.payouts ?? []).filter((p) => p.id !== id),
+        payouts: (job.expenses.payouts ?? []).filter((p) => p.id !== pid),
       },
     };
     await saveJob(updated);
   }
 
-  async function removeMaterial(id: string) {
+  async function removeMaterial(mid: string) {
     if (!job) return;
     const updated: Job = {
       ...job,
       expenses: {
         ...job.expenses,
-        materials: (job.expenses.materials ?? []).filter((m) => m.id !== id),
+        materials: (job.expenses.materials ?? []).filter((m) => m.id !== mid),
       },
     };
     await saveJob(updated);
   }
 
-  async function removeNote(id: string) {
+  async function removeNote(nid: string) {
     if (!job) return;
-    const updated: Job = {
-      ...job,
-      notes: (job.notes ?? []).filter((n) => n.id !== id),
-    };
+    const updated: Job = { ...job, notes: (job.notes ?? []).filter((n) => n.id !== nid) };
     await saveJob(updated);
   }
 
-  async function removePhoto(id: string) {
-    if (!job) return;
-    const updated: Job = {
-      ...job,
-      attachments: (job.attachments ?? []).filter((p: any) => p.id !== id),
-    };
-    await saveJob(updated);
-  }
-
-  if (loading)
-    return <div className="p-8 text-[var(--color-text)]">Loading…</div>;
+  if (loading) return <div className="p-8 text-[var(--color-text)]">Loading…</div>;
   if (error) return <div className="p-8 text-red-600">{error}</div>;
   if (!job) return <div className="p-8">Not found.</div>;
 
   const last = job.updatedAt ?? job.createdAt ?? null;
-  const lastStr = last
-    ? new Date(
-        (last as any)?.toDate ? (last as any).toDate() : last
-      ).toLocaleString()
-    : "—";
+  const lastStr = fmtDate(last);
+
+  // Persisted pricing presence
+  const hasPricing =
+    job.pricing && Number.isFinite(job.pricing.sqft) && Number.isFinite(job.pricing.ratePerSqFt);
+
+  // Values to display in the summary (live edit values if editing, otherwise persisted)
+  const displaySqft = editingPricing ? Number(sqft || 0) : job.pricing?.sqft ?? 0;
+  const displayRate = editingPricing ? rate : (job.pricing?.ratePerSqFt as 31 | 35) ?? 31;
+  const displayTotal =
+    editingPricing
+      ? totalJobPayCentsPreview
+      : job.earnings?.totalEarningsCents ??
+        Math.round((displaySqft * displayRate + 35) * 100);
 
   return (
     <motion.div
@@ -351,34 +448,23 @@ export default function JobDetailPage() {
       animate="animate"
     >
       {/* Header */}
-      <motion.div
-        className="mb-6 flex flex-wrap items-center justify-between gap-3"
-        {...fadeUp(0)}
-      >
+      <motion.div className="mb-6 flex flex-wrap items-center justify-between gap-3" {...fadeUp(0)}>
         <div>
-          <Link
-            to="/"
-            className="text-sm text-[var(--color-primary)] hover:underline"
-          >
+          <Link to="/" className="text-sm text-[var(--color-primary)] hover:underline">
             &larr; Back
           </Link>
           <h1 className="mt-2 text-2xl font-bold text-[var(--color-text)]">
             {job.address?.fullLine}
           </h1>
-          <div className="text-sm text-[var(--color-muted)]">
-            Last updated: {lastStr}
-          </div>
+          <div className="text-sm text-[var(--color-muted)]">Last updated: {lastStr}</div>
         </div>
-        <div className="flex flex-col items-end gap-2">
+
+        <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
           {/* Status pill + selector */}
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">
               Status:
-              <span
-                className={`ml-2 rounded-full px-2 py-0.5 ${statusClasses(
-                  job.status as JobStatus
-                )}`}
-              >
+              <span className={`ml-2 rounded-full px-2 py-0.5 ${statusClasses(job.status as JobStatus)}`}>
                 {job.status}
               </span>
             </span>
@@ -396,29 +482,134 @@ export default function JobDetailPage() {
             </select>
           </div>
 
-          <div className="rounded-2xl shadow-md mt-5 px-5 py-3 text-right">
-            <div className="text-xs text-[var(--color-muted)]">Net Revenue</div>
-            <div className="text-2xl font-semibold text-[var(--color-text)]">
-              <CountMoney cents={totals.net} />
+          {/* PRICING: show editor only when not set OR when editingPricing=true */}
+          {!hasPricing || editingPricing ? (
+            <div className="rounded-2xl shadow-md px-5 py-3 text-right w-full sm:w-auto">
+              <div className="mb-2 text-xs text-[var(--color-muted)]">Total Job Pay</div>
+              <div className="text-2xl font-semibold text-[var(--color-text)]">
+                <CountMoney cents={totalJobPayCentsPreview} />
+              </div>
+
+              <div className="mt-3 flex items-center gap-2 text-xs">
+                <input
+                  value={sqft}
+                  onChange={(e) => setSqft(e.target.value)}
+                  type="number"
+                  min={0}
+                  step="1"
+                  placeholder="Sq. ft"
+                  className="w-24 rounded-md border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+                <select
+                  value={rate}
+                  onChange={(e) => setRate(Number(e.target.value) as 31 | 35)}
+                  className="w-20 rounded-md border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  title="Pay rate"
+                >
+                  <option value={31}>$31</option>
+                  <option value={35}>$35</option>
+                </select>
+                <span className="text-[var(--color-muted)]">+ $35 fee</span>
+                <button
+                  onClick={() => {
+                    if (!job) return;
+                    const nSqft = Math.max(0, Number(sqft) || 0);
+                    const updated: Job = {
+                      ...job,
+                      pricing: {
+                        sqft: nSqft,
+                        ratePerSqFt: rate,
+                        feeCents: 3500,
+                      },
+                      earnings: {
+                        ...job.earnings,
+                        totalEarningsCents: Math.round((nSqft * rate + 35) * 100),
+                      },
+                    };
+                    void saveJob(updated);
+                    setEditingPricing(false); // collapse editor after save
+                  }}
+                  className="ml-2 rounded-md bg-[var(--color-text)] px-3 py-1 text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]"
+                >
+                  Apply
+                </button>
+                {hasPricing && (
+                  <button
+                    onClick={() => {
+                      // cancel edit -> reset inputs to persisted values
+                      setSqft(String(job.pricing?.sqft ?? ""));
+                      setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
+                      setEditingPricing(false);
+                    }}
+                    className="rounded-md border border-[var(--color-border)] bg-white px-3 py-1"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            // COMPACT SUMMARY (read-only) with pencil to edit
+            <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
+              <div className="rounded-xl border border-[var(--color-border)] bg-white/80 px-4 py-2 text-right">
+                <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
+                  Sq. ft @ Rate
+                </div>
+                <div className="text-sm font-medium text-[var(--color-text)]">
+                  {Number(displaySqft || 0).toLocaleString()} sq.ft @ ${displayRate}/sq.ft{" "}
+                  <span className="opacity-70">+ $35</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl shadow-md px-5 py-3 text-right">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-[var(--color-muted)]">Total Job Pay</div>
+                    <div className="text-2xl font-semibold text-[var(--color-text)]">
+                      <CountMoney cents={displayTotal} />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      // prime inputs from persisted pricing and enter edit mode
+                      setSqft(String(job.pricing?.sqft ?? ""));
+                      setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
+                      setEditingPricing(true);
+                    }}
+                    title="Edit pricing"
+                    className="shrink-0 rounded-full border border-[var(--color-border)] bg-white p-2 hover:bg-[var(--color-card-hover)]"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+  onClick={() => setInvoiceModalOpen(true)}
+  className="rounded-md bg-[var(--color-primary)] px-3 py-2 text-white hover:opacity-90"
+  title="Create invoice or receipt"
+>
+  Create Invoice / Receipt
+</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
 
       {/* Stat row + profit bar */}
-      <motion.div className="rounded-2xl shadow-md  p-4" {...fadeUp(0.05)}>
+      <motion.div className="rounded-2xl shadow-md p-4" {...fadeUp(0.05)}>
         <div className="grid gap-4 sm:grid-cols-4 ">
           <Stat label="Payouts" cents={totals.payouts} />
           <Stat label="Materials" cents={totals.materials} />
           <Stat label="All Expenses" cents={totals.expenses} />
-          <Stat label="Earnings" cents={totals.earnings} />
+       <div className={` rounded-xl ${totals.net > 0 ? 'bg-emerald-400/10' : 'bg-red-400/10'}`}>
+           <Stat  label="Profit" cents={totals.net} />
+       </div>
         </div>
         <div className="mt-4">
           <div className="flex items-center justify-between text-xs text-[var(--color-muted)]">
             <span>Expenses</span>
             <span>
-              <CountMoney cents={totals.expenses} /> /{" "}
-              <CountMoney cents={totals.earnings} />
+              <CountMoney cents={totals.expenses} /> / <CountMoney cents={totals.earnings} />
             </span>
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/10">
@@ -435,92 +626,123 @@ export default function JobDetailPage() {
 
       {/* Quick edit / add panel */}
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        {/* Earnings */}
-        <MotionCard title="Earnings" delay={0.05}>
-          <form
-            className="grid grid-cols-[1fr_auto] gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setEarnings();
-            }}
-          >
-            <input
-              value={earningsInput}
-              onChange={(e) => setEarningsInput(e.target.value)}
-              inputMode="decimal"
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Total earnings for this job"
-              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
-              Save
-            </button>
-          </form>
-          <p className="mt-2 text-xs text-[var(--color-muted)]">
-            Set the total job revenue invoiced to the client.
-          </p>
-        </MotionCard>
-
         {/* Payouts */}
         <MotionCard title="Payouts" delay={0.1}>
-          <form
-            className="grid gap-2 sm:grid-cols-[1fr_140px_90px]"
-            onSubmit={(e) => {
-              e.preventDefault();
-              addPayout();
-            }}
-          >
-            <input
-              ref={payeeRef}
-              value={payout.payeeNickname}
-              onChange={(e) =>
-                setPayout((s) => ({ ...s, payeeNickname: e.target.value }))
-              }
-              placeholder="Payee nickname"
-              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-            <input
-              value={payout.amount}
-              onChange={(e) =>
-                setPayout((s) => ({ ...s, amount: e.target.value }))
-              }
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Amount"
-              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-            <button className="rounded-lg bg-[var(--color-text)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
-              Add
-            </button>
-          </form>
+          {/* Tabs */}
+          <div className="mb-3 inline-flex rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
+            {(["shingles", "felt", "technician"] as PayoutTab[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setPayoutTab(t)}
+                className={
+                  "px-3 py-1 rounded-md capitalize " +
+                  (payoutTab === t
+                    ? "bg-[var(--color-text)] text-[var(--btn-text)]"
+                    : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+                }
+              >
+                {t}
+              </button>
+            ))}
+          </div>
 
-          <ul className="mt-3  rounded-lg  bg-white/70">
+          {/* Form for ACTIVE tab only (same formula: sqft × rate) */}
+          <form
+  className={
+    payoutTab === "technician"
+      ? "grid gap-2 sm:grid-cols-[1fr_160px_auto]"
+      : "grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]"
+  }
+  onSubmit={(e) => {
+    e.preventDefault();
+    addPayout();
+  }}
+>
+  <input
+    ref={payeeRef}
+    value={activePayout.payeeNickname}
+    onChange={(e) => setActivePayout({ payeeNickname: e.target.value })}
+    placeholder={`Payee name (${payoutTab})`}
+    className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+  />
+
+  {payoutTab === "technician" ? (
+    // Flat-amount input
+    <input
+      value={activePayout.amount}
+      onChange={(e) => setActivePayout({ amount: e.target.value })}
+      type="number"
+      min={0}
+      step="0.01"
+      placeholder="Amount $"
+      className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+    />
+  ) : (
+    <>
+      <input
+        value={activePayout.sqft}
+        onChange={(e) => setActivePayout({ sqft: e.target.value })}
+        type="number"
+        min={0}
+        step="1"
+        placeholder="Sq. ft"
+        className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+      />
+      <input
+        value={activePayout.rate}
+        onChange={(e) => setActivePayout({ rate: e.target.value })}
+        type="number"
+        min={0}
+        step="0.01"
+        placeholder="Rate $/sq.ft"
+        className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+      />
+    </>
+  )}
+
+  <button className="rounded-lg bg-[var(--color-text)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+    Add
+  </button>
+</form>
+
+
+          {/* Live preview for the active tab */}
+          <div className="mt-2 text-xs text-[var(--color-muted)]">
+            Computed payout ({payoutTab}):{" "}
+            <span className="font-medium text-[var(--color-text)]">
+              ${(payoutAmountCents / 100).toFixed(2)}
+            </span>{" "}
+            ({activePayout.sqft || 0} sq.ft × ${activePayout.rate || 0}/sq.ft)
+          </div>
+
+          {/* Existing list */}
+          <ul className="mt-3 rounded-lg bg-white/70">
             {(job?.expenses?.payouts ?? []).map((p) => (
               <motion.li
                 key={p.id}
-                className="flex items-center justify-between p-3 shadow-md rounded-lg bg-[var(--color-accent)]/2 mb-2"
+                className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/2 p-3 shadow-md"
                 variants={item}
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="font-medium text-[var(--color-text)]">
-                    {p.payeeNickname}
-                  </span>
+                  <span className="font-medium text-[var(--color-text)]">{p.payeeNickname}</span>
+                  {typeof p.sqft === "number" && typeof p.ratePerSqFt === "number" && (
+                    <div className="text-[11px] text-[var(--color-muted)]">
+                      {p.sqft.toLocaleString()} sq.ft × ${p.ratePerSqFt}/sq.ft
+                    </div>
+                  )}
+                  {p.category && (
+                    <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-text)]">
+                      {p.category}
+                    </span>
+                  )}
                   <span className="ml-2 text-xs text-[var(--color-muted)]">
-                    {p.paidAt
-                      ? new Date(
-                          (p.paidAt as any).toDate?.() ?? p.paidAt
-                        ).toLocaleDateString()
-                      : ""}
+                    {p.paidAt ? fmtDate(p.paidAt) : ""}
                   </span>
                 </div>
+
                 <div className="flex items-center gap-3">
-                  <CountMoney
-                    cents={p.amountCents}
-                    className="text-sm text-[var(--color-text)]"
-                  />
+                  <CountMoney cents={p.amountCents} className="text-sm text-[var(--color-text)]" />
                   <button
                     onClick={() => removePayout(p.id)}
                     className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
@@ -532,9 +754,7 @@ export default function JobDetailPage() {
               </motion.li>
             ))}
             {(job?.expenses?.payouts ?? []).length === 0 && (
-              <li className="p-3 text-sm text-[var(--color-muted)]">
-                No payouts yet.
-              </li>
+              <li className="p-3 text-sm text-[var(--color-muted)]">No payouts yet.</li>
             )}
           </ul>
         </MotionCard>
@@ -546,64 +766,91 @@ export default function JobDetailPage() {
               e.preventDefault();
               addMaterial();
             }}
-            className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_140px_auto] sm:grid-cols-2"
+            className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto] sm:grid-cols-2"
           >
-            <input
+            {/* Category */}
+            <select
               ref={materialRef}
-              value={material.name}
+              value={material.category}
               onChange={(e) =>
-                setMaterial((s) => ({ ...s, name: e.target.value }))
+                setMaterial((s) => ({ ...s, category: e.target.value as MaterialCategory }))
               }
-              placeholder="Material name"
-              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
+              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              title="Material category"
+            >
+              <option value="coilNails">Coil Nails (per box)</option>
+              <option value="tinCaps">Tin Caps (per box)</option>
+              <option value="plasticJacks">Plastic Jacks (per unit)</option>
+              <option value="counterFlashing">Flashing — Counter (per unit)</option>
+              <option value="jFlashing">Flashing — J/L (per unit)</option>
+              <option value="rainDiverter">Flashing — Rain Diverter (per unit)</option>
+            </select>
+
+            {/* Unit price */}
             <input
-              value={material.vendor}
-              onChange={(e) =>
-                setMaterial((s) => ({ ...s, vendor: e.target.value }))
-              }
-              placeholder="Vendor (optional)"
-              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-            <input
-              value={material.amount}
-              onChange={(e) =>
-                setMaterial((s) => ({ ...s, amount: e.target.value }))
-              }
+              value={material.unitPrice}
+              onChange={(e) => setMaterial((s) => ({ ...s, unitPrice: e.target.value }))}
               type="number"
               min={0}
               step="0.01"
-              placeholder="Amount"
-              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] sm:col-span-2 md:col-span-1"
+              placeholder="Unit price $"
+              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
+
+            {/* Quantity */}
+            <input
+              value={material.quantity}
+              onChange={(e) => setMaterial((s) => ({ ...s, quantity: e.target.value }))}
+              type="number"
+              min={0}
+              step="1"
+              placeholder="Qty"
+              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+
+            {/* Vendor (optional) */}
+            <input
+              value={material.vendor}
+              onChange={(e) => setMaterial((s) => ({ ...s, vendor: e.target.value }))}
+              placeholder="Vendor (optional)"
+              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+
             <button className="shrink-0 w-full md:w-auto rounded-lg bg-[var(--color-text)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)] sm:col-span-2 md:col-auto">
               Add
             </button>
           </form>
 
           {/* Materials list */}
-          <ul className="mt-3  rounded-lg ">
+          <ul className="mt-3 rounded-lg">
             {(job?.expenses?.materials ?? []).map((m) => (
               <motion.li
                 key={m.id}
-                className="flex items-center justify-between p-3 shadow-md rounded-lg mb-2 bg-[var(--color-accent)]/2"
+                className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/2 p-3 shadow-md"
                 variants={item}
               >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="font-medium text-[var(--color-text)]">
-                    {m.name}
-                  </span>
-                  {m.vendor && (
-                    <span className="ml-2 text-xs text-[var(--color-muted)]">
-                      • {m.vendor}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-[var(--color-text)]">
+                      {m.category === "coilNails" && "Coil Nails"}
+                      {m.category === "tinCaps" && "Tin Caps"}
+                      {m.category === "plasticJacks" && "Plastic Jacks"}
+                      {m.category === "counterFlashing" && "Counter Flashing"}
+                      {m.category === "jFlashing" && "J/L Flashing"}
+                      {m.category === "rainDiverter" && "Rain Diverter"}
                     </span>
-                  )}
+                    {m.vendor && (
+                      <span className="ml-2 text-xs text-[var(--color-muted)]">• {m.vendor}</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-[var(--color-muted)]">
+                    {m.quantity} × ${(m.unitPriceCents / 100).toFixed(2)}
+                    {m.createdAt ? ` • ${fmtDate(m.createdAt)}` : ""}
+                  </div>
                 </div>
+
                 <div className="flex items-center gap-3">
-                  <CountMoney
-                    cents={m.amountCents}
-                    className="text-sm text-[var(--color-text)]"
-                  />
+                  <CountMoney cents={m.amountCents} className="text-sm text-[var(--color-text)]" />
                   <button
                     onClick={() => removeMaterial(m.id)}
                     className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
@@ -615,9 +862,7 @@ export default function JobDetailPage() {
               </motion.li>
             ))}
             {(job?.expenses?.materials ?? []).length === 0 && (
-              <li className="p-3 text-sm text-[var(--color-muted)]">
-                No materials added yet.
-              </li>
+              <li className="p-3 text-sm text-[var(--color-muted)]">No materials added yet.</li>
             )}
           </ul>
         </MotionCard>
@@ -642,27 +887,20 @@ export default function JobDetailPage() {
               Add
             </button>
           </form>
-          <ul className="mt-3 ">
+          <ul className="mt-3">
             {(job?.notes ?? [])
               .slice()
               .reverse()
               .map((n) => (
                 <motion.li
                   key={n.id}
-                  className="flex items-center justify-between p-3  shadow-md rounded-lg mb-2 bg-[var(--color-accent)]/2"
+                  className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/2 p-3 shadow-md"
                   variants={item}
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="font-medium text-[var(--color-text)]">
-                      {n.text}
-                    </span>
+                    <span className="font-medium text-[var(--color-text)]">{n.text}</span>
                     <span className="ml-2 text-xs text-[var(--color-muted)]">
-                      {n.createdAt
-                        ? new Date(
-                            // supports Firestore Timestamp or plain Date/string
-                            (n.createdAt as any).toDate?.() ?? n.createdAt
-                          ).toLocaleDateString()
-                        : ""}
+                      {n.createdAt ? fmtDate(n.createdAt) : ""}
                     </span>
                   </div>
                   <button
@@ -675,17 +913,15 @@ export default function JobDetailPage() {
                 </motion.li>
               ))}
             {(job?.notes ?? []).length === 0 && (
-              <li className="p-3 text-sm text-[var(--color-muted)]">
-                No notes yet.
-              </li>
+              <li className="p-3 text-sm text-[var(--color-muted)]">No notes yet.</li>
             )}
           </ul>
         </MotionCard>
 
-        {/* Photos */}
+        {/* Photos (JobAttachment[]) */}
         <MotionCard title="Photos" delay={0.25}>
           <form
-            className="grid grid-cols-[1fr_auto] gap-2"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]"
             onSubmit={(e) => {
               e.preventDefault();
               addPhoto();
@@ -698,45 +934,56 @@ export default function JobDetailPage() {
               placeholder="Paste a photo URL (upload coming next)"
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)]  hover:bg-[var(--btn-hover-bg)]">
+            <input
+              value={photoLabel}
+              onChange={(e) => setPhotoLabel(e.target.value)}
+              placeholder="Optional label"
+              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
               Add
             </button>
           </form>
+
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {(job?.attachments ?? []).map((p: any) => (
-              <motion.div key={p.id} className="group relative" variants={item}>
-                <img
-                  src={p.url}
-                  alt={p.caption ?? ""}
-                  className="h-32 w-full rounded-lg object-cover"
-                />
-                <button
-                  onClick={() => removePhoto(p.id)}
-                  className="absolute right-2 top-2 hidden rounded-full bg-black/60 px-2 py-1 text-xs text-white group-hover:block"
-                >
-                  Delete
-                </button>
-              </motion.div>
-            ))}
+            {(job?.attachments ?? []).map((p) => {
+              const label = getAttachmentLabel(p);
+              return (
+                <motion.div key={p.url} className="group relative" variants={item}>
+                  <img src={p.url} alt={label} className="h-32 w-full rounded-lg object-cover" />
+                  <button
+                    onClick={() => removePhoto(p.url)}
+                    className="absolute right-2 top-2 hidden rounded-full bg-black/60 px-2 py-1 text-xs text-white group-hover:block"
+                  >
+                    Delete
+                  </button>
+                  {label && (
+                    <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
+                      {label}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
             {(job?.attachments ?? []).length === 0 && (
-              <div className="p-3 text-sm text-[var(--color-muted)]">
-                No photos yet.
-              </div>
+              <div className="p-3 text-sm text-[var(--color-muted)]">No photos yet.</div>
             )}
           </div>
         </MotionCard>
       </div>
     </motion.div>
   );
+  <InvoiceCreateModal
+  job={job!}
+  open={invoiceModalOpen}
+  onClose={() => setInvoiceModalOpen(false)}
+/>
 }
 
 // --- UI bits ---
 function Stat({ label, cents }: { label: string; cents: number }) {
   return (
-    <motion.div
-      className="rounded-xl shadow-md bg-white/70 p-3"
-      variants={item}
-    >
+    <motion.div className="rounded-xl shadow-md bg-white/70 p-3" variants={item}>
       <div className="text-xs text-[var(--color-muted)]">{label}</div>
       <div className="text-lg font-semibold text-[var(--color-text)]">
         <CountMoney cents={cents} />
@@ -755,13 +1002,8 @@ function MotionCard({
   delay?: number;
 }) {
   return (
-    <motion.section
-      className="rounded-2xl shadow-md bg-[var(--color-card)] p-4"
-      {...fadeUp(delay)}
-    >
-      <h2 className="mb-3 text-lg font-semibold text-[var(--color-text)]">
-        {title}
-      </h2>
+    <motion.section className="rounded-2xl shadow-md bg-[var(--color-card)] p-4" {...fadeUp(delay)}>
+      <h2 className="mb-3 text-lg font-semibold text-[var(--color-text)]">{title}</h2>
       {children}
     </motion.section>
   );
