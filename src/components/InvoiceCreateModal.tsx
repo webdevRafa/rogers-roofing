@@ -2,7 +2,13 @@ import { useState } from "react";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import type { FieldValue } from "firebase/firestore";
-import type { Job, InvoiceDoc, InvoiceLine, InvoiceMoney, InvoiceKind } from "../types/types";
+import type {
+  Job,
+  InvoiceDoc,
+  InvoiceLine,
+  InvoiceMoney,
+  InvoiceKind,
+} from "../types/types";
 
 // ---------------- helpers ----------------
 function pad(n: number, w = 6) {
@@ -17,7 +23,10 @@ function dollarsToCents(n: number) {
 }
 
 // string picker without using `any`
-function pickString(obj: Record<string, unknown>, keys: string[]): string | undefined {
+function pickString(
+  obj: Record<string, unknown>,
+  keys: string[]
+): string | undefined {
   for (const k of keys) {
     const v = obj[k];
     if (typeof v === "string" && v.trim()) return v;
@@ -26,7 +35,9 @@ function pickString(obj: Record<string, unknown>, keys: string[]): string | unde
 }
 
 // normalize Job["address"] without any `any` casts
-function normalizeAddress(a: Job["address"] | undefined): InvoiceDoc["addressSnapshot"] | undefined {
+function normalizeAddress(
+  a: Job["address"] | undefined
+): InvoiceDoc["addressSnapshot"] | undefined {
   if (!a) return undefined;
   if (typeof a === "string") return { fullLine: a, line1: a };
 
@@ -36,7 +47,13 @@ function normalizeAddress(a: Job["address"] | undefined): InvoiceDoc["addressSna
     pickString(obj, ["fullLine", "full", "formatted", "label", "text"]) ??
     pickString(obj, ["line1", "street", "address", "address1", "street1"]);
 
-  const line1 = pickString(obj, ["line1", "street", "address", "address1", "street1"]);
+  const line1 = pickString(obj, [
+    "line1",
+    "street",
+    "address",
+    "address1",
+    "street1",
+  ]);
   const city = pickString(obj, ["city", "town"]);
   const state = pickString(obj, ["state", "region", "province"]);
   const zip = pickString(obj, ["zip", "postalCode", "postcode", "zipCode"]);
@@ -72,11 +89,20 @@ export default function InvoiceCreateModal({
     const lines: InvoiceLine[] = [];
 
     const laborCents = job?.expenses?.totalPayoutsCents ?? 0;
-    if (laborCents > 0) lines.push({ id: crypto.randomUUID(), label: "Labor (payouts)", amountCents: laborCents });
+    if (laborCents > 0)
+      lines.push({
+        id: crypto.randomUUID(),
+        label: "Labor (payouts)",
+        amountCents: laborCents,
+      });
 
     const materialsCents = job?.expenses?.totalMaterialsCents ?? 0;
     if (materialsCents > 0)
-      lines.push({ id: crypto.randomUUID(), label: "Materials", amountCents: materialsCents });
+      lines.push({
+        id: crypto.randomUUID(),
+        label: "Materials",
+        amountCents: materialsCents,
+      });
 
     const extraNum = Number(extraAmount);
     if (Number.isFinite(extraNum) && extraNum > 0) {
@@ -150,7 +176,9 @@ export default function InvoiceCreateModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-xl">
-        <h3 className="text-lg font-semibold">New {kind === "invoice" ? "Invoice" : "Receipt"}</h3>
+        <h3 className="text-lg font-semibold">
+          New {kind === "invoice" ? "Invoice" : "Receipt"}
+        </h3>
 
         <div className="mt-3 grid gap-3">
           <div className="flex gap-2">
@@ -182,7 +210,9 @@ export default function InvoiceCreateModal({
           </div>
 
           <div>
-            <label className="text-xs text-gray-600">Customer email (optional)</label>
+            <label className="text-xs text-gray-600">
+              Customer email (optional)
+            </label>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -192,7 +222,9 @@ export default function InvoiceCreateModal({
           </div>
 
           <div>
-            <label className="text-xs text-gray-600">Job description (shown on {kind})</label>
+            <label className="text-xs text-gray-600">
+              Job description (shown on {kind})
+            </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -220,10 +252,16 @@ export default function InvoiceCreateModal({
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button onClick={onClose} className="rounded-md border px-3 py-2 text-sm">
+            <button
+              onClick={onClose}
+              className="rounded-md border px-3 py-2 text-sm"
+            >
               Cancel
             </button>
-            <button onClick={handleCreate} className="rounded-md bg-black px-4 py-2 text-sm text-white">
+            <button
+              onClick={handleCreate}
+              className="rounded-md bg-black px-4 py-2 text-sm text-white"
+            >
               Create
             </button>
           </div>

@@ -6,7 +6,7 @@
   --color-text: #040504;   /* dark black from logo */
   --color-muted: #79726A;
   --color-border: #B8B4AD;
-
+  --color-logo: #191919;
   --color-card: #FFFFFF;
   --color-card-hover: #ECECE9;
 
@@ -25,6 +25,9 @@
 
 .font-modern {
   font-family: "minerva-modern", sans-serif;
+}
+.font-griffon {
+  font-family: "griffon", serif;
 }
 h1, h2, h3, p, button {
   font-family: "poppins", sans-serif;
