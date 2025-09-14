@@ -343,7 +343,11 @@ export default function JobsPage() {
           <div className="mx-auto max-w-[1200px] flex items-center justify-between py-3">
             <div className="text-3xl font-griffon uppercase text-[var(--color-logo)] flex justify-between w-full items-center">
               Roger's Roofing & Contracting LLC
-              <img className="max-w-[100px] rounded-2xl" src={logo} alt="" />
+              <img
+                className="max-w-[100px] rounded-2xl shadow-md"
+                src={logo}
+                alt=""
+              />
             </div>
           </div>
         </nav>
@@ -360,7 +364,7 @@ export default function JobsPage() {
           {...fadeUp(0)}
         >
           <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text)]">
-            Jobs
+            My Jobs
           </h1>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
@@ -571,7 +575,7 @@ export default function JobsPage() {
 
         {/* Totals */}
         <motion.div
-          className="mb-0 rounded-tr-2xl p-2 text-md font-semibold max-w-[300px] border-t border-r border-l border-[var(--color-border)] bg-white  text-[var(--color-text)]"
+          className="mb-0 rounded-tr-2xl p-2 text-xl font-semibold max-w-[400px] shadow-md bg-gray-50/35  text-[var(--color-text)]"
           {...fadeUp(0.1)}
         >
           Total net across {filteredJobs.length} job
@@ -670,7 +674,7 @@ export default function JobsPage() {
 
         {/* ====== DESKTOP TABLE (sm and up) ====== */}
         <motion.div
-          className="hidden sm:block rounded-tr-2xl  border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden"
+          className="hidden sm:block rounded-tr-2xl  shadow-md  bg-[var(--color-card)] overflow-hidden"
           variants={staggerParent}
           initial="initial"
           animate="animate"

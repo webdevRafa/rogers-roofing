@@ -2,7 +2,7 @@
 // NOTE: This page uses framer-motion and react-countup.
 // Install:  npm i framer-motion react-countup lucide-react
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   collection,
   doc,
@@ -11,6 +11,7 @@ import {
   setDoc,
   Timestamp,
   FieldValue,
+  deleteDoc,
 } from "firebase/firestore";
 import { motion, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
@@ -135,6 +136,8 @@ function fmtDate(x: unknown): string {
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +154,7 @@ export default function JobDetailPage() {
     return Math.round((nSqft * rate + 35) * 100);
   }, [sqft, rate]);
 
-  // --- CHANGED: material form state (category + unit price + quantity + vendor)
+  // --- Material form state (category + unit price + quantity + vendor)
   const [material, setMaterial] = useState<{
     category: MaterialCategory;
     unitPrice: string; // dollars
@@ -465,6 +468,25 @@ export default function JobDetailPage() {
     await saveJob(updated);
   }
 
+  // ------- NEW: Danger zone — permanent delete -------
+  async function permanentlyDeleteJob() {
+    if (!job) return;
+    const label = job.address?.fullLine ?? job.id;
+
+    const confirmText = window.prompt(
+      `Type DELETE to permanently remove "${label}". This cannot be undone.`
+    );
+    if (confirmText !== "DELETE") return;
+
+    try {
+      await deleteDoc(doc(collection(db, "jobs"), job.id));
+      navigate("/"); // back to list
+    } catch (e) {
+      console.error("Failed to permanently delete job", e);
+      alert("Failed to delete the job. Check console for details.");
+    }
+  }
+
   if (loading)
     return <div className="p-8 text-[var(--color-text)]">Loading…</div>;
   if (error) return <div className="p-8 text-red-600">{error}</div>;
@@ -596,7 +618,7 @@ export default function JobDetailPage() {
                     void saveJob(updated);
                     setEditingPricing(false); // collapse editor after save
                   }}
-                  className="ml-2 rounded-md bg-[var(--color-text)] px-3 py-1 text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]"
+                  className="ml-2 rounded-md bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-1 text-[var(--btn-text)]"
                 >
                   Apply
                 </button>
@@ -674,7 +696,7 @@ export default function JobDetailPage() {
           <Stat label="All Expenses" cents={totals.expenses} />
           <div
             className={` rounded-xl ${
-              totals.net > 0 ? "bg-emerald-400/10" : "bg-red-400/10"
+              totals.net > 0 ? "bg-emerald-400/3" : "bg-red-400/3"
             }`}
           >
             <Stat label="Profit" cents={totals.net} />
@@ -714,7 +736,7 @@ export default function JobDetailPage() {
                 className={
                   "px-3 py-1 rounded-md capitalize " +
                   (payoutTab === t
-                    ? "bg-[var(--color-text)] text-[var(--btn-text)]"
+                    ? "bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)]"
                     : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
                 }
               >
@@ -779,7 +801,7 @@ export default function JobDetailPage() {
               </>
             )}
 
-            <button className="rounded-lg bg-[var(--color-text)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+            <button className="rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)] ">
               Add
             </button>
           </form>
@@ -904,7 +926,7 @@ export default function JobDetailPage() {
               className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
 
-            <button className="shrink-0 w-full md:w-auto rounded-lg bg-[var(--color-text)] px-3 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)] sm:col-span-2 md:col-auto">
+            <button className="shrink-0 w-full md:w-auto rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)]  sm:col-span-2 md:col-auto">
               Add
             </button>
           </form>
@@ -978,7 +1000,7 @@ export default function JobDetailPage() {
               placeholder="Add a note"
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+            <button className="rounded-lg  px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out">
               Add
             </button>
           </form>
@@ -1039,7 +1061,7 @@ export default function JobDetailPage() {
               placeholder="Optional label"
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <button className="rounded-lg bg-[var(--color-text)] px-4 py-2 text-sm text-[var(--btn-text)] hover:bg-[var(--btn-hover-bg)]">
+            <button className="rounded-lg  px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out">
               Add
             </button>
           </form>
@@ -1080,7 +1102,35 @@ export default function JobDetailPage() {
           </div>
         </MotionCard>
       </div>
-      {/* ✅ INSERT THIS BLOCK RIGHT HERE (inside the return, before </motion.div>) */}
+
+      {/* ===== Danger zone (Archive / Permanent delete) ===== */}
+      <motion.section
+        className="mt-10 rounded-2xl border border-red-200 bg-red-50 p-4"
+        {...fadeUp(0.27)}
+      >
+        <h3 className="mb-2 text-lg font-semibold text-red-800">Danger zone</h3>
+        <p className="mb-4 text-sm text-red-700">
+          Archiving hides this job from normal views but keeps its history.
+          Permanent deletion removes it forever.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={() => setStatus("archived")}
+            className="rounded-md border border-red-200 bg-white px-3 py-2 text-sm text-red-700 hover:bg-red-100"
+          >
+            Archive job
+          </button>
+          <button
+            onClick={permanentlyDeleteJob}
+            className="rounded-md bg-red-700 px-3 py-2 text-sm text-white hover:bg-red-600"
+            title="Permanently delete this job"
+          >
+            Permanently delete…
+          </button>
+        </div>
+      </motion.section>
+
+      {/* Invoice Modal (unchanged) */}
       {invoiceModalOpen && job && (
         <InvoiceCreateModal
           job={job}
@@ -1088,7 +1138,6 @@ export default function JobDetailPage() {
           onClose={() => setInvoiceModalOpen(false)}
         />
       )}
-      {/* ✅ END INSERT */}
     </motion.div>
   );
 }
@@ -1122,7 +1171,7 @@ function MotionCard({
       className="rounded-2xl shadow-md bg-white py-6 px-4"
       {...fadeUp(delay)}
     >
-      <h2 className="mb-3 text-2xl font-griffon bg-[var(--color-accent)]/3 p-2 font-semibold text-[var(--color-text)]">
+      <h2 className="mb-3 text-2xl font-griffon bg-cyan-700/3 p-2 font-semibold text-[var(--color-text)]">
         {title}
       </h2>
       {children}
