@@ -22,7 +22,7 @@ export default function App() {
         <div className="w-full h-[100vh]">
           <img
             src={roofing}
-            className="object-cover w-full h-full opacity-8 z-[-1] blur-xs"
+            className="object-cover w-full h-full opacity-10 blur-xs z-[-1] "
             alt=""
           />
         </div>

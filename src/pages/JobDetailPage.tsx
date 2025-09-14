@@ -618,17 +618,17 @@ export default function JobDetailPage() {
           ) : (
             // COMPACT SUMMARY (read-only) with pencil to edit
             <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
-              <div className="rounded-xl border border-[var(--color-border)] bg-white/80 px-4 py-2 text-right">
+              <div className="rounded-xl shadow-md bg-white px-4 py-2 text-right">
                 <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
                   Sq. ft @ Rate
                 </div>
-                <div className="text-sm font-medium text-[var(--color-text)]">
+                <div className="text-sm font-medium  text-[var(--color-text)]">
                   {Number(displaySqft || 0).toLocaleString()} sq.ft @ $
                   {displayRate}/sq.ft <span className="opacity-70">+ $35</span>
                 </div>
               </div>
 
-              <div className="rounded-2xl shadow-md px-5 py-3 text-right">
+              <div className="rounded-2xl shadow-md px-5 py-3 text-right bg-white">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-xs text-[var(--color-muted)]">
@@ -646,14 +646,15 @@ export default function JobDetailPage() {
                       setEditingPricing(true);
                     }}
                     title="Edit pricing"
-                    className="shrink-0 rounded-full border border-[var(--color-border)] bg-white p-2 hover:bg-[var(--color-card-hover)]"
+                    className="shrink-0 rounded-full shadow-md 
+                    px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 p-2 hover:bg-[var(--color-card-hover)]"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setInvoiceModalOpen(true)}
                     className="rounded-md 
-                     px-3 text-xs py-2 text-[var(--color-logo)] bg-blue-400/10 hover:bg-blue-500/10"
+                     px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 shadow-md"
                     title="Create invoice or receipt"
                   >
                     Create Invoice / Receipt
@@ -850,7 +851,7 @@ export default function JobDetailPage() {
               e.preventDefault();
               addMaterial();
             }}
-            className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto] sm:grid-cols-2"
+            className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto]  sm:grid-cols-2"
           >
             {/* Category */}
             <select
@@ -900,16 +901,6 @@ export default function JobDetailPage() {
               min={0}
               step="1"
               placeholder="Qty"
-              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-
-            {/* Vendor (optional) */}
-            <input
-              value={material.vendor}
-              onChange={(e) =>
-                setMaterial((s) => ({ ...s, vendor: e.target.value }))
-              }
-              placeholder="Vendor (optional)"
               className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
 
@@ -1128,10 +1119,10 @@ function MotionCard({
 }) {
   return (
     <motion.section
-      className="rounded-2xl shadow-md bg-[var(--color-card)] p-4"
+      className="rounded-2xl shadow-md bg-white py-6 px-4"
       {...fadeUp(delay)}
     >
-      <h2 className="mb-3 text-lg font-semibold text-[var(--color-text)]">
+      <h2 className="mb-3 text-2xl font-griffon bg-[var(--color-accent)]/3 p-2 font-semibold text-[var(--color-text)]">
         {title}
       </h2>
       {children}

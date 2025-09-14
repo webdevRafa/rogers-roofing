@@ -13,7 +13,7 @@
   --color-primary: #B10708;     /* red from logo */
   --color-primary-600: #8E0808; /* darker red for hover */
   --color-accent: #FCB500;      /* yellow from logo */
-
+  --color-blue: #19b6d9;
   --btn-bg: var(--color-primary);
   --btn-text: #FFFFFF;
   --btn-hover-bg: var(--color-primary-600);

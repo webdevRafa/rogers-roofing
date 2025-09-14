@@ -14,11 +14,11 @@ import { db } from "../firebase/firebaseConfig";
 import type { Job, JobStatus } from "../types/types";
 import { jobConverter } from "../types/types";
 import { recomputeJob, makeAddress } from "../utils/calc";
-import { Link, useNavigate } from "react-router-dom"; // ✅ changed: add useNavigate
+import { Link, useNavigate } from "react-router-dom"; // ✅ navigate after create
 
-import { motion, type MotionProps } from "framer-motion";
+import { motion, AnimatePresence, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
-import { Search } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import logo from "../assets/rogers-roofing.webp";
 
 // ---------- Animation helpers ----------
@@ -161,7 +161,10 @@ export default function JobsPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  // ✅ new: navigate to the created job
+  // ✅ NEW: hide/show date filters
+  const [showFilters, setShowFilters] = useState(false);
+
+  // ✅ navigate to the created job
   const navigate = useNavigate();
 
   // Search
@@ -302,7 +305,7 @@ export default function JobsPage() {
       job = recomputeJob(job);
       await setDoc(newRef.withConverter(jobConverter), job);
 
-      // ✅ NEW: go straight to the job's dynamic page
+      // go straight to the job's dynamic page
       navigate(`/job/${newRef.id}`);
 
       // (Optional clean-up if user navigates back)
@@ -316,6 +319,22 @@ export default function JobsPage() {
   }
 
   const filters: StatusFilter[] = ["all", ...STATUS_OPTIONS];
+
+  // ✅ Active filter labeling for the compact chip
+  const hasActiveDateFilter =
+    datePreset !== "custom" || Boolean(startDate || endDate);
+  const presetLabel =
+    datePreset === "last7"
+      ? "Last 7 days"
+      : datePreset === "thisMonth"
+      ? "This month"
+      : datePreset === "ytd"
+      ? "Year to date"
+      : null;
+
+  const rangeLabel =
+    presetLabel ??
+    (startDate || endDate ? `${startDate || "…"} → ${endDate || "…"}` : null);
 
   return (
     <>
@@ -345,7 +364,7 @@ export default function JobsPage() {
           </h1>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
-            {/* Search bar (collapsible on mobile) */}
+            {/* Search toggle */}
             <div className="relative">
               <button
                 onClick={() => setShowSearch((v) => !v)}
@@ -376,6 +395,39 @@ export default function JobsPage() {
               )}
             </div>
 
+            {/* ✅ NEW: Filter dates toggle + active-chip */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                title="Filter by date"
+                aria-expanded={showFilters}
+                aria-controls="date-filters"
+              >
+                <Filter size={16} className="mr-2" />
+                {showFilters ? "Hide filters" : "Filter dates"}
+              </button>
+
+              {hasActiveDateFilter && (
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-white px-2 py-1 text-xs text-[var(--color-muted)] border border-[var(--color-border)]">
+                    {rangeLabel}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setDatePreset("custom");
+                      setStartDate("");
+                      setEndDate("");
+                    }}
+                    className="text-xs text-red-700 hover:underline"
+                    title="Clear date filters"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => setOpenForm((v) => !v)}
               className="rounded-xl bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-2 text-sm"
@@ -395,10 +447,10 @@ export default function JobsPage() {
               key={f}
               onClick={() => setStatusFilter(f)}
               className={[
-                "whitespace-nowrap rounded-full border px-3 py-1 text-xs uppercase tracking-wide transition-colors",
+                "whitespace-nowrap rounded-full  px-3 py-1 text-xs uppercase tracking-wide transition-colors",
                 statusFilter === f
-                  ? "bg-[var(--color-text)] border-transparent text-white shadow-sm"
-                  : "bg-transparent border-[var(--color-border)] text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
+                  ? "bg-cyan-800 hover:bg-cyan-700 border-transparent text-white shadow-sm"
+                  : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
               ].join(" ")}
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.98 }}
@@ -436,81 +488,90 @@ export default function JobsPage() {
           </motion.section>
         )}
 
-        {/* Date range filters */}
-        <motion.section
-          className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-          {...fadeUp(0.09)}
-        >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto_auto_auto_auto] sm:items-end">
-            <div className="flex-1">
-              <label className="mb-1 block text-xs text-[var(--color-muted)]">
-                Start date
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setDatePreset("custom");
-                  setStartDate(e.target.value);
-                }}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-xs text-[var(--color-muted)]">
-                End date
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setDatePreset("custom");
-                  setEndDate(e.target.value);
-                }}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              />
-            </div>
+        {/* ✅ Date range filters (hidden until toggled) */}
+        <AnimatePresence initial={false}>
+          {showFilters && (
+            <motion.section
+              id="date-filters"
+              className="mb-6 rounded-xl shadow-md bg-[var(--color-card)] p-4"
+              {...fadeUp(0.09)}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25, ease: EASE }}
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto_auto_auto_auto] sm:items-end">
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                    Start date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setDatePreset("custom");
+                      setStartDate(e.target.value);
+                    }}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                    End date
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      setDatePreset("custom");
+                      setEndDate(e.target.value);
+                    }}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  />
+                </div>
 
-            <div className="flex flex-wrap gap-2 sm:ml-2">
-              <button
-                onClick={() => applyPreset("last7")}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Last 7 days
-              </button>
-              <button
-                onClick={() => applyPreset("thisMonth")}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                This month
-              </button>
-              <button
-                onClick={() => applyPreset("ytd")}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Year to date
-              </button>
-              <button
-                onClick={() => {
-                  setDatePreset("custom");
-                  setStartDate("");
-                  setEndDate("");
-                }}
-                className="rounded-lg bg-[var(--color-text)] px-3 py-2 text-xs text-white"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-[var(--color-muted)]">
-            Filters use each job&apos;s <strong>last updated</strong> date
-            (falls back to created date).
-          </p>
-        </motion.section>
+                <div className="flex flex-wrap gap-2 sm:ml-2">
+                  <button
+                    onClick={() => applyPreset("last7")}
+                    className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                  >
+                    Last 7 days
+                  </button>
+                  <button
+                    onClick={() => applyPreset("thisMonth")}
+                    className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                  >
+                    This month
+                  </button>
+                  <button
+                    onClick={() => applyPreset("ytd")}
+                    className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                  >
+                    Year to date
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDatePreset("custom");
+                      setStartDate("");
+                      setEndDate("");
+                    }}
+                    className="rounded-lg bg-red-900/70 hover:bg-red-600/80 transition duration-300 ease-in-out px-3 py-2 text-xs text-white"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-[var(--color-muted)]">
+                Filters use each job&apos;s <strong>last updated</strong> date
+                (falls back to created date).
+              </p>
+            </motion.section>
+          )}
+        </AnimatePresence>
 
         {/* Totals */}
         <motion.div
-          className="mb-3 text-xl font-semibold text-[var(--color-text)]"
+          className="mb-0 rounded-tr-2xl p-2 text-md font-semibold max-w-[300px] border-t border-r border-l border-[var(--color-border)] bg-white  text-[var(--color-text)]"
           {...fadeUp(0.1)}
         >
           Total net across {filteredJobs.length} job
@@ -609,7 +670,7 @@ export default function JobsPage() {
 
         {/* ====== DESKTOP TABLE (sm and up) ====== */}
         <motion.div
-          className="hidden sm:block rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden"
+          className="hidden sm:block rounded-tr-2xl  border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden"
           variants={staggerParent}
           initial="initial"
           animate="animate"
