@@ -7,15 +7,21 @@ import {
   collection,
   doc,
   getDoc,
+  onSnapshot,
   serverTimestamp,
   setDoc,
   Timestamp,
   FieldValue,
   deleteDoc,
+  query,
+  where,
+  orderBy,
 } from "firebase/firestore";
+
+import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
 import { motion, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
-import { Pencil } from "lucide-react"; // ✏️ edit icon
+import { Pencil } from "lucide-react";
 import InvoiceCreateModal from "../components/InvoiceCreateModal";
 
 import { db } from "../firebase/firebaseConfig";
@@ -25,24 +31,11 @@ import type {
   MaterialExpense,
   Note,
   JobStatus,
-  JobAttachment,
   MaterialCategory,
 } from "../types/types";
 import { jobConverter } from "../types/types";
 import { toCents } from "../utils/money";
 import { recomputeJob } from "../utils/calc";
-
-// Optional label helper for union JobAttachment
-function getAttachmentLabel(p: JobAttachment): string {
-  if ("label" in p && typeof p.label === "string") return p.label;
-  if (
-    "caption" in p &&
-    typeof (p as { caption?: unknown }).caption === "string"
-  ) {
-    return (p as { caption: string }).caption;
-  }
-  return "";
-}
 
 // ---------- Animation helpers ----------
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -112,6 +105,14 @@ function CountMoney({
     </span>
   );
 }
+type JobPhoto = {
+  id: string;
+  jobId: string;
+  url: string;
+  path?: string;
+  caption?: string;
+  createdAt?: Timestamp | Date | FieldValue | null;
+};
 
 // ---------- Timestamp helpers ----------
 type FsTimestampLike = { toDate: () => Date };
@@ -142,6 +143,7 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [photos, setPhotos] = useState<JobPhoto[]>([]);
 
   // --- NEW: pricing edit toggle ---
   const [editingPricing, setEditingPricing] = useState(false);
@@ -154,12 +156,12 @@ export default function JobDetailPage() {
     return Math.round((nSqft * rate + 35) * 100);
   }, [sqft, rate]);
 
-  // --- Material form state (category + unit price + quantity + vendor)
+  // --- Material form state (category + unit price + quantity)
   const [material, setMaterial] = useState<{
     category: MaterialCategory;
-    unitPrice: string; // dollars
-    quantity: string; // integer
-    vendor: string;
+    unitPrice: string;
+    quantity: string;
+    vendor?: string;
   }>({
     category: "coilNails",
     unitPrice: "",
@@ -168,15 +170,19 @@ export default function JobDetailPage() {
   });
 
   const [noteText, setNoteText] = useState("");
-  const [photoUrl, setPhotoUrl] = useState("");
-  const [photoLabel, setPhotoLabel] = useState("");
+
+  // --- NEW: Photo upload (file + optional caption) ---
+  const [uploading, setUploading] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoCaption, setPhotoCaption] = useState("");
+
   // Tabs for payouts
   type PayoutTab = "shingles" | "felt" | "technician";
   const [payoutTab, setPayoutTab] = useState<PayoutTab>("shingles");
   const payeeRef = useRef<HTMLInputElement | null>(null);
   const materialRef = useRef<HTMLSelectElement | null>(null);
   const noteRef = useRef<HTMLInputElement | null>(null);
-  const photoRef = useRef<HTMLInputElement | null>(null);
+
   // Keep separate inputs per tab (name, sqft, rate)
   const [payoutInputs, setPayoutInputs] = useState<
     Record<
@@ -186,10 +192,9 @@ export default function JobDetailPage() {
   >({
     shingles: { payeeNickname: "", sqft: "", rate: "", amount: "" },
     felt: { payeeNickname: "", sqft: "", rate: "", amount: "" },
-    technician: { payeeNickname: "", sqft: "", rate: "", amount: "" }, // amount is used here
+    technician: { payeeNickname: "", sqft: "", rate: "", amount: "" },
   });
 
-  // Convenience getter/setter for the active tab’s inputs
   const activePayout = payoutInputs[payoutTab];
   function setActivePayout(
     next: Partial<{
@@ -215,35 +220,50 @@ export default function JobDetailPage() {
     return Math.round(Math.max(0, sqft * rate) * 100);
   }, [payoutTab, activePayout.amount, activePayout.sqft, activePayout.rate]);
 
-  // Load job
+  // Load job + its photos (real-time)
   useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      try {
-        const ref = doc(collection(db, "jobs"), id as string).withConverter(
-          jobConverter
-        );
-        const snap = await getDoc(ref);
-        if (!snap.exists()) throw new Error("Job not found");
-        const data = snap.data();
-        if (!cancelled) {
-          setJob(data);
+    if (!id) return;
 
-          // Initialize local pricing state from persisted pricing (for edit mode)
-          if (data.pricing) {
-            setSqft(String(data.pricing.sqft ?? ""));
-            setRate((data.pricing.ratePerSqFt as 31 | 35) ?? 31);
-          }
+    // Job listener
+    const jobRef = doc(collection(db, "jobs"), id).withConverter(jobConverter);
+    const unsubJob = onSnapshot(
+      jobRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setError("Job not found");
+          setLoading(false);
+          return;
         }
-      } catch (e: unknown) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
+        const data = snap.data();
+        setJob(data);
+        if (data.pricing) {
+          setSqft(String(data.pricing.sqft ?? ""));
+          setRate((data.pricing.ratePerSqFt as 31 | 35) ?? 31);
+        }
+        setLoading(false);
+      },
+      (e) => {
+        setError(e.message);
+        setLoading(false);
       }
-    }
-    if (id) run();
+    );
+
+    // Photos listener: jobPhotos where jobId == id
+    const photosRef = collection(db, "jobPhotos");
+    const q = query(
+      photosRef,
+      where("jobId", "==", id),
+      orderBy("createdAt", "desc")
+    );
+    const unsubPhotos = onSnapshot(q, (qs) => {
+      const list: JobPhoto[] = [];
+      qs.forEach((d) => list.push({ id: d.id, ...(d.data() as any) }));
+      setPhotos(list);
+    });
+
     return () => {
-      cancelled = true;
+      unsubJob();
+      unsubPhotos();
     };
   }, [id]);
 
@@ -265,21 +285,18 @@ export default function JobDetailPage() {
     const previous = job;
 
     try {
-      // Optimistic: client-time to avoid "Invalid Date"
       const optimistic = recomputeJob({
         ...nextJob,
         updatedAt: Timestamp.now(),
       });
       setJob(optimistic);
 
-      // Persist with server time
       const toPersist = recomputeJob({
         ...nextJob,
         updatedAt: serverTimestamp() as FieldValue,
       });
       await setDoc(ref, toPersist, { merge: true });
 
-      // Re-read authoritative doc
       const snap = await getDoc(ref);
       if (snap.exists()) setJob(snap.data());
     } catch (err) {
@@ -348,7 +365,6 @@ export default function JobDetailPage() {
 
     await saveJob(updated);
 
-    // clear only the active tab’s form
     setPayoutInputs((s) => ({
       ...s,
       [payoutTab]: { payeeNickname: "", sqft: "", rate: "", amount: "" },
@@ -409,30 +425,42 @@ export default function JobDetailPage() {
     noteRef.current?.focus();
   }
 
-  // ------- Attachments (JobAttachment[]) -------
-  async function addPhoto() {
-    if (!job || !photoUrl.trim()) return;
-    const entry: JobAttachment = {
-      url: photoUrl.trim(),
-      ...(photoLabel.trim() ? { label: photoLabel.trim() } : {}),
-    };
-    const updated: Job = {
-      ...job,
-      attachments: [...(job.attachments ?? []), entry],
-    };
-    await saveJob(updated);
-    setPhotoUrl("");
-    setPhotoLabel("");
-    photoRef.current?.focus();
+  // ------- NEW: Photo upload (Storage -> CF sharp -> Firestore) -------
+  async function uploadPhoto() {
+    if (!job || !photoFile) return;
+    setUploading(true);
+    try {
+      const storage = getStorage();
+      const safeName = photoFile.name
+        .replace(/\s+/g, "_")
+        .replace(/[^\w.\-]/g, "");
+      const filename = `${Date.now()}_${safeName}`;
+      const path = `jobs/${job.id}/attachments/${filename}`;
+      const fileRef = storageRef(storage, path);
+
+      await uploadBytes(fileRef, photoFile, {
+        contentType: photoFile.type || "image/*",
+        customMetadata: {
+          jobId: job.id,
+          caption: photoCaption || "",
+        },
+      });
+
+      // CF will: create webp90, add jobPhotos doc, delete original.
+      setPhotoFile(null);
+      setPhotoCaption("");
+      alert("Upload received — processing. The photo will appear shortly.");
+    } catch (e) {
+      console.error(e);
+      alert("Upload failed. See console for details.");
+    } finally {
+      setUploading(false);
+    }
   }
 
-  async function removePhoto(url: string) {
-    if (!job) return;
-    const updated: Job = {
-      ...job,
-      attachments: (job.attachments ?? []).filter((p) => p.url !== url),
-    };
-    await saveJob(updated);
+  async function deletePhoto(photoId: string) {
+    await deleteDoc(doc(db, "jobPhotos", photoId));
+    // Cloud Function cleanupPhotoOnDelete will remove the Storage file and decrement counters.
   }
 
   async function removePayout(pid: string) {
@@ -468,7 +496,7 @@ export default function JobDetailPage() {
     await saveJob(updated);
   }
 
-  // ------- NEW: Danger zone — permanent delete -------
+  // ------- Danger zone -------
   async function permanentlyDeleteJob() {
     if (!job) return;
     const label = job.address?.fullLine ?? job.id;
@@ -495,13 +523,11 @@ export default function JobDetailPage() {
   const last = job.updatedAt ?? job.createdAt ?? null;
   const lastStr = fmtDate(last);
 
-  // Persisted pricing presence
   const hasPricing =
     job.pricing &&
     Number.isFinite(job.pricing.sqft) &&
     Number.isFinite(job.pricing.ratePerSqFt);
 
-  // Values to display in the summary (live edit values if editing, otherwise persisted)
   const displaySqft = editingPricing
     ? Number(sqft || 0)
     : job.pricing?.sqft ?? 0;
@@ -567,7 +593,7 @@ export default function JobDetailPage() {
             </select>
           </div>
 
-          {/* PRICING: show editor only when not set OR when editingPricing=true */}
+          {/* Pricing */}
           {!hasPricing || editingPricing ? (
             <div className="rounded-2xl shadow-md px-5 py-3 text-right w-full sm:w-auto">
               <div className="mb-2 text-xs text-[var(--color-muted)]">
@@ -616,7 +642,7 @@ export default function JobDetailPage() {
                       },
                     };
                     void saveJob(updated);
-                    setEditingPricing(false); // collapse editor after save
+                    setEditingPricing(false);
                   }}
                   className="ml-2 rounded-md bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-1 text-[var(--btn-text)]"
                 >
@@ -625,7 +651,6 @@ export default function JobDetailPage() {
                 {hasPricing && (
                   <button
                     onClick={() => {
-                      // cancel edit -> reset inputs to persisted values
                       setSqft(String(job.pricing?.sqft ?? ""));
                       setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
                       setEditingPricing(false);
@@ -638,15 +663,15 @@ export default function JobDetailPage() {
               </div>
             </div>
           ) : (
-            // COMPACT SUMMARY (read-only) with pencil to edit
             <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
               <div className="rounded-xl shadow-md bg-white px-4 py-2 text-right">
                 <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
                   Sq. ft @ Rate
                 </div>
-                <div className="text-sm font-medium  text-[var(--color-text)]">
+                <div className="text-sm font-medium text-[var(--color-text)]">
                   {Number(displaySqft || 0).toLocaleString()} sq.ft @ $
-                  {displayRate}/sq.ft <span className="opacity-70">+ $35</span>
+                  {displayRate}
+                  /sq.ft <span className="opacity-70">+ $35</span>
                 </div>
               </div>
 
@@ -662,21 +687,18 @@ export default function JobDetailPage() {
                   </div>
                   <button
                     onClick={() => {
-                      // prime inputs from persisted pricing and enter edit mode
                       setSqft(String(job.pricing?.sqft ?? ""));
                       setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
                       setEditingPricing(true);
                     }}
                     title="Edit pricing"
-                    className="shrink-0 rounded-full shadow-md 
-                    px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 p-2 hover:bg-[var(--color-card-hover)]"
+                    className="shrink-0 rounded-full shadow-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 p-2 hover:bg-[var(--color-card-hover)]"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setInvoiceModalOpen(true)}
-                    className="rounded-md 
-                     px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 shadow-md"
+                    className="rounded-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 shadow-md"
                     title="Create invoice or receipt"
                   >
                     Create Invoice / Receipt
@@ -712,7 +734,7 @@ export default function JobDetailPage() {
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/10">
             <motion.div
-              className="h-full bg-[var(--color-primary)]"
+              className="h-full bg-[var(--color-primary)]/40"
               initial={{ width: 0 }}
               animate={{ width: `${totals.expensePortion * 100}%` }}
               transition={{ duration: 0.6, ease: EASE }}
@@ -745,7 +767,7 @@ export default function JobDetailPage() {
             ))}
           </div>
 
-          {/* Form for ACTIVE tab only (same formula: sqft × rate) */}
+          {/* Form for ACTIVE tab only */}
           <form
             className={
               payoutTab === "technician"
@@ -768,7 +790,6 @@ export default function JobDetailPage() {
             />
 
             {payoutTab === "technician" ? (
-              // Flat-amount input
               <input
                 value={activePayout.amount}
                 onChange={(e) => setActivePayout({ amount: e.target.value })}
@@ -806,7 +827,7 @@ export default function JobDetailPage() {
             </button>
           </form>
 
-          {/* Live preview for the active tab */}
+          {/* Live preview */}
           <div className="mt-2 text-xs text-[var(--color-muted)]">
             Computed payout ({payoutTab}):{" "}
             <span className="font-medium text-[var(--color-text)]">
@@ -824,7 +845,7 @@ export default function JobDetailPage() {
                 variants={item}
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="font-medium text-[var(--color-text)]">
+                  <span className="text-sm font-semibold text-[var(--color-text)]">
                     {p.payeeNickname}
                   </span>
                   {typeof p.sqft === "number" &&
@@ -875,7 +896,6 @@ export default function JobDetailPage() {
             }}
             className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto]  sm:grid-cols-2"
           >
-            {/* Category */}
             <select
               ref={materialRef}
               value={material.category}
@@ -900,7 +920,6 @@ export default function JobDetailPage() {
               </option>
             </select>
 
-            {/* Unit price */}
             <input
               value={material.unitPrice}
               onChange={(e) =>
@@ -913,7 +932,6 @@ export default function JobDetailPage() {
               className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
 
-            {/* Quantity */}
             <input
               value={material.quantity}
               onChange={(e) =>
@@ -931,7 +949,6 @@ export default function JobDetailPage() {
             </button>
           </form>
 
-          {/* Materials list */}
           <ul className="mt-3 rounded-lg">
             {(job?.expenses?.materials ?? []).map((m) => (
               <motion.li
@@ -941,7 +958,7 @@ export default function JobDetailPage() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-[var(--color-text)]">
+                    <span className="text-sm text-[var(--color-text)]">
                       {m.category === "coilNails" && "Coil Nails"}
                       {m.category === "tinCaps" && "Tin Caps"}
                       {m.category === "plasticJacks" && "Plastic Jacks"}
@@ -1015,7 +1032,7 @@ export default function JobDetailPage() {
                   variants={item}
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="font-medium text-[var(--color-text)]">
+                    <span className="text-sm text-[var(--color-text)]">
                       {n.text}
                     </span>
                     <span className="ml-2 text-xs text-[var(--color-muted)]">
@@ -1039,62 +1056,61 @@ export default function JobDetailPage() {
           </ul>
         </MotionCard>
 
-        {/* Photos (JobAttachment[]) */}
+        {/* Photos — fixed: full-width card inside the parent grid */}
         <MotionCard title="Photos" delay={0.25}>
+          {/* Upload panel */}
           <form
-            className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] mb-3"
             onSubmit={(e) => {
               e.preventDefault();
-              addPhoto();
+              uploadPhoto();
             }}
           >
-            <input
-              ref={photoRef}
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              placeholder="Paste a photo URL (upload coming next)"
-              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-            <input
-              value={photoLabel}
-              onChange={(e) => setPhotoLabel(e.target.value)}
-              placeholder="Optional label"
-              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-            <button className="rounded-lg  px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out">
-              Add
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_240px]">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+                className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)]"
+              />
+              <input
+                value={photoCaption}
+                onChange={(e) => setPhotoCaption(e.target.value)}
+                placeholder="Optional caption"
+                className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+            </div>
+            <button
+              disabled={uploading || !photoFile}
+              className="rounded-lg px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 disabled:opacity-60 hover:bg-cyan-700 transition duration-300 ease-in-out"
+            >
+              {uploading ? "Uploading…" : "Upload"}
             </button>
           </form>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {(job?.attachments ?? []).map((p) => {
-              const label = getAttachmentLabel(p);
-              return (
-                <motion.div
-                  key={p.url}
-                  className="group relative"
-                  variants={item}
+          {/* Thumbnails grid */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+            {photos.map((p) => (
+              <motion.div key={p.id} className="group relative" variants={item}>
+                <img
+                  src={p.url}
+                  alt={p.caption || ""}
+                  className="h-32 w-full rounded-lg object-cover"
+                />
+                <button
+                  onClick={() => deletePhoto(p.id)}
+                  className="absolute right-2 top-2 hidden rounded-full bg-black/60 px-2 py-1 text-xs text-white group-hover:block"
                 >
-                  <img
-                    src={p.url}
-                    alt={label}
-                    className="h-32 w-full rounded-lg object-cover"
-                  />
-                  <button
-                    onClick={() => removePhoto(p.url)}
-                    className="absolute right-2 top-2 hidden rounded-full bg-black/60 px-2 py-1 text-xs text-white group-hover:block"
-                  >
-                    Delete
-                  </button>
-                  {label && (
-                    <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
-                      {label}
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
-            {(job?.attachments ?? []).length === 0 && (
+                  Delete
+                </button>
+                {p.caption && (
+                  <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
+                    {p.caption}
+                  </div>
+                )}
+              </motion.div>
+            ))}
+            {photos.length === 0 && (
               <div className="p-3 text-sm text-[var(--color-muted)]">
                 No photos yet.
               </div>
@@ -1103,7 +1119,7 @@ export default function JobDetailPage() {
         </MotionCard>
       </div>
 
-      {/* ===== Danger zone (Archive / Permanent delete) ===== */}
+      {/* ===== Danger zone ===== */}
       <motion.section
         className="mt-10 rounded-2xl border border-red-200 bg-red-50 p-4"
         {...fadeUp(0.27)}
@@ -1130,7 +1146,7 @@ export default function JobDetailPage() {
         </div>
       </motion.section>
 
-      {/* Invoice Modal (unchanged) */}
+      {/* Invoice Modal */}
       {invoiceModalOpen && job && (
         <InvoiceCreateModal
           job={job}
@@ -1142,7 +1158,6 @@ export default function JobDetailPage() {
   );
 }
 
-// --- UI bits ---
 function Stat({ label, cents }: { label: string; cents: number }) {
   return (
     <motion.div

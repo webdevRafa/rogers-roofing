@@ -372,11 +372,11 @@ export default function JobsPage() {
             <div className="relative">
               <button
                 onClick={() => setShowSearch((v) => !v)}
-                className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)] w-full sm:w-auto"
+                className="inline-flex items-center justify-center rounded-xl   px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)] w-full sm:w-auto"
                 title="Search addresses"
                 aria-label="Search addresses"
               >
-                <Search size={16} className="mr-2" />
+                <Search size={20} className="mr-2" />
                 <span className="sm:hidden">Search</span>
               </button>
 
@@ -403,7 +403,7 @@ export default function JobsPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowFilters((v) => !v)}
-                className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                className="inline-flex items-center justify-center rounded-xl  px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
                 title="Filter by date"
                 aria-expanded={showFilters}
                 aria-controls="date-filters"
@@ -434,7 +434,7 @@ export default function JobsPage() {
 
             <button
               onClick={() => setOpenForm((v) => !v)}
-              className="rounded-xl bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-2 text-sm"
+              className=" bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-sm"
             >
               + New Job
             </button>
@@ -451,7 +451,7 @@ export default function JobsPage() {
               key={f}
               onClick={() => setStatusFilter(f)}
               className={[
-                "whitespace-nowrap rounded-full  px-3 py-1 text-xs uppercase tracking-wide transition-colors",
+                "whitespace-nowrap   px-3 py-1 text-xs uppercase tracking-wide transition-colors",
                 statusFilter === f
                   ? "bg-cyan-800 hover:bg-cyan-700 border-transparent text-white shadow-sm"
                   : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
@@ -468,21 +468,21 @@ export default function JobsPage() {
         {/* Create Job form */}
         {openForm && (
           <motion.section
-            className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+            className="mb-4 shadow-md bg-[var(--color-card)] p-4"
             {...fadeUp(0.08)}
           >
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:gap-3">
+            <div className="flex w-full flex-col justify-center gap-2 sm:flex-row sm:gap-3">
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Job address (e.g., 123 Main St, San Antonio, TX)"
-                className="w-full rounded-lg border border-[var(--color-border)] bg-white/70 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className="w-full max-w-[500px] rounded-lg border border-[var(--color-border)] bg-white/70 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
               <div className="flex items-center gap-2">
                 <button
                   onClick={createJob}
                   disabled={loading}
-                  className="w-full sm:w-auto rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-3 py-2 text-sm  disabled:opacity-50"
+                  className="w-full sm:w-auto  bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-sm  disabled:opacity-50"
                 >
                   {loading ? "Saving..." : "Create"}
                 </button>
