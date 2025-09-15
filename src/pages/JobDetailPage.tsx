@@ -558,7 +558,7 @@ export default function JobDetailPage() {
           >
             &larr; Back
           </Link>
-          <h1 className="mt-2 text-4xl font-bold text-[var(--color-logo)]">
+          <h1 className="mt-2 text-4xl font-bold uppercase text-[var(--color-logo)]">
             {job.address?.fullLine}
           </h1>
           <div className="text-sm text-[var(--color-muted)]">
@@ -1160,10 +1160,7 @@ export default function JobDetailPage() {
 
 function Stat({ label, cents }: { label: string; cents: number }) {
   return (
-    <motion.div
-      className="rounded-xl shadow-md bg-white/70 p-3"
-      variants={item}
-    >
+    <motion.div className="rounded-xl shadow-md bg-white p-3" variants={item}>
       <div className="text-xs text-[var(--color-muted)]">{label}</div>
       <div className="text-lg font-semibold text-[var(--color-text)]">
         <CountMoney cents={cents} />

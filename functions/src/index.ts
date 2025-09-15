@@ -16,7 +16,7 @@ setGlobalOptions({ region: "us-central1", memory: "1GiB", timeoutSeconds: 540 })
  * 1) Convert uploads at jobs/{jobId}/attachments/* to WEBP (q=90),
  *    write a doc in jobPhotos, bump counters on the job, delete original.
  */
-export const processJobPhoto = onObjectFinalized(async (event) => {
+export const processJobPhoto = onObjectFinalized({ bucket: "rogers-roofing.firebasestorage.app", region: "us-central1" }, async (event) => {
   const filePath = event.data.name || "";
   const bucketName = event.data.bucket;
   const contentType = event.data.contentType || "";
