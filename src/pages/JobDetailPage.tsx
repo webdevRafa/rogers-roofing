@@ -17,6 +17,7 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
 import { motion, type MotionProps } from "framer-motion";
@@ -144,6 +145,51 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
+  // Lightbox state
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  function openViewer(idx: number) {
+    setViewerIndex(idx);
+    setViewerOpen(true);
+  }
+  function closeViewer() {
+    setViewerOpen(false);
+  }
+  function prevPhoto() {
+    if (photos.length === 0) return;
+    setViewerIndex((i) => (i - 1 + photos.length) % photos.length);
+  }
+  function nextPhoto() {
+    if (photos.length === 0) return;
+    setViewerIndex((i) => (i + 1) % photos.length);
+  }
+
+  // Keyboard handlers (ESC / Left / Right)
+  useEffect(() => {
+    if (!viewerOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeViewer();
+      else if (e.key === "ArrowLeft") prevPhoto();
+      else if (e.key === "ArrowRight") nextPhoto();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [viewerOpen, photos.length]);
+
+  // Optional: preload neighbors for snappy next/prev
+  useEffect(() => {
+    if (!viewerOpen || photos.length === 0) return;
+    const curr = photos[viewerIndex];
+    const next = photos[(viewerIndex + 1) % photos.length];
+    const prev = photos[(viewerIndex - 1 + photos.length) % photos.length];
+    [curr, next, prev].forEach((p) => {
+      if (!p) return;
+      const img = new Image();
+      const src = (p as any).fullUrl ?? p.url; // if CF ever adds fullUrl
+      img.src = src;
+    });
+  }, [viewerOpen, viewerIndex, photos]);
 
   // --- NEW: pricing edit toggle ---
   const [editingPricing, setEditingPricing] = useState(false);
@@ -1090,19 +1136,31 @@ export default function JobDetailPage() {
 
           {/* Thumbnails grid */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {photos.map((p) => (
+            {photos.map((p, i) => (
               <motion.div key={p.id} className="group relative" variants={item}>
-                <img
-                  src={p.url}
-                  alt={p.caption || ""}
-                  className="h-32 w-full rounded-lg object-cover"
-                />
+                <button
+                  type="button"
+                  onClick={() => openViewer(i)}
+                  className="block w-full focus:outline-none"
+                  aria-label="Open photo"
+                  title="Open"
+                >
+                  <img
+                    src={p.url}
+                    alt={p.caption || ""}
+                    className="h-32 w-full rounded-lg object-cover"
+                    loading="lazy"
+                  />
+                </button>
+
                 <button
                   onClick={() => deletePhoto(p.id)}
                   className="absolute right-2 top-2 hidden rounded-full bg-black/60 px-2 py-1 text-xs text-white group-hover:block"
+                  title="Delete"
                 >
                   Delete
                 </button>
+
                 {p.caption && (
                   <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
                     {p.caption}
@@ -1118,6 +1176,81 @@ export default function JobDetailPage() {
           </div>
         </MotionCard>
       </div>
+      {/* ===== Photo Lightbox ===== */}
+      {viewerOpen && photos.length > 0 && (
+        <div
+          className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm flex items-center justify-center"
+          aria-modal="true"
+          role="dialog"
+          onClick={(e) => {
+            // close on backdrop click only (not when clicking the image or buttons)
+            if (e.target === e.currentTarget) closeViewer();
+          }}
+        >
+          {/* Close button */}
+          <button
+            onClick={closeViewer}
+            className="absolute right-4 top-4 rounded-full p-2 bg-white/10 hover:bg-white/20 text-white"
+            aria-label="Close viewer"
+            title="Close"
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          {/* Prev / Next controls */}
+          {photos.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prevPhoto();
+                }}
+                className="absolute left-4 md:left-6 rounded-full p-3 bg-white/10 hover:bg-white/20 text-white"
+                aria-label="Previous photo"
+                title="Previous"
+              >
+                <ChevronLeft className="h-7 w-7" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nextPhoto();
+                }}
+                className="absolute right-4 md:right-6 rounded-full p-3 bg-white/10 hover:bg-white/20 text-white"
+                aria-label="Next photo"
+                title="Next"
+              >
+                <ChevronRight className="h-7 w-7" />
+              </button>
+            </>
+          )}
+
+          {/* Image + caption */}
+          <div className="mx-4 md:mx-12 max-w-[min(96vw,1200px)]">
+            {(() => {
+              const p = photos[viewerIndex];
+              const src = (p as any)?.fullUrl ?? p.url; // graceful if you later add fullUrl in CF
+              return (
+                <figure className="flex flex-col items-center">
+                  <img
+                    src={src}
+                    alt={p.caption || ""}
+                    className="max-h-[80vh] w-auto rounded-xl shadow-2xl object-contain"
+                  />
+                  {p.caption && (
+                    <figcaption className="mt-3 text-sm text-white/90 text-center">
+                      {p.caption}
+                    </figcaption>
+                  )}
+                  <div className="mt-1 text-xs text-white/60">
+                    {viewerIndex + 1} / {photos.length}
+                  </div>
+                </figure>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* ===== Danger zone ===== */}
       <motion.section
