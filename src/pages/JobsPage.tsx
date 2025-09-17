@@ -15,6 +15,7 @@ import type { Job, JobStatus } from "../types/types";
 import { jobConverter } from "../types/types";
 import { recomputeJob, makeAddress } from "../utils/calc";
 import { Link, useNavigate } from "react-router-dom"; // ✅ navigate after create
+import { getAuth, signOut } from "firebase/auth";
 
 import { motion, AnimatePresence, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
@@ -160,6 +161,7 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [signingOut, setSigningOut] = useState(false);
 
   // ✅ NEW: hide/show date filters
   const [showFilters, setShowFilters] = useState(false);
@@ -175,6 +177,20 @@ export default function JobsPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [datePreset, setDatePreset] = useState<DatePreset>("custom");
+
+  async function handleLogout() {
+    try {
+      setSigningOut(true);
+      await signOut(getAuth());
+      // optional: send them to login after sign-out
+      navigate("/login");
+    } catch (err) {
+      console.error("Logout failed:", err);
+      // (optional) surface a toast or setError(String(err))
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   function recomputeDates(p: DatePreset, now = new Date()) {
     if (p === "last7") {
@@ -434,9 +450,17 @@ export default function JobsPage() {
 
             <button
               onClick={() => setOpenForm((v) => !v)}
-              className=" bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-sm"
+              className=" rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-sm"
             >
               + New Job
+            </button>
+            <button
+              onClick={handleLogout}
+              disabled={signingOut}
+              className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-text)] hover:bg-red-100 disabled:opacity-50"
+              title="Sign out"
+            >
+              {signingOut ? "Signing out…" : "Logout"}
             </button>
           </div>
         </motion.header>
