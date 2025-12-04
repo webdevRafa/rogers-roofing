@@ -5,7 +5,10 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
 import { Link } from "react-router-dom";
 
-const ADMIN_EMAIL = "rogersroofing23@gmail.com";
+const ADMIN_EMAILS = [
+  "rogersroofing23@gmail.com",
+  "ralphvdo420@gmail.com",
+] as const;
 
 export default function AdminOnly({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
@@ -50,7 +53,10 @@ export default function AdminOnly({ children }: { children: ReactNode }) {
     );
   }
 
-  if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+  const userEmail = user.email?.toLowerCase() ?? "";
+  const isAdmin = ADMIN_EMAILS.some((e) => e.toLowerCase() === userEmail);
+
+  if (!isAdmin) {
     return (
       <div className="min-h-[60vh] grid place-items-center">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center">
