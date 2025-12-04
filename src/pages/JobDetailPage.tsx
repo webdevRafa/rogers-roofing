@@ -599,7 +599,7 @@ export default function JobDetailPage() {
       >
         <div>
           <Link
-            to="/"
+            to="/jobs"
             className="text-sm text-[var(--color-primary)] hover:underline"
           >
             &larr; Back
