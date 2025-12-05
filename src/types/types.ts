@@ -108,7 +108,7 @@ export type Payout = {
 export type MaterialCategory =
   | "coilNails"
   | "tinCaps"
-  | "NP1 Seal"
+  | "np1Seal"
   | "plasticJacks"
   | "counterFlashing"
   | "jFlashing"

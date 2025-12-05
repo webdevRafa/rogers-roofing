@@ -1080,6 +1080,7 @@ export default function JobDetailPage() {
               <option value="coilNails">Coil Nails (per box)</option>
               <option value="tinCaps">Tin Caps (per box)</option>
               <option value="plasticJacks">Plastic Jacks (per unit)</option>
+              <option value="np1Seal">NP1 Seal (per unit)</option>
               <option value="counterFlashing">
                 Flashing — Counter (per unit)
               </option>
