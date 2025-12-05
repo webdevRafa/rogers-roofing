@@ -149,6 +149,11 @@ export default function JobDetailPage() {
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
+  const activeEmployees = useMemo(
+    () => employees.filter((e) => e.isActive !== false),
+    [employees]
+  );
+
   // Lightbox state
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -940,11 +945,13 @@ export default function JobDetailPage() {
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               <option value="">
-                {employees.length
-                  ? "Select employee…"
-                  : "No employees yet (add on Jobs page)"}
+                {activeEmployees.length
+                  ? "Select active employee…"
+                  : employees.length
+                  ? "No active employees (toggle status on Employees page)."
+                  : "No employees yet (add on Employees page)."}
               </option>
-              {employees.map((e) => (
+              {activeEmployees.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.name}
                 </option>
