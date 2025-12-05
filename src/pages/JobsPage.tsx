@@ -448,7 +448,7 @@ export default function JobsPage() {
                 onClick={() => navigate("/employees")}
                 className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
               >
-                Add Employee
+                Employees
               </button>
               <button
                 onClick={() => setOpenForm((v) => !v)}

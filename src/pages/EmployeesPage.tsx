@@ -57,7 +57,7 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="mx-auto w-[min(900px,94vw)] py-8">
+    <div className="mx-auto w-[min(900px,94vw)] py-8 mt-40">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Employees</h1>
         <button
@@ -70,7 +70,7 @@ export default function EmployeesPage() {
 
       {/* Add employee */}
       <section className="mb-6 rounded-xl bg-white p-4 shadow">
-        <h2 className="mb-2 text-sm font-medium">Add new employee</h2>
+        <h2 className="mb-2 text-xl font-medium">Add new employee</h2>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
             value={name}
@@ -91,7 +91,7 @@ export default function EmployeesPage() {
 
       {/* List */}
       <section className="rounded-xl bg-white p-4 shadow">
-        <h2 className="mb-2 text-sm font-medium">Current employees</h2>
+        <h2 className="mb-2 text-xl font-medium">Current employees</h2>
         {employees.length === 0 ? (
           <p className="text-sm text-gray-500">No employees yet.</p>
         ) : (
