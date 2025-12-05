@@ -80,20 +80,21 @@ export default function EmployeesPage() {
 
   return (
     <>
-      <div className="mx-auto max-w-[1200px] py-8 pt-40">
-        <header className="mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Employees</h1>
+      <div className="bg-gradient-to-b from-[var(--color-logo)]/80 to-[var(--color-logo)] py-10">
+        <div className="max-w-[1200px] mx-auto">
+          <h1 className="text-3xl font-semibold text-white">Employees</h1>
           <button
             onClick={() => navigate("/jobs")}
             className="text-sm text-blue-600 hover:underline"
           >
             ← Back to Jobs
           </button>
-        </header>
-
+        </div>
+      </div>
+      <div className="mx-auto max-w-[1200px] py-8 pt-40">
         {/* Add employee */}
         <section className="mb-6 rounded-xl bg-white/30 p-4 shadow">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between max-w-[600px]">
             <h2 className="text-lg font-medium">Add new employee</h2>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <input
