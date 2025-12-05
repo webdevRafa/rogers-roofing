@@ -57,76 +57,81 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="mx-auto w-[min(900px,94vw)] py-8 mt-40">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Employees</h1>
-        <button
-          onClick={() => navigate("/jobs")}
-          className="text-sm text-blue-600 hover:underline"
-        >
-          ← Back to Jobs
-        </button>
-      </header>
-
-      {/* Add employee */}
-      <section className="mb-6 rounded-xl bg-white p-4 shadow">
-        <h2 className="mb-2 text-xl font-medium">Add new employee</h2>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Employee name"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          />
+    <>
+      <div className="mx-auto max-w-[1200px] py-8 pt-40">
+        <header className="mb-6 flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Employees</h1>
           <button
-            onClick={createEmployee}
-            disabled={creating || !name.trim()}
-            className="rounded-lg bg-cyan-800 px-4 py-2 text-sm text-white hover:bg-cyan-700 disabled:opacity-60"
+            onClick={() => navigate("/jobs")}
+            className="text-sm text-blue-600 hover:underline"
           >
-            {creating ? "Saving…" : "Add"}
+            ← Back to Jobs
           </button>
-        </div>
-        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-      </section>
+        </header>
 
-      {/* List */}
-      <section className="rounded-xl bg-white p-4 shadow">
-        <h2 className="mb-2 text-xl font-medium">Current employees</h2>
-        {employees.length === 0 ? (
-          <p className="text-sm text-gray-500">No employees yet.</p>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {employees.map((e) => {
-              const addr = normalizeEmployeeAddress(e.address);
-              return (
-                <li
-                  key={e.id}
-                  className="flex items-center justify-between py-2"
-                >
-                  <div>
-                    <div className="text-sm font-medium">{e.name}</div>
-                    {addr && (
-                      <div className="text-xs text-gray-500">
-                        {addr.fullLine ||
-                          [addr.line1, addr.city, addr.state, addr.zip]
-                            .filter(Boolean)
-                            .join(", ")}
-                      </div>
-                    )}
-                  </div>
-                  <Link
-                    to={`/employees/${e.id}`}
-                    className="text-xs text-blue-600 hover:underline"
+        {/* Add employee */}
+        <section className="mb-6 rounded-xl bg-white/30 p-4 shadow">
+          <div className="flex gap-3 items-center">
+            <h2 className="text-lg font-medium">Add new employee</h2>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Employee name"
+                className="w-full max-w-[300px] rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+              <button
+                onClick={createEmployee}
+                disabled={creating || !name.trim()}
+                className="rounded-lg bg-cyan-700 px-4 py-0.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
+              >
+                {creating ? "Saving…" : "Add"}
+              </button>
+            </div>
+          </div>
+
+          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        </section>
+
+        {/* List */}
+        <section className="rounded-xl bg-white/30 p-4 shadow">
+          <h2 className="mb-2 text-xl font-medium">Current employees</h2>
+          {employees.length === 0 ? (
+            <p className="text-sm text-gray-500">No employees yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {employees.map((e) => {
+                const addr = normalizeEmployeeAddress(e.address);
+                return (
+                  <li
+                    key={e.id}
+                    className="flex items-center justify-between py-2 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out"
                   >
-                    View / Edit
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </div>
+                    <div>
+                      <div className="text-sm font-medium">{e.name}</div>
+                      {addr && (
+                        <div className="text-xs text-gray-500">
+                          {addr.fullLine ||
+                            [addr.line1, addr.city, addr.state, addr.zip]
+                              .filter(Boolean)
+                              .join(", ")}
+                        </div>
+                      )}
+                    </div>
+                    <Link
+                      to={`/employees/${e.id}`}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      View / Edit
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
+    </>
   );
 }
 

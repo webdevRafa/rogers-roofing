@@ -80,7 +80,7 @@ export default function EmployeeDetailPage() {
   if (!employee) return <div className="p-6">Not found.</div>;
 
   return (
-    <div className="mx-auto w-[min(700px,94vw)] py-8">
+    <div className="mx-auto w-[min(700px,94vw)] py-8 pt-40">
       <button
         onClick={() => navigate("/employees")}
         className="mb-4 text-sm text-blue-600 hover:underline"
@@ -88,7 +88,7 @@ export default function EmployeeDetailPage() {
         ← Back to Employees
       </button>
 
-      <div className="rounded-2xl bg-white p-6 shadow">
+      <div className="rounded-2xl bg-white/50 p-6 shadow">
         <h1 className="mb-4 text-xl font-semibold">Employee profile</h1>
 
         <div className="space-y-4">
