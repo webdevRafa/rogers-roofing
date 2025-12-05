@@ -33,6 +33,8 @@ import type {
   Note,
   JobStatus,
   MaterialCategory,
+  Employee,
+  PayoutDoc,
 } from "../types/types";
 import { jobConverter } from "../types/types";
 import { toCents } from "../utils/money";
@@ -145,6 +147,8 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
   // Lightbox state
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -164,6 +168,22 @@ export default function JobDetailPage() {
     if (photos.length === 0) return;
     setViewerIndex((i) => (i + 1) % photos.length);
   }
+
+  useEffect(() => {
+    const ref = collection(db, "employees");
+    const q = query(ref, orderBy("name", "asc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const list: Employee[] = [];
+      snap.forEach((d) =>
+        list.push({
+          id: d.id,
+          ...(d.data() as Omit<Employee, "id">),
+        })
+      );
+      setEmployees(list);
+    });
+    return () => unsub();
+  }, []);
 
   // Keyboard handlers (ESC / Left / Right)
   useEffect(() => {
@@ -230,20 +250,44 @@ export default function JobDetailPage() {
   const noteRef = useRef<HTMLInputElement | null>(null);
 
   // Keep separate inputs per tab (name, sqft, rate)
+  type PayoutInput = {
+    employeeId?: string;
+    payeeNickname: string; // derived from employee but kept for display/backcompat
+    sqft: string;
+    rate: string;
+    amount: string;
+  };
+
   const [payoutInputs, setPayoutInputs] = useState<
-    Record<
-      PayoutTab,
-      { payeeNickname: string; sqft: string; rate: string; amount: string }
-    >
+    Record<PayoutTab, PayoutInput>
   >({
-    shingles: { payeeNickname: "", sqft: "", rate: "", amount: "" },
-    felt: { payeeNickname: "", sqft: "", rate: "", amount: "" },
-    technician: { payeeNickname: "", sqft: "", rate: "", amount: "" },
+    shingles: {
+      employeeId: undefined,
+      payeeNickname: "",
+      sqft: "",
+      rate: "",
+      amount: "",
+    },
+    felt: {
+      employeeId: undefined,
+      payeeNickname: "",
+      sqft: "",
+      rate: "",
+      amount: "",
+    },
+    technician: {
+      employeeId: undefined,
+      payeeNickname: "",
+      sqft: "",
+      rate: "",
+      amount: "",
+    },
   });
 
   const activePayout = payoutInputs[payoutTab];
   function setActivePayout(
     next: Partial<{
+      employeeId?: string;
       payeeNickname: string;
       sqft: string;
       rate: string;
@@ -361,18 +405,29 @@ export default function JobDetailPage() {
   async function addPayout() {
     if (!job) return;
 
-    const name = activePayout.payeeNickname.trim();
+    const employeeId = activePayout.employeeId;
+    const employee = employees.find((e) => e.id === employeeId);
+
+    if (!employeeId || !employee) {
+      alert("Please select an employee for this payout.");
+      return;
+    }
+
+    // still keep a nickname for display + backward compatibility
+    const name = employee.name.trim();
     if (!name) return;
 
     let entry: Payout;
+    const baseId = crypto.randomUUID();
 
     if (payoutTab === "technician") {
       const amt = Number(activePayout.amount);
       if (!Number.isFinite(amt) || amt <= 0) return;
 
       entry = {
-        id: crypto.randomUUID(),
+        id: baseId,
         payeeNickname: name,
+        employeeId,
         amountCents: payoutAmountCents,
         method: "check",
         paidAt: Timestamp.now(),
@@ -390,8 +445,9 @@ export default function JobDetailPage() {
         return;
 
       entry = {
-        id: crypto.randomUUID(),
+        id: baseId,
         payeeNickname: name,
+        employeeId,
         amountCents: payoutAmountCents,
         method: "check",
         paidAt: Timestamp.now(),
@@ -401,6 +457,7 @@ export default function JobDetailPage() {
       };
     }
 
+    // 1) Update the job doc (backwards-compatible)
     const updated: Job = {
       ...job,
       expenses: {
@@ -408,14 +465,51 @@ export default function JobDetailPage() {
         payouts: [...(job.expenses.payouts ?? []), entry],
       },
     };
-
     await saveJob(updated);
 
+    // 2) Write mirrored doc into top-level "payouts" collection
+    try {
+      const payoutRef = doc(collection(db, "payouts"), entry.id);
+      const payoutMethod: "check" | "cash" | "zelle" | "other" = (() => {
+        const m = entry.method;
+        if (m === "check" || m === "cash" || m === "zelle" || m === "other") {
+          return m;
+        }
+        return "check"; // sensible default / fallback
+      })();
+
+      const payoutDoc: PayoutDoc = {
+        id: entry.id,
+        jobId: job.id,
+        employeeId,
+        employeeNameSnapshot: employee.name,
+        jobAddressSnapshot: job.address,
+        category: entry.category ?? "shingles",
+        amountCents: entry.amountCents,
+        method: payoutMethod,
+        sqft: entry.sqft,
+        ratePerSqFt: entry.ratePerSqFt,
+        createdAt: serverTimestamp() as FieldValue,
+        paidAt: entry.paidAt,
+      };
+      await setDoc(payoutRef, payoutDoc);
+    } catch (e) {
+      console.error("Failed to record payout doc", e);
+      // we don't block the job update if this fails
+    }
+
+    // reset form for current tab
     setPayoutInputs((s) => ({
       ...s,
-      [payoutTab]: { payeeNickname: "", sqft: "", rate: "", amount: "" },
+      [payoutTab]: {
+        employeeId: undefined,
+        payeeNickname: "",
+        sqft: "",
+        rate: "",
+        amount: "",
+      },
     }));
-    payeeRef.current?.focus();
+    (payeeRef.current as any)?.focus?.();
   }
 
   async function addMaterial() {
@@ -519,6 +613,13 @@ export default function JobDetailPage() {
       },
     };
     await saveJob(updated);
+
+    // try to delete mirrored payout doc (if it exists)
+    try {
+      await deleteDoc(doc(db, "payouts", pid));
+    } catch (e) {
+      console.warn("Failed to delete payout doc", e);
+    }
   }
 
   async function removeMaterial(mid: string) {
@@ -825,15 +926,30 @@ export default function JobDetailPage() {
               addPayout();
             }}
           >
-            <input
-              ref={payeeRef}
-              value={activePayout.payeeNickname}
-              onChange={(e) =>
-                setActivePayout({ payeeNickname: e.target.value })
-              }
-              placeholder={`Payee name (${payoutTab})`}
+            <select
+              ref={payeeRef as any}
+              value={activePayout.employeeId ?? ""}
+              onChange={(e) => {
+                const id = e.target.value || undefined;
+                const emp = employees.find((x) => x.id === id);
+                setActivePayout({
+                  employeeId: id,
+                  payeeNickname: emp?.name ?? "",
+                });
+              }}
               className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
+            >
+              <option value="">
+                {employees.length
+                  ? "Select employee…"
+                  : "No employees yet (add on Jobs page)"}
+              </option>
+              {employees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
 
             {payoutTab === "technician" ? (
               <input

@@ -6,6 +6,8 @@ import "./index.css";
 import InvoiceViewer from "./pages/InvoiceViewer";
 import LoginPage from "./pages/LoginPage";
 import AdminOnly from "./components/AdminOnly"; // add this import
+import EmployeesPage from "./pages/EmployeesPage";
+import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 
 export default function App() {
   return (
@@ -24,6 +26,24 @@ export default function App() {
             <Route path="/" element={<LoginPage />} />
             <Route path="/job/:id" element={<JobDetailPage />} />
             <Route path="/invoices/:id" element={<InvoiceViewer />} />
+
+            {/* NEW: employees */}
+            <Route
+              path="/employees"
+              element={
+                <AdminOnly>
+                  <EmployeesPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/employees/:id"
+              element={
+                <AdminOnly>
+                  <EmployeeDetailPage />
+                </AdminOnly>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </div>

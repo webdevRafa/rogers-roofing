@@ -27,6 +27,43 @@ export type Address = {
   geo?: { lat: number; lng: number };
 };
 
+export type EmployeeAddress = {
+  fullLine?: string;
+  line1?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+};
+
+export type Employee = {
+  id: string;
+  name: string;
+  /** Optional free-form address or structured address */
+  address?: EmployeeAddress | string | null;
+  isActive: boolean;
+  createdAt?: Timestamp | Date | FieldValue | null;
+  updatedAt?: Timestamp | Date | FieldValue | null;
+};
+
+export type PayoutDoc = {
+  id: string;
+  jobId: string;
+  employeeId: string;
+  employeeNameSnapshot: string;
+
+  /** copied from Job at the time of payout for reporting */
+  jobAddressSnapshot?: Job["address"];
+
+  category: "shingles" | "felt" | "technician";
+  amountCents: number;
+  method: "check" | "cash" | "zelle" | "other";
+  sqft?: number;
+  ratePerSqFt?: number;
+
+  createdAt: Timestamp | FieldValue;
+  paidAt?: Timestamp | Date | FieldValue | null;
+};
+
 // ---------- Earnings ----------
 export type EarningEntry = {
   id: ID;
@@ -56,6 +93,7 @@ export type PaymentMethod =
 
 export type Payout = {
   id: ID;
+  employeeId?: string;
   amountCents: MoneyCents;
   payeeNickname: string; // denormalized for quick display
   payeeId?: ID;

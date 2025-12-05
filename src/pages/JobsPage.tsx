@@ -445,6 +445,12 @@ export default function JobsPage() {
               </div>
 
               <button
+                onClick={() => navigate("/employees")}
+                className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Add Employee
+              </button>
+              <button
                 onClick={() => setOpenForm((v) => !v)}
                 className=" rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-sm"
               >
