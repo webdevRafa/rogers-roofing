@@ -1136,6 +1136,7 @@ export default function JobDetailPage() {
                       {m.category === "counterFlashing" && "Counter Flashing"}
                       {m.category === "jFlashing" && "J/L Flashing"}
                       {m.category === "rainDiverter" && "Rain Diverter"}
+                      {m.category === "np1Seal" && "NP1 Seal"}
                     </span>
                     {m.vendor && (
                       <span className="ml-2 text-xs text-[var(--color-muted)]">
