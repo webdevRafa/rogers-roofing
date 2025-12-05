@@ -1,19 +1,95 @@
-import { useEffect, useState } from "react";
+// src/pages/EmployeeDetailPage.tsx
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   collection,
   doc,
   getDoc,
+  onSnapshot,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
+  where,
 } from "firebase/firestore";
 import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
-import type { Employee, EmployeeAddress } from "../types/types";
+import type { Employee, EmployeeAddress, PayoutDoc } from "../types/types";
+
+// ---------- Small helpers ----------
+
+function money(cents: number | undefined | null): string {
+  const v = typeof cents === "number" ? cents : 0;
+  return (v / 100).toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+  });
+}
+
+type AnyAddress = unknown;
+
+function pickString(obj: Record<string, unknown>, keys: string[]): string {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim().length > 0) return v;
+  }
+  return "";
+}
+
+function normalizeJobAddress(a: AnyAddress) {
+  if (typeof a === "string") {
+    return {
+      display: a,
+      line1: a,
+      city: "",
+      state: "",
+      zip: "",
+    };
+  }
+
+  const obj: Record<string, unknown> = (a ?? {}) as Record<string, unknown>;
+  const line1 = pickString(obj, [
+    "fullLine",
+    "line1",
+    "street",
+    "address1",
+    "address",
+    "formatted",
+    "text",
+    "label",
+    "street1",
+  ]);
+  const city = pickString(obj, ["city", "town"]);
+  const state = pickString(obj, ["state", "region", "province"]);
+  const zip = pickString(obj, ["zip", "postalCode", "postcode", "zipCode"]);
+  const display =
+    pickString(obj, ["fullLine", "full", "formatted", "label", "text"]) ||
+    line1;
+
+  return { display, line1, city, state, zip };
+}
+
+type FsTimestampLike = { toDate: () => Date };
+function isFsTimestamp(x: unknown): x is FsTimestampLike {
+  return typeof (x as FsTimestampLike)?.toDate === "function";
+}
+function fmtDate(x: unknown): string {
+  if (x == null) return "—";
+  if (isFsTimestamp(x)) return x.toDate().toLocaleString();
+  if (x instanceof Date) return x.toLocaleString();
+  if (typeof x === "string" || typeof x === "number") {
+    const d = new Date(x);
+    return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+  }
+  return "—";
+}
+
+type PayoutFilter = "all" | "pending" | "paid";
 
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,6 +105,19 @@ export default function EmployeeDetailPage() {
   });
   const [isActive, setIsActive] = useState(true);
 
+  // ---- Payouts state ----
+  const [payouts, setPayouts] = useState<PayoutDoc[]>([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(true);
+  const [payoutsError, setPayoutsError] = useState<string | null>(null);
+  const [payoutFilter, setPayoutFilter] = useState<PayoutFilter>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // For "Create stub" flow
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [stubOpen, setStubOpen] = useState(false);
+  const [stubSaving, setStubSaving] = useState(false);
+
+  // ---------- Load employee ----------
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -40,9 +129,7 @@ export default function EmployeeDetailPage() {
 
         setEmployee(data);
         setName(data.name);
-
-        // Default to active when field is missing (backwards compatible)
-        setIsActive(data.isActive !== false);
+        setIsActive(data.isActive !== false); // default to active when missing
 
         const addr = normalizeEmployeeAddress(data.address);
         setAddress({
@@ -60,6 +147,41 @@ export default function EmployeeDetailPage() {
     })();
   }, [id]);
 
+  // ---------- Live payouts for this employee ----------
+  useEffect(() => {
+    if (!id) return;
+    const ref = collection(db, "payouts");
+    const q = query(
+      ref,
+      where("employeeId", "==", id),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: PayoutDoc[] = snap.docs.map((d) => d.data() as PayoutDoc);
+        setPayouts(list);
+        setPayoutsLoading(false);
+        setPayoutsError(null);
+      },
+      (err) => {
+        console.error(err);
+        setPayoutsError(err.message || String(err));
+        setPayoutsLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, [id]);
+
+  // Clear selection when leaving "pending" tab
+  useEffect(() => {
+    if (payoutFilter !== "pending") {
+      setSelectedIds([]);
+    }
+  }, [payoutFilter]);
+
   async function save() {
     if (!employee) return;
     setSaving(true);
@@ -71,7 +193,7 @@ export default function EmployeeDetailPage() {
         ...employee,
         name: name.trim(),
         address,
-        isActive, // ✅ persist status
+        isActive,
         updatedAt: serverTimestamp() as FieldValue,
       };
 
@@ -88,12 +210,70 @@ export default function EmployeeDetailPage() {
     }
   }
 
+  // ---- Filtered payouts (by tab + search) ----
+  const filteredPayouts = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return payouts.filter((p) => {
+      if (payoutFilter === "pending" && p.paidAt) return false;
+      if (payoutFilter === "paid" && !p.paidAt) return false;
+
+      if (term.length > 0) {
+        const a = normalizeJobAddress(p.jobAddressSnapshot);
+        const haystack = [a.display, a.line1, a.city, a.state, a.zip]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (!haystack.includes(term)) return false;
+      }
+
+      return true;
+    });
+  }, [payouts, payoutFilter, searchTerm]);
+
+  const selectedPayouts = useMemo(
+    () => payouts.filter((p) => selectedIds.includes(p.id)),
+    [payouts, selectedIds]
+  );
+
+  async function markSelectedAsPaid() {
+    if (selectedIds.length === 0) return;
+    setStubSaving(true);
+    try {
+      await Promise.all(
+        selectedPayouts
+          .filter((p) => !p.paidAt)
+          .map((p) =>
+            setDoc(
+              doc(collection(db, "payouts"), p.id),
+              { paidAt: serverTimestamp() as FieldValue },
+              { merge: true }
+            )
+          )
+      );
+      setSelectedIds([]);
+      setStubOpen(false);
+    } catch (e) {
+      console.error("Failed to mark payouts as paid", e);
+      alert("Failed to mark some payouts as paid. Check console for details.");
+    } finally {
+      setStubSaving(false);
+    }
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
   if (loading) return <div className="p-6">Loading…</div>;
   if (error) return <div className="p-6 text-red-600">{error}</div>;
   if (!employee) return <div className="p-6">Not found.</div>;
 
   return (
-    <div className="mx-auto w-[min(700px,94vw)] py-8 pt-40">
+    <div className="mx-auto w-[min(900px,94vw)] py-8 pt-40">
       <button
         onClick={() => navigate("/employees")}
         className="mb-4 text-sm text-blue-600 hover:underline"
@@ -101,6 +281,7 @@ export default function EmployeeDetailPage() {
         ← Back to Employees
       </button>
 
+      {/* Employee profile card */}
       <div className="rounded-2xl bg-white/50 p-6 shadow">
         <h1 className="mb-4 text-xl font-semibold">Employee profile</h1>
 
@@ -201,6 +382,179 @@ export default function EmployeeDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Payouts section */}
+      <section className="mt-8 rounded-2xl bg-white/50 p-6 shadow">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">
+              Payouts for {employee.name}
+            </h2>
+            <p className="text-xs text-gray-500">
+              Track all jobs this employee has worked on. Use tabs to view
+              pending vs paid payouts.
+            </p>
+          </div>
+
+          {/* Search by address */}
+          <div className="flex flex-col items-end gap-1">
+            <label className="text-[10px] uppercase tracking-wide text-gray-500">
+              Search by address
+            </label>
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Address, city, state, or ZIP…"
+              className="w-full max-w-xs rounded-lg border border-gray-300 px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+          </div>
+        </div>
+
+        {/* Tabs: All / Pending / Paid */}
+        <div className="mb-3 inline-flex rounded-full border border-gray-200 bg-white p-1 text-xs">
+          {(["all", "pending", "paid"] as PayoutFilter[]).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setPayoutFilter(f)}
+              className={
+                "px-3 py-1 rounded-full capitalize " +
+                (payoutFilter === f
+                  ? "bg-cyan-800 text-white"
+                  : "text-gray-700 hover:bg-gray-100")
+              }
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        {/* Create stub button (pending only, when items selected) */}
+        {payoutFilter === "pending" && selectedIds.length > 0 && (
+          <div className="mb-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setStubOpen(true)}
+              className="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)]"
+            >
+              Create stub ({selectedIds.length})
+            </button>
+          </div>
+        )}
+
+        {/* List */}
+        {payoutsLoading && (
+          <p className="text-sm text-gray-500">Loading payouts…</p>
+        )}
+        {payoutsError && <p className="text-sm text-red-600">{payoutsError}</p>}
+        {!payoutsLoading && !payoutsError && filteredPayouts.length === 0 && (
+          <p className="text-sm text-gray-500">
+            No payouts match the current filters.
+          </p>
+        )}
+
+        {!payoutsLoading && !payoutsError && filteredPayouts.length > 0 && (
+          <ul className="mt-1 divide-y divide-gray-100 rounded-xl bg-white/60">
+            {filteredPayouts.map((p) => {
+              const addr = normalizeJobAddress(p.jobAddressSnapshot);
+              const isChecked = selectedIds.includes(p.id);
+
+              return (
+                <li
+                  key={p.id}
+                  className="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-start gap-2">
+                    {payoutFilter === "pending" && (
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSelected(p.id)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-cyan-700"
+                      />
+                    )}
+
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {addr.display || "—"}
+                      </div>
+                      {(addr.city || addr.state || addr.zip) && (
+                        <div className="text-xs text-gray-500">
+                          {[addr.city, addr.state, addr.zip]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </div>
+                      )}
+                      <div className="mt-1 text-xs text-gray-600">
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                          {p.category || "payout"}
+                        </span>
+                        {typeof p.sqft === "number" &&
+                          typeof p.ratePerSqFt === "number" && (
+                            <span className="ml-2">
+                              {p.sqft.toLocaleString()} sq.ft @ $
+                              {p.ratePerSqFt.toFixed(2)}/sq.ft
+                            </span>
+                          )}
+                      </div>
+                      <div className="mt-1 text-[11px] text-gray-500">
+                        Created: {fmtDate(p.createdAt as unknown)}
+                        {p.paidAt && (
+                          <> • Paid: {fmtDate(p.paidAt as unknown)}</>
+                        )}
+                        {!p.paidAt && (
+                          <span className="ml-1 inline-flex items-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+                    <div className="text-right">
+                      <div className="text-[11px] text-gray-500">Total</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {money(p.amountCents)}
+                      </div>
+                    </div>
+                    {p.jobId && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/job/${p.jobId}`)}
+                        className="rounded-md border border-gray-300 px-3 py-1 text-[11px] text-gray-700 hover:bg-gray-100"
+                      >
+                        View Job
+                      </button>
+                    )}
+                    {p.paidAt && (
+                      <span className="mt-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
+                        Paid
+                      </span>
+                    )}
+                    {!p.paidAt && payoutFilter !== "pending" && (
+                      <span className="mt-1 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      {/* Stub modal */}
+      {stubOpen && employee && selectedPayouts.length > 0 && (
+        <PayoutStubModal
+          employee={employee}
+          payouts={selectedPayouts}
+          onClose={() => setStubOpen(false)}
+          onMarkPaid={markSelectedAsPaid}
+          saving={stubSaving}
+        />
+      )}
     </div>
   );
 }
@@ -211,4 +565,136 @@ function normalizeEmployeeAddress(
   if (!a) return null;
   if (typeof a === "string") return { fullLine: a, line1: a };
   return a as EmployeeAddress;
+}
+
+// ---------- Stub Modal ----------
+
+function PayoutStubModal({
+  employee,
+  payouts,
+  onClose,
+  onMarkPaid,
+  saving,
+}: {
+  employee: Employee;
+  payouts: PayoutDoc[];
+  onClose: () => void;
+  onMarkPaid: () => Promise<void>;
+  saving: boolean;
+}) {
+  const addr = normalizeEmployeeAddress(employee.address);
+  const totalCents = payouts.reduce((sum, p) => sum + (p.amountCents ?? 0), 0);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-gray-500">
+              Payout Stub
+            </div>
+            <h2 className="text-2xl font-semibold">
+              Roger&apos;s Roofing &amp; Contracting LLC
+            </h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Stub for: <span className="font-medium">{employee.name}</span>
+            </p>
+            {addr && (
+              <p className="mt-1 text-xs text-gray-500">
+                {addr.fullLine ||
+                  [addr.line1, addr.city, addr.state, addr.zip]
+                    .filter(Boolean)
+                    .join(", ")}
+              </p>
+            )}
+          </div>
+          <div className="text-right text-xs text-gray-500">
+            <button
+              onClick={onClose}
+              className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+        {/* Table of payouts */}
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs text-gray-600">
+              <tr>
+                <th className="px-3 py-2 text-left">Address</th>
+                <th className="px-3 py-2 text-left">SqCount</th>
+                <th className="px-3 py-2 text-left">Rate</th>
+                <th className="px-3 py-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payouts.map((p) => {
+                const a = normalizeJobAddress(p.jobAddressSnapshot);
+                return (
+                  <tr key={p.id} className="border-t last:border-b-0">
+                    <td className="px-3 py-2 align-top">
+                      <div className="font-medium text-gray-900">
+                        {a.display || "—"}
+                      </div>
+                      {(a.city || a.state || a.zip) && (
+                        <div className="text-xs text-gray-500">
+                          {[a.city, a.state, a.zip].filter(Boolean).join(", ")}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 align-top text-sm text-gray-800">
+                      {typeof p.sqft === "number"
+                        ? p.sqft.toLocaleString()
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2 align-top text-sm text-gray-800">
+                      {typeof p.ratePerSqFt === "number"
+                        ? `$${p.ratePerSqFt.toFixed(2)}/sq.ft`
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-900">
+                      {money(p.amountCents)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Totals + actions */}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-gray-700">
+            <div>
+              <span className="font-medium">Number of payouts:</span>{" "}
+              {payouts.length}
+            </div>
+            <div className="mt-1 text-lg font-semibold">
+              Total: {money(totalCents)}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+            >
+              Print / Save PDF
+            </button>
+            <button
+              type="button"
+              onClick={onMarkPaid}
+              disabled={saving}
+              className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+            >
+              {saving ? "Marking as paid…" : "Mark all as paid"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
