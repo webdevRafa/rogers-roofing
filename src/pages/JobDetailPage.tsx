@@ -435,8 +435,8 @@ export default function JobDetailPage() {
         employeeId,
         amountCents: payoutAmountCents,
         method: "check",
-        paidAt: Timestamp.now(),
         category: "technician",
+        // paidAt intentionally omitted – starts as pending
       };
     } else {
       const sqft = Number(activePayout.sqft);
@@ -455,10 +455,10 @@ export default function JobDetailPage() {
         employeeId,
         amountCents: payoutAmountCents,
         method: "check",
-        paidAt: Timestamp.now(),
         sqft,
         ratePerSqFt: rate,
         category: payoutTab,
+        // paidAt intentionally omitted – starts as pending
       };
     }
 
@@ -495,8 +495,9 @@ export default function JobDetailPage() {
         sqft: entry.sqft,
         ratePerSqFt: entry.ratePerSqFt,
         createdAt: serverTimestamp() as FieldValue,
-        paidAt: entry.paidAt,
+        paidAt: null, // start as pending; will be filled when marked as paid
       };
+
       await setDoc(payoutRef, payoutDoc);
     } catch (e) {
       console.error("Failed to record payout doc", e);
