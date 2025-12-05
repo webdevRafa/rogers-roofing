@@ -15,6 +15,7 @@ import {
 import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import type { Employee, EmployeeAddress, PayoutDoc } from "../types/types";
+import { ChevronDown } from "lucide-react";
 
 // ---------- Small helpers ----------
 
@@ -104,7 +105,7 @@ export default function EmployeeDetailPage() {
     zip: "",
   });
   const [isActive, setIsActive] = useState(true);
-
+  const [profileOpen, setProfileOpen] = useState(false);
   // ---- Payouts state ----
   const [payouts, setPayouts] = useState<PayoutDoc[]>([]);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
@@ -281,106 +282,144 @@ export default function EmployeeDetailPage() {
         ← Back to Employees
       </button>
 
-      {/* Employee profile card */}
-      <div className="rounded-2xl bg-white/50 p-6 shadow">
-        <h1 className="mb-4 text-xl font-semibold">Employee profile</h1>
-
-        <div className="space-y-4">
-          {/* Name */}
+      {/* Employee profile card (collapsible) */}
+      <div className="rounded-2xl bg-white/50 shadow">
+        {/* Header / toggle */}
+        <button
+          type="button"
+          onClick={() => setProfileOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-6 py-4 text-left"
+        >
           <div>
-            <label className="text-xs text-gray-600">Name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="text-xs text-gray-600">Status</label>
-            <div className="mt-2 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setIsActive(true)}
-                className={
-                  "rounded-full px-3 py-1 text-xs font-semibold uppercase " +
-                  (isActive
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-600")
-                }
-              >
-                Active
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsActive(false)}
-                className={
-                  "rounded-full px-3 py-1 text-xs font-semibold uppercase " +
-                  (!isActive
-                    ? "bg-gray-700 text-white"
-                    : "bg-gray-100 text-gray-600")
-                }
-              >
-                Inactive
-              </button>
-            </div>
-            <p className="mt-1 text-[11px] text-gray-500">
-              Inactive employees stay in history and past payouts, but they
-              won&apos;t be selectable on new jobs.
+            <h1 className="text-xl font-semibold">Employee profile</h1>
+            <p className="mt-1 text-xs text-gray-500">
+              Click to {profileOpen ? "hide" : "view / edit"} employee details.
             </p>
           </div>
 
-          {/* Address */}
-          <div>
-            <label className="text-xs text-gray-600">
-              Address (optional, for your own records)
-            </label>
-            <input
-              value={address.fullLine}
-              onChange={(e) =>
-                setAddress((s) => ({ ...s, fullLine: e.target.value }))
+          <div className="flex items-center gap-3">
+            {/* Small status pill in header */}
+            <span
+              className={
+                "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase " +
+                (isActive
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-gray-200 text-gray-600")
               }
-              placeholder="Full address line"
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              {isActive ? "Active" : "Inactive"}
+            </span>
+
+            <ChevronDown
+              className={
+                "h-5 w-5 text-gray-500 transition-transform " +
+                (profileOpen ? "rotate-180" : "")
+              }
             />
           </div>
+        </button>
 
-          <div className="grid gap-2 sm:grid-cols-3">
-            <input
-              value={address.city}
-              onChange={(e) =>
-                setAddress((s) => ({ ...s, city: e.target.value }))
-              }
-              placeholder="City"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={address.state}
-              onChange={(e) =>
-                setAddress((s) => ({ ...s, state: e.target.value }))
-              }
-              placeholder="State"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={address.zip}
-              onChange={(e) =>
-                setAddress((s) => ({ ...s, zip: e.target.value }))
-              }
-              placeholder="ZIP"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
+        {/* Body (only visible when expanded) */}
+        {profileOpen && (
+          <div className="border-t border-gray-100 px-6 pb-6">
+            <div className="mt-4 space-y-4">
+              {/* Name */}
+              <div>
+                <label className="text-xs text-gray-600">Name</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="text-xs text-gray-600">Status</label>
+                <div className="mt-2 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsActive(true)}
+                    className={
+                      "rounded-full px-3 py-1 text-xs font-semibold uppercase " +
+                      (isActive
+                        ? "bg-emerald-600 text-white"
+                        : "bg-gray-100 text-gray-600")
+                    }
+                  >
+                    Active
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsActive(false)}
+                    className={
+                      "rounded-full px-3 py-1 text-xs font-semibold uppercase " +
+                      (!isActive
+                        ? "bg-gray-700 text-white"
+                        : "bg-gray-100 text-gray-600")
+                    }
+                  >
+                    Inactive
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Inactive employees stay in history and past payouts, but they
+                  won&apos;t be selectable on new jobs.
+                </p>
+              </div>
+
+              {/* Address */}
+              <div>
+                <label className="text-xs text-gray-600">
+                  Address (optional, for your own records)
+                </label>
+                <input
+                  value={address.fullLine}
+                  onChange={(e) =>
+                    setAddress((s) => ({ ...s, fullLine: e.target.value }))
+                  }
+                  placeholder="Full address line"
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                <input
+                  value={address.city}
+                  onChange={(e) =>
+                    setAddress((s) => ({ ...s, city: e.target.value }))
+                  }
+                  placeholder="City"
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+                <input
+                  value={address.state}
+                  onChange={(e) =>
+                    setAddress((s) => ({ ...s, state: e.target.value }))
+                  }
+                  placeholder="State"
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+                <input
+                  value={address.zip}
+                  onChange={(e) =>
+                    setAddress((s) => ({ ...s, zip: e.target.value }))
+                  }
+                  placeholder="ZIP"
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <button
+                onClick={save}
+                disabled={saving}
+                className="mt-2 rounded-lg bg-cyan-800 px-4 py-2 text-sm text-white hover:bg-cyan-700 disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
           </div>
-
-          <button
-            onClick={save}
-            disabled={saving}
-            className="mt-2 rounded-lg bg-cyan-800 px-4 py-2 text-sm text-white hover:bg-cyan-700 disabled:opacity-60"
-          >
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Payouts section */}
