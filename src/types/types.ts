@@ -40,7 +40,7 @@ export type Employee = {
   name: string;
   /** Optional free-form address or structured address */
   address?: EmployeeAddress | string | null;
-  isActive: boolean;
+  isActive?: boolean;
   createdAt?: Timestamp | Date | FieldValue | null;
   updatedAt?: Timestamp | Date | FieldValue | null;
 };

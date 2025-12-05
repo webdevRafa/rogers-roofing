@@ -59,7 +59,7 @@ export default function EmployeesPage() {
       const employee: Employee = {
         id: ref.id,
         name: name.trim(),
-        isActive: true,
+        isActive: true, // ✅ new employees start as active
         createdAt: serverTimestamp() as FieldValue,
         updatedAt: serverTimestamp() as FieldValue,
       };
@@ -69,7 +69,7 @@ export default function EmployeesPage() {
       // Clear input
       setName("");
 
-      // ⭐ Redirect to the newly created employee detail page
+      // Redirect to the newly created employee detail page
       navigate(`/employees/${ref.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -93,9 +93,9 @@ export default function EmployeesPage() {
 
         {/* Add employee */}
         <section className="mb-6 rounded-xl bg-white/30 p-4 shadow">
-          <div className="flex gap-3 items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-medium">Add new employee</h2>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -105,7 +105,7 @@ export default function EmployeesPage() {
               <button
                 onClick={createEmployee}
                 disabled={creating || !name.trim()}
-                className="rounded-lg bg-cyan-700 px-4 py-0.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
+                className="rounded-lg bg-cyan-700 px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
               >
                 {creating ? "Saving…" : "Add"}
               </button>
@@ -123,20 +123,41 @@ export default function EmployeesPage() {
 
         {/* List */}
         <section className="rounded-xl bg-white/30 p-4 shadow">
-          <h2 className="mb-2 text-xl font-medium">Current employees</h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xl font-medium">All employees</h2>
+            <p className="text-xs text-gray-500">
+              Active employees can be selected on jobs. Inactive stay for
+              history only.
+            </p>
+          </div>
+
           {employees.length === 0 ? (
             <p className="text-sm text-gray-500">No employees yet.</p>
           ) : (
             <ul className="divide-y divide-gray-100">
               {employees.map((e) => {
                 const addr = normalizeEmployeeAddress(e.address);
+                const active = e.isActive !== false; // default to active if missing
+
                 return (
                   <li
                     key={e.id}
                     className="flex items-center justify-between py-2 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out"
                   >
                     <div>
-                      <div className="text-sm font-medium">{e.name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium">{e.name}</div>
+                        <span
+                          className={
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
+                            (active
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-200 text-gray-600")
+                          }
+                        >
+                          {active ? "Active" : "Inactive"}
+                        </span>
+                      </div>
                       {addr && (
                         <div className="text-xs text-gray-500">
                           {addr.fullLine ||

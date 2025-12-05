@@ -27,6 +27,7 @@ export default function EmployeeDetailPage() {
     state: "",
     zip: "",
   });
+  const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
     if (!id) return;
@@ -36,8 +37,13 @@ export default function EmployeeDetailPage() {
         const snap = await getDoc(ref);
         if (!snap.exists()) throw new Error("Employee not found");
         const data = snap.data() as Employee;
+
         setEmployee(data);
         setName(data.name);
+
+        // Default to active when field is missing (backwards compatible)
+        setIsActive(data.isActive !== false);
+
         const addr = normalizeEmployeeAddress(data.address);
         setAddress({
           fullLine: addr?.fullLine ?? "",
@@ -65,6 +71,7 @@ export default function EmployeeDetailPage() {
         ...employee,
         name: name.trim(),
         address,
+        isActive, // ✅ persist status
         updatedAt: serverTimestamp() as FieldValue,
       };
 
@@ -98,6 +105,7 @@ export default function EmployeeDetailPage() {
         <h1 className="mb-4 text-xl font-semibold">Employee profile</h1>
 
         <div className="space-y-4">
+          {/* Name */}
           <div>
             <label className="text-xs text-gray-600">Name</label>
             <input
@@ -107,8 +115,46 @@ export default function EmployeeDetailPage() {
             />
           </div>
 
+          {/* Status */}
           <div>
-            <label className="text-xs text-gray-600">Address (optional)</label>
+            <label className="text-xs text-gray-600">Status</label>
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsActive(true)}
+                className={
+                  "rounded-full px-3 py-1 text-xs font-semibold uppercase " +
+                  (isActive
+                    ? "bg-emerald-600 text-white"
+                    : "bg-gray-100 text-gray-600")
+                }
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsActive(false)}
+                className={
+                  "rounded-full px-3 py-1 text-xs font-semibold uppercase " +
+                  (!isActive
+                    ? "bg-gray-700 text-white"
+                    : "bg-gray-100 text-gray-600")
+                }
+              >
+                Inactive
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] text-gray-500">
+              Inactive employees stay in history and past payouts, but they
+              won&apos;t be selectable on new jobs.
+            </p>
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="text-xs text-gray-600">
+              Address (optional, for your own records)
+            </label>
             <input
               value={address.fullLine}
               onChange={(e) =>
