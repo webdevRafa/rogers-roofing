@@ -83,15 +83,7 @@ function CountMoney({
 
 // Support all statuses + "all" filter
 type StatusFilter = "all" | JobStatus;
-const STATUS_OPTIONS: JobStatus[] = [
-  "draft",
-  "pending",
-  "active",
-  "invoiced",
-  "paid",
-  "closed",
-  "archived",
-];
+const STATUS_OPTIONS: JobStatus[] = ["pending", "paid"];
 
 // Small util: yyyy-mm-dd from Date
 const toYMD = (d: Date) => d.toISOString().slice(0, 10);
