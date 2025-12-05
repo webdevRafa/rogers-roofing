@@ -9,7 +9,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import type { FieldValue } from "firebase/firestore";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { db } from "../firebase/firebaseConfig";
 import type { Employee, EmployeeAddress } from "../types/types";
 
@@ -19,6 +19,19 @@ export default function EmployeesPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const location = useLocation();
+  const successMessage =
+    (location.state as { message?: string } | null)?.message ?? null;
+
+  // Auto-clear message
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = setTimeout(() => {
+      navigate("/employees", { replace: true, state: {} });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [successMessage, navigate]);
 
   useEffect(() => {
     const q = query(collection(db, "employees"), orderBy("name", "asc"));
@@ -36,10 +49,13 @@ export default function EmployeesPage() {
 
   async function createEmployee() {
     if (!name.trim()) return;
+
     setCreating(true);
     setError(null);
+
     try {
       const ref = doc(collection(db, "employees"));
+
       const employee: Employee = {
         id: ref.id,
         name: name.trim(),
@@ -47,8 +63,14 @@ export default function EmployeesPage() {
         createdAt: serverTimestamp() as FieldValue,
         updatedAt: serverTimestamp() as FieldValue,
       };
+
       await setDoc(ref, employee);
+
+      // Clear input
       setName("");
+
+      // ⭐ Redirect to the newly created employee detail page
+      navigate(`/employees/${ref.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -91,6 +113,12 @@ export default function EmployeesPage() {
           </div>
 
           {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+
+          {successMessage && (
+            <p className="mt-2 inline-block rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700 border border-emerald-200">
+              {successMessage}
+            </p>
+          )}
         </section>
 
         {/* List */}

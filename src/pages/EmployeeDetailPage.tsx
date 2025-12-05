@@ -58,16 +58,22 @@ export default function EmployeeDetailPage() {
     if (!employee) return;
     setSaving(true);
     setError(null);
+
     try {
       const ref = doc(collection(db, "employees"), employee.id);
       const next: Employee = {
         ...employee,
         name: name.trim(),
-        address: cleanupAddress(address),
+        address,
         updatedAt: serverTimestamp() as FieldValue,
       };
+
       await setDoc(ref, next, { merge: true });
-      setEmployee(next);
+
+      navigate("/employees", {
+        replace: true,
+        state: { message: "Employee details saved successfully." },
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -159,9 +165,4 @@ function normalizeEmployeeAddress(
   if (!a) return null;
   if (typeof a === "string") return { fullLine: a, line1: a };
   return a as EmployeeAddress;
-}
-
-function cleanupAddress(addr: EmployeeAddress): EmployeeAddress | undefined {
-  const hasAny = Object.values(addr).some((v) => v && v.trim?.().length);
-  return hasAny ? addr : undefined;
 }
