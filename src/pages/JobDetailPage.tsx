@@ -1564,7 +1564,7 @@ function MotionCard({
       className="rounded-2xl shadow-md bg-white py-6 px-4"
       {...fadeUp(delay)}
     >
-      <h2 className="mb-3 text-2xl font-griffon bg-cyan-700/3 p-2 font-semibold text-[var(--color-text)]">
+      <h2 className="mb-3 text-2xl   p-2 font-semibold text-[var(--color-text)]">
         {title}
       </h2>
       {children}
