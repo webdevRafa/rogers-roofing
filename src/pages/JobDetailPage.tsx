@@ -693,7 +693,7 @@ export default function JobDetailPage() {
 
   return (
     <motion.div
-      className="mx-auto max-w-[1400px] pt-20 py-8"
+      className="mx-auto max-w-[1400px] pt-20 py-8 px-4 md:px-10"
       variants={staggerParent}
       initial="initial"
       animate="animate"
