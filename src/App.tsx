@@ -8,6 +8,8 @@ import LoginPage from "./pages/LoginPage";
 import AdminOnly from "./components/AdminOnly"; // add this import
 import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
+import PunchCalendarPage from "./pages/PunchCalendarPage";
+import PunchDayPage from "./pages/PunchDayPage";
 
 export default function App() {
   return (
@@ -20,6 +22,23 @@ export default function App() {
               element={
                 <AdminOnly>
                   <JobsPage />
+                </AdminOnly>
+              }
+            />
+            {/* Punch calendar */}
+            <Route
+              path="/punches"
+              element={
+                <AdminOnly>
+                  <PunchCalendarPage />
+                </AdminOnly>
+              }
+            />
+            <Route
+              path="/punches/:date"
+              element={
+                <AdminOnly>
+                  <PunchDayPage />
                 </AdminOnly>
               }
             />

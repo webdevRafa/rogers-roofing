@@ -457,6 +457,13 @@ export default function JobsPage() {
                 + New Job
               </button>
               <button
+                onClick={() => navigate("/punches")}
+                className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Punch calendar
+              </button>
+
+              <button
                 onClick={handleLogout}
                 disabled={signingOut}
                 className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-text)] hover:bg-red-100 disabled:opacity-50"

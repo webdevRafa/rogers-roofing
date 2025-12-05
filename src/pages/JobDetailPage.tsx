@@ -137,6 +137,12 @@ function fmtDate(x: unknown): string {
   const ms = toMillis(x);
   return ms == null ? "—" : new Date(ms).toLocaleString();
 }
+function toYMD(x: unknown): string {
+  const ms = toMillis(x);
+  if (ms == null) return "";
+  const d = new Date(ms);
+  return d.toISOString().slice(0, 10);
+}
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -148,6 +154,8 @@ export default function JobDetailPage() {
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [schedulePunchOpen, setSchedulePunchOpen] = useState(false);
+  const [schedulePunchDate, setSchedulePunchDate] = useState<string>("");
 
   const activeEmployees = useMemo(
     () => employees.filter((e) => e.isActive !== false),
@@ -675,6 +683,13 @@ export default function JobDetailPage() {
 
   const last = job.updatedAt ?? job.createdAt ?? null;
   const lastStr = fmtDate(last);
+  const punchScheduledMs = toMillis(job.punchScheduledFor ?? null);
+  const punchScheduledLabel = punchScheduledMs
+    ? new Date(punchScheduledMs).toLocaleDateString()
+    : null;
+
+  const punchedAtLabel =
+    job.punchedAt != null ? fmtDate(job.punchedAt as unknown) : null;
 
   const hasPricing =
     job.pricing &&
@@ -744,6 +759,52 @@ export default function JobDetailPage() {
                 </option>
               ))}
             </select>
+          </div>
+          {/* Punch scheduling / completion controls */}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {punchScheduledLabel && (
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
+                Punch scheduled: {punchScheduledLabel}
+              </span>
+            )}
+
+            {punchedAtLabel && (
+              <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs text-emerald-800">
+                Punched on {punchedAtLabel}
+              </span>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setSchedulePunchOpen(true);
+                // pre-fill with existing date or today
+                const base = job.punchScheduledFor ?? new Date();
+                setSchedulePunchDate(toYMD(base));
+              }}
+              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+            >
+              Schedule punch
+            </button>
+
+            {!job.punchedAt && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!job) return;
+                  const now = Timestamp.now();
+                  await saveJob({
+                    ...job,
+                    status: "closed", // mark job as complete
+                    punchedAt: now,
+                    punchScheduledFor: null, // optional: clear schedule
+                  });
+                }}
+                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+              >
+                Mark as punched
+              </button>
+            )}
           </div>
 
           {/* Pricing */}
@@ -1374,6 +1435,67 @@ export default function JobDetailPage() {
                 </figure>
               );
             })()}
+          </div>
+        </div>
+      )}
+      {/* ===== Schedule Punch Modal ===== */}
+      {schedulePunchOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                Schedule punch
+              </h2>
+              <button
+                type="button"
+                onClick={() => setSchedulePunchOpen(false)}
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <label className="mb-2 block text-xs text-[var(--color-muted)]">
+              Punch date
+            </label>
+            <input
+              type="date"
+              value={schedulePunchDate}
+              onChange={(e) => setSchedulePunchDate(e.target.value)}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSchedulePunchOpen(false)}
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!job || !schedulePunchDate) return;
+
+                  const [year, month, day] = schedulePunchDate
+                    .split("-")
+                    .map((x) => Number(x));
+                  const scheduledDate = new Date(year, month - 1, day);
+
+                  await saveJob({
+                    ...job,
+                    punchScheduledFor: Timestamp.fromDate(scheduledDate),
+                  });
+
+                  setSchedulePunchOpen(false);
+                }}
+                className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}

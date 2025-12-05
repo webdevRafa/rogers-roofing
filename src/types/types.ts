@@ -236,7 +236,8 @@ export type Job = {
   status: JobStatus;
 pricing?: JobPricing;
   address: Address;
-
+  punchScheduledFor?: Timestamp | Date | FieldValue | null;
+  punchedAt?: Timestamp | Date | FieldValue | null;
   earnings: Earnings;
   expenses: Expenses;
 
