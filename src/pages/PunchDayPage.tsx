@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import type { Job } from "../types/types";
 import { jobConverter } from "../types/types";
+import { recomputeJob, makeAddress } from "../utils/calc";
 
 type FsTimestampLike = { toDate: () => Date };
 function isFsTimestamp(x: unknown): x is FsTimestampLike {
@@ -61,7 +71,10 @@ export default function PunchDayPage() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
-
+  const [openForm, setOpenForm] = useState(false);
+  const [address, setAddress] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const q = query(
       collection(db, "jobs").withConverter(jobConverter),
@@ -72,6 +85,65 @@ export default function PunchDayPage() {
     );
     return () => unsub();
   }, []);
+  async function createJobForDay() {
+    if (!date) return;
+
+    setCreating(true);
+    setError(null);
+
+    try {
+      if (!address.trim()) {
+        throw new Error("Please enter a job address.");
+      }
+
+      const newRef = doc(collection(db, "jobs"));
+      const scheduledDate = new Date(date + "T00:00:00");
+
+      let job: Job = {
+        id: newRef.id,
+        status: "pending",
+        address: makeAddress(address),
+        earnings: {
+          totalEarningsCents: 0,
+          entries: [],
+          currency: "USD",
+        },
+        expenses: {
+          totalPayoutsCents: 0,
+          totalMaterialsCents: 0,
+          payouts: [],
+          materials: [],
+          currency: "USD",
+        },
+        summaryNotes: "",
+        attachments: [],
+        punchScheduledFor: scheduledDate,
+        createdAt: serverTimestamp() as FieldValue,
+        updatedAt: serverTimestamp() as FieldValue,
+        computed: {
+          totalExpensesCents: 0,
+          netProfitCents: 0,
+        },
+      };
+
+      // Keep computed fields in sync (same as JobsPage)
+      job = recomputeJob(job);
+
+      // Write using the same converter as elsewhere
+      await setDoc(newRef.withConverter(jobConverter), job);
+
+      // Go straight to JobDetailPage for this job
+      navigate(`/job/${newRef.id}`);
+
+      // Reset form state in case user comes back
+      setAddress("");
+      setOpenForm(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCreating(false);
+    }
+  }
 
   const jobsForDay = useMemo(() => {
     if (!date) return [];
@@ -98,7 +170,7 @@ export default function PunchDayPage() {
             Jobs scheduled to be punched on this day.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => navigate("/punches")}
             className="text-sm text-blue-600 hover:underline"
@@ -111,8 +183,42 @@ export default function PunchDayPage() {
           >
             Jobs
           </button>
+          <button
+            onClick={() => setOpenForm((v) => !v)}
+            className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-700 transition duration-300 ease-in-out"
+          >
+            + New job for this day
+          </button>
         </div>
       </div>
+      {openForm && (
+        <div className="mb-4 rounded-xl bg-[var(--color-card)] p-4 shadow">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Job address (e.g., 123 Main St, San Antonio, TX)"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+            <button
+              onClick={createJobForDay}
+              disabled={creating}
+              className="rounded-lg bg-cyan-800 px-4 py-2 text-sm text-white hover:bg-cyan-700 disabled:opacity-60 transition duration-300 ease-in-out"
+            >
+              {creating ? "Saving…" : "Create"}
+            </button>
+          </div>
+
+          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+
+          {date && (
+            <p className="mt-2 text-[11px] text-[var(--color-muted)]">
+              This job will be scheduled to punch on{" "}
+              {new Date(date + "T00:00:00").toLocaleDateString()}.
+            </p>
+          )}
+        </div>
+      )}
 
       {jobsForDay.length === 0 ? (
         <p className="text-sm text-[var(--color-muted)]">

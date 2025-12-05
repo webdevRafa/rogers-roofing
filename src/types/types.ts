@@ -236,7 +236,6 @@ export type Job = {
   status: JobStatus;
 pricing?: JobPricing;
   address: Address;
-  punchScheduledFor?: Timestamp | Date | FieldValue | null;
   punchedAt?: Timestamp | Date | FieldValue | null;
   earnings: Earnings;
   expenses: Expenses;
@@ -246,6 +245,9 @@ pricing?: JobPricing;
 
   notes?: Note[];
   attachments?: JobAttachment[];
+
+  /** When this job is scheduled to be punched (final walkthrough/finish). */
+  punchScheduledFor?: FSDate;
 
   computed?: JobComputed;
 } & AuditFields;
