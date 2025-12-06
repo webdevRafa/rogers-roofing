@@ -56,17 +56,6 @@ const item: MotionProps["variants"] = {
   animate: { opacity: 1, y: 0 },
 };
 
-// ---------- Status helpers ----------
-const STATUS_OPTIONS: JobStatus[] = [
-  "draft",
-  "active",
-  "pending",
-  "invoiced",
-  "paid",
-  "closed",
-  "archived",
-];
-
 function statusClasses(status: JobStatus) {
   switch (status) {
     case "active":
@@ -747,18 +736,6 @@ export default function JobDetailPage() {
                 {job.status}
               </span>
             </span>
-            <select
-              value={job.status}
-              onChange={(e) => setStatus(e.target.value as JobStatus)}
-              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-1 text-xs text-[var(--color-text)] focus:ring-2 focus:ring-[var(--color-accent)]"
-              title="Change job status"
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
           </div>
           {/* Punch scheduling / completion controls */}
           <div className="flex flex-wrap items-center justify-end gap-2">
