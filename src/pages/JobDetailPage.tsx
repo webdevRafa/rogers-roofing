@@ -669,7 +669,7 @@ export default function JobDetailPage() {
 
     try {
       await deleteDoc(doc(collection(db, "jobs"), job.id));
-      navigate("/"); // back to list
+      navigate("/jobs"); // back to list
     } catch (e) {
       console.error("Failed to permanently delete job", e);
       alert("Failed to delete the job. Check console for details.");

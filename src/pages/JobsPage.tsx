@@ -236,7 +236,7 @@ export default function JobsPage() {
       setSigningOut(true);
       await signOut(getAuth());
       // optional: send them to login after sign-out
-      navigate("/login");
+      navigate("/");
     } catch (err) {
       console.error("Logout failed:", err);
       // (optional) surface a toast or setError(String(err))
