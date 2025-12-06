@@ -1208,6 +1208,18 @@ export default function JobsPage() {
                                 </div>
                               </div>
 
+                              {/* Status pill on the right */}
+                              {isPending ? (
+                                <span className="rounded-full bg-yellow-100 px-2 py-1 text-[10px] font-semibold uppercase text-yellow-800">
+                                  Pending
+                                </span>
+                              ) : (
+                                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-700">
+                                  Paid
+                                </span>
+                              )}
+
+                              {/* Checkbox only on Pending tab */}
                               {payoutFilter === "pending" && (
                                 <label className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
                                   <input
@@ -1218,12 +1230,6 @@ export default function JobsPage() {
                                   />
                                   Select
                                 </label>
-                              )}
-
-                              {!isPending && (
-                                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-700">
-                                  Paid
-                                </span>
                               )}
                             </div>
                           </li>
