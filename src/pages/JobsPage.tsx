@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -11,7 +12,14 @@ import {
 } from "firebase/firestore";
 import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
-import type { Job, JobStatus, PayoutDoc } from "../types/types";
+import type {
+  Job,
+  JobStatus,
+  PayoutDoc,
+  Employee,
+  EmployeeAddress,
+} from "../types/types";
+
 import { jobConverter } from "../types/types";
 import { recomputeJob, makeAddress } from "../utils/calc";
 import { Link, useNavigate } from "react-router-dom"; // ✅ navigate after create
@@ -168,6 +176,14 @@ function payoutEmployeeName(p: PayoutDoc): string {
 
   return "";
 }
+// Normalize Employee.address into a consistent shape
+function normalizeEmployeeAddress(
+  a: Employee["address"]
+): EmployeeAddress | null {
+  if (!a) return null;
+  if (typeof a === "string") return { fullLine: a, line1: a };
+  return a as EmployeeAddress;
+}
 
 // ----------- Date Preset logic (auto-rolling) -----------
 type DatePreset = "custom" | "last7" | "thisMonth" | "ytd";
@@ -204,6 +220,7 @@ export default function JobsPage() {
   const [selectedPayoutIds, setSelectedPayoutIds] = useState<string[]>([]);
   const [stubOpen, setStubOpen] = useState(false);
   const [stubSaving, setStubSaving] = useState(false);
+  const [stubEmployee, setStubEmployee] = useState<Employee | null>(null);
 
   // Date range filter state (YYYY-MM-DD)
   const [startDate, setStartDate] = useState<string>("");
@@ -390,6 +407,24 @@ export default function JobsPage() {
     () => payouts.filter((p) => selectedPayoutIds.includes(p.id)),
     [payouts, selectedPayoutIds]
   );
+  // Unique employee IDs for the currently selected payouts
+  const selectedEmployeeIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of selectedPayouts) {
+      const id = (p as any).employeeId as string | undefined;
+      if (id) ids.add(id);
+    }
+    return Array.from(ids);
+  }, [selectedPayouts]);
+
+  // Only allow creating a stub when:
+  // - in "pending" tab
+  // - at least one payout is selected
+  // - all selected payouts belong to a single employee
+  const canCreateStub =
+    payoutFilter === "pending" &&
+    selectedPayoutIds.length > 0 &&
+    selectedEmployeeIds.length === 1;
 
   function togglePayoutSelected(id: string) {
     setSelectedPayoutIds((prev) =>
@@ -421,6 +456,38 @@ export default function JobsPage() {
       setStubSaving(false);
     }
   }
+  // Load employee details for the stub when it's opened
+  useEffect(() => {
+    if (!stubOpen) {
+      setStubEmployee(null);
+      return;
+    }
+
+    if (selectedEmployeeIds.length !== 1) {
+      setStubEmployee(null);
+      return;
+    }
+
+    const employeeId = selectedEmployeeIds[0];
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const ref = doc(collection(db, "employees"), employeeId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
+        if (!cancelled) {
+          setStubEmployee(snap.data() as Employee);
+        }
+      } catch (err) {
+        console.error("Failed to load employee for stub", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stubOpen, selectedEmployeeIds]);
 
   // Create job → redirect to detail
   async function createJob() {
@@ -485,7 +552,7 @@ export default function JobsPage() {
   return (
     <>
       <div>
-        <div className="bg-gradient-to-b from-[var(--color-logo)]/80 to-[var(--color-logo)]">
+        <div className="bg-gradient-to-b from-indigo-900 to-[var(--color-logo)]">
           <nav className="top-0 z-10 backdrop-blur">
             <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 md:px-0">
               <div className="text-lg md:text-3xl text-white  uppercase flex justify-between w-full items-center">
@@ -1004,16 +1071,25 @@ export default function JobsPage() {
               </div>
             </div>
 
-            {/* Create stub CTA (pending only) */}
+            {/* Create stub CTA (pending only, single employee only) */}
             {payoutFilter === "pending" && selectedPayoutIds.length > 0 && (
-              <div className="mb-3 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setStubOpen(true)}
-                  className="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)]"
-                >
-                  Create stub ({selectedPayoutIds.length})
-                </button>
+              <div className="mb-3 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
+                {selectedEmployeeIds.length > 1 && (
+                  <p className="text-xs text-red-700">
+                    Please select payouts for a single employee to create a
+                    stub.
+                  </p>
+                )}
+
+                {canCreateStub && (
+                  <button
+                    type="button"
+                    onClick={() => setStubOpen(true)}
+                    className="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)]"
+                  >
+                    Create stub ({selectedPayoutIds.length})
+                  </button>
+                )}
               </div>
             )}
 
@@ -1114,6 +1190,7 @@ export default function JobsPage() {
       {stubOpen && selectedPayouts.length > 0 && (
         <GlobalPayoutStubModal
           payouts={selectedPayouts}
+          employee={stubEmployee}
           onClose={() => setStubOpen(false)}
           onConfirmPaid={markSelectedPayoutsAsPaid}
           saving={stubSaving}
@@ -1124,6 +1201,7 @@ export default function JobsPage() {
 }
 type GlobalPayoutStubModalProps = {
   payouts: PayoutDoc[];
+  employee: Employee | null;
   onClose: () => void;
   onConfirmPaid: () => Promise<void>;
   saving: boolean;
@@ -1131,77 +1209,109 @@ type GlobalPayoutStubModalProps = {
 
 function GlobalPayoutStubModal({
   payouts,
+  employee,
   onClose,
   onConfirmPaid,
   saving,
 }: GlobalPayoutStubModalProps) {
   const totalCents = payouts.reduce(
-    (acc, p) => acc + ((p as any).amountCents ?? 0),
+    (sum, p) => sum + ((p as any).amountCents ?? 0),
     0
   );
 
+  // Use the helper we created earlier to normalize the employee address
+  const empAddr = employee ? normalizeEmployeeAddress(employee.address) : null;
+
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-[min(720px,100%)] overflow-hidden rounded-2xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-gray-200 px-4 py-3">
+        <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">
-              Pay stub (draft)
+            <div className="text-xs uppercase tracking-wider text-gray-500">
+              Payout Stub
+            </div>
+            <h2 className="text-2xl font-semibold">
+              Roger&apos;s Roofing &amp; Contracting LLC
             </h2>
-            <p className="mt-1 text-xs text-gray-600">
-              {payouts.length} payout
-              {payouts.length === 1 ? "" : "s"} selected
+            {/* Static company address */}
+            <p className="mt-1 text-sm text-gray-600">3618 Angus Crossing</p>
+            <p className="mt-0 text-xs text-gray-600">
+              San Antonio, Texas 75245
             </p>
+
+            {/* Dynamic employee info */}
+            {employee && (
+              <>
+                <p className="mt-3 text-sm text-gray-600">
+                  Stub for: <span className="font-medium">{employee.name}</span>
+                </p>
+                {empAddr && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {empAddr.fullLine ||
+                      [empAddr.line1, empAddr.city, empAddr.state, empAddr.zip]
+                        .filter(Boolean)
+                        .join(", ")}
+                  </p>
+                )}
+              </>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100"
-          >
-            Close
-          </button>
+          <div className="text-right text-xs text-gray-500">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100"
+            >
+              Close
+            </button>
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="max-h-[60vh] overflow-y-auto px-4 py-3">
-          <table className="w-full text-xs sm:text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+        {/* Table – KEEP everything you already have below this line:
+            the Address / SqCount / Rate / Total table,
+            the "Number of payouts" text, Print / Save PDF,
+            and "Mark all as paid" button.
+        */}
+
+        {/* Table – ONLY Address / SqCount / Rate / Total */}
+        <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
+          <table className="min-w-full text-xs sm:text-sm">
+            <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
               <tr>
-                <th className="px-3 py-2 text-left">Employee</th>
                 <th className="px-3 py-2 text-left">Address</th>
-                <th className="px-3 py-2 text-left">Category</th>
-                <th className="px-3 py-2 text-left">Created</th>
-                <th className="px-3 py-2 text-right">Amount</th>
+                <th className="px-3 py-2 text-left">SqCount</th>
+                <th className="px-3 py-2 text-left">Rate</th>
+                <th className="px-3 py-2 text-right">Total</th>
               </tr>
             </thead>
             <tbody>
               {payouts.map((p) => {
                 const a = addr((p as any).jobAddressSnapshot as any);
-                const employeeName = payoutEmployeeName(p);
                 return (
                   <tr key={p.id} className="border-t border-gray-100">
                     <td className="px-3 py-2 align-top">
                       <div className="font-medium text-gray-900">
-                        {employeeName || "Unknown"}
+                        {a.display || "—"}
                       </div>
-                    </td>
-                    <td className="px-3 py-2 align-top">
-                      <div className="text-gray-900">{a.display || "—"}</div>
                       {(a.city || a.state || a.zip) && (
                         <div className="text-[11px] text-gray-500">
                           {[a.city, a.state, a.zip].filter(Boolean).join(", ")}
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2 align-top text-gray-700">
-                      {(p as any).category || "—"}
+                    <td className="px-3 py-2 align-top text-sm text-gray-800">
+                      {typeof (p as any).sqft === "number"
+                        ? (p as any).sqft.toLocaleString()
+                        : "—"}
                     </td>
-                    <td className="px-3 py-2 align-top text-gray-700">
-                      {p.createdAt ? fmtDateTime(p.createdAt as any) : "—"}
+                    <td className="px-3 py-2 align-top text-sm text-gray-800">
+                      {typeof (p as any).ratePerSqFt === "number"
+                        ? `$${(p as any).ratePerSqFt.toFixed(2)}/sq.ft`
+                        : "—"}
                     </td>
-                    <td className="px-3 py-2 align-top text-right font-semibold text-gray-900">
-                      {money((p as any).amountCents)}
+                    <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-900">
+                      {money((p as any).amountCents ?? 0)}
                     </td>
                   </tr>
                 );
@@ -1210,19 +1320,35 @@ function GlobalPayoutStubModal({
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3">
-          <div className="text-sm font-semibold text-gray-900">
-            Total: <span>{money(totalCents)}</span>
+        {/* Totals + actions (same as EmployeeDetailPage stub) */}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-gray-700">
+            <div>
+              <span className="font-medium">Number of payouts:</span>{" "}
+              {payouts.length}
+            </div>
+            <div className="mt-1 text-lg font-semibold">
+              Total: {money(totalCents)}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={onConfirmPaid}
-            disabled={saving}
-            className="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)] disabled:opacity-60"
-          >
-            {saving ? "Marking as paid…" : "Mark as paid & save"}
-          </button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+            >
+              Print / Save PDF
+            </button>
+            <button
+              type="button"
+              onClick={onConfirmPaid}
+              disabled={saving}
+              className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+            >
+              {saving ? "Marking as paid…" : "Mark all as paid"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

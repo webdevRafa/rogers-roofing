@@ -80,12 +80,12 @@ export default function EmployeesPage() {
 
   return (
     <>
-      <div className="bg-gradient-to-b from-[var(--color-logo)]/80 to-[var(--color-logo)] py-20 px-4 md:px-0">
+      <div className="bg-gradient-to-b from-indigo-900 to-[var(--color-logo)] py-15 px-4 md:px-0">
         <div className="max-w-[1200px] mx-auto">
           <h1 className="text-4xl font-semibold text-white">Employees</h1>
           <button
             onClick={() => navigate("/jobs")}
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm text-neutral-200 hover:underline"
           >
             ← Back to Jobs
           </button>
@@ -93,20 +93,20 @@ export default function EmployeesPage() {
       </div>
       <div className="mx-auto max-w-[1200px] py-8 ">
         {/* Add employee */}
-        <section className="mb-6 rounded-xl bg-white/30 p-4 shadow">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between max-w-[600px]">
+        <section className="mb-6 rounded-xl  p-4 shadow">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between max-w-[500px]">
             <h2 className="text-lg font-medium">Add new employee</h2>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex gap-2 flex-row sm:items-center">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Employee name"
-                className="w-full max-w-[300px] rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className="w-full max-w-[300px] rounded-lg border border-[var(--color-border)]/50 bg-white  px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
               <button
                 onClick={createEmployee}
                 disabled={creating || !name.trim()}
-                className="rounded-lg bg-cyan-700 px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
+                className="rounded-lg bg-gradient-to-b from-indigo-900 to-[var(--color-logo)] px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
               >
                 {creating ? "Saving…" : "Add"}
               </button>
@@ -124,7 +124,7 @@ export default function EmployeesPage() {
 
         {/* List */}
         <section className="rounded-xl bg-white/30 p-4 shadow">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex flex-col md:flex-row items-start md:items-center justify-between md:justify-start gap-5">
             <h2 className="text-xl font-medium">All employees</h2>
             <p className="text-xs text-gray-500">
               Active employees can be selected on jobs. Inactive stay for
@@ -141,40 +141,45 @@ export default function EmployeesPage() {
                 const active = e.isActive !== false; // default to active if missing
 
                 return (
-                  <li
-                    key={e.id}
-                    className="flex items-center justify-between py-2 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out"
+                  <Link
+                    to={`/employees/${e.id}`}
+                    className="text-xs text-blue-600 hover:underline style-none"
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-medium">{e.name}</div>
-                        <span
-                          className={
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
-                            (active
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-gray-200 text-gray-600")
-                          }
-                        >
-                          {active ? "Active" : "Inactive"}
-                        </span>
-                      </div>
-                      {addr && (
-                        <div className="text-xs text-gray-500">
-                          {addr.fullLine ||
-                            [addr.line1, addr.city, addr.state, addr.zip]
-                              .filter(Boolean)
-                              .join(", ")}
-                        </div>
-                      )}
-                    </div>
-                    <Link
-                      to={`/employees/${e.id}`}
-                      className="text-xs text-blue-600 hover:underline"
+                    <li
+                      key={e.id}
+                      className="flex items-center justify-between py-4 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out"
                     >
-                      View / Edit
-                    </Link>
-                  </li>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-medium">{e.name}</div>
+                          <span
+                            className={
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
+                              (active
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-gray-200 text-gray-600")
+                            }
+                          >
+                            {active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        {addr && (
+                          <div className="text-xs text-gray-500">
+                            {addr.fullLine ||
+                              [addr.line1, addr.city, addr.state, addr.zip]
+                                .filter(Boolean)
+                                .join(", ")}
+                          </div>
+                        )}
+                      </div>
+                      <Link
+                        to={`/employees/${e.id}`}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        View / Edit
+                      </Link>
+                    </li>
+                  </Link>
                 );
               })}
             </ul>
