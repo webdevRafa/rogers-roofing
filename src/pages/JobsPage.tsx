@@ -27,7 +27,7 @@ import { getAuth, signOut } from "firebase/auth";
 
 import { motion, AnimatePresence, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, ChevronDown } from "lucide-react";
 import logo from "../assets/rogers-roofing.webp";
 
 // ---------- Animation helpers ----------
@@ -199,7 +199,11 @@ export default function JobsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [signingOut, setSigningOut] = useState(false);
 
-  // ✅ NEW: hide/show date filters
+  // ✅ collapsible sections
+  const [jobsOpen, setJobsOpen] = useState(true);
+  const [payoutsOpen, setPayoutsOpen] = useState(true);
+
+  // ✅ hide/show date filters
   const [showFilters, setShowFilters] = useState(false);
 
   // ✅ navigate to the created job
@@ -552,7 +556,7 @@ export default function JobsPage() {
   return (
     <>
       <div>
-        <div className="bg-gradient-to-b from-indigo-900 to-[var(--color-logo)]">
+        <div className="bg-gradient-to-b from-[var(--color-logo)]/80 to-[var(--color-logo)]">
           <nav className="top-0 z-10 backdrop-blur">
             <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 md:px-0">
               <div className="text-lg md:text-3xl text-white  uppercase flex justify-between w-full items-center">
@@ -577,9 +581,25 @@ export default function JobsPage() {
             className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
             {...fadeUp(0)}
           >
-            <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text)]">
-              My Jobs
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text)]">
+                My Jobs
+              </h1>
+              <button
+                type="button"
+                onClick={() => setJobsOpen((v) => !v)}
+                className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-white/70 px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${
+                    jobsOpen ? "rotate-0" : "-rotate-90"
+                  }`}
+                />
+                <span className="ml-1 hidden sm:inline">
+                  {jobsOpen ? "Collapse" : "Expand"}
+                </span>
+              </button>
+            </div>
 
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
               {/* Search toggle */}
@@ -809,147 +829,33 @@ export default function JobsPage() {
               </motion.section>
             )}
           </AnimatePresence>
+          {jobsOpen && (
+            <div className="mt-2 section-scroll space-y-4">
+              {/* Totals */}
+              <motion.div
+                className="mb-0 rounded-tr-2xl p-2 text-xl font-semibold max-w-[400px] shadow-md bg-gray-50/35  text-[var(--color-text)]"
+                {...fadeUp(0.1)}
+              >
+                Total net across {filteredJobs.length} job
+                {filteredJobs.length === 1 ? "" : "s"}:{" "}
+                <span className="font-bold text-emerald-600">
+                  <CountMoney cents={totalNet} />
+                </span>
+              </motion.div>
 
-          {/* Totals */}
-          <motion.div
-            className="mb-0 rounded-tr-2xl p-2 text-xl font-semibold max-w-[400px] shadow-md bg-gray-50/35  text-[var(--color-text)]"
-            {...fadeUp(0.1)}
-          >
-            Total net across {filteredJobs.length} job
-            {filteredJobs.length === 1 ? "" : "s"}:{" "}
-            <span className="font-bold text-emerald-600">
-              <CountMoney cents={totalNet} />
-            </span>
-          </motion.div>
-
-          {/* ====== MOBILE CARDS (default) ====== */}
-          <div className="grid gap-3 sm:hidden">
-            {filteredJobs.map((job) => {
-              const a = addr(job.address);
-              return (
-                <div
-                  key={job.id}
-                  className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-medium text-[var(--color-text)]">
-                        {a.display || "—"}
-                      </div>
-                      {(a.city || a.state || a.zip) && (
-                        <div className="text-xs text-[var(--color-muted)]">
-                          {[a.city, a.state, a.zip].filter(Boolean).join(", ")}
-                        </div>
-                      )}
-                    </div>
-                    <span
-                      className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase ${statusClasses(
-                        job.status
-                      )}`}
+              {/* ====== MOBILE CARDS (default) ====== */}
+              <div className="grid gap-3 sm:hidden">
+                {filteredJobs.map((job) => {
+                  const a = addr(job.address);
+                  return (
+                    <div
+                      key={job.id}
+                      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
                     >
-                      {job.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                    <div className="rounded-lg bg-white/60 p-2">
-                      <div className="text-[var(--color-muted)] text-xs">
-                        Earnings
-                      </div>
-                      <div className="font-medium">
-                        <CountMoney
-                          cents={job.earnings?.totalEarningsCents ?? 0}
-                        />
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-white/60 p-2 text-right">
-                      <div className="text-[var(--color-muted)] text-xs">
-                        Expenses
-                      </div>
-                      <div className="font-medium">
-                        <CountMoney
-                          cents={job.computed?.totalExpensesCents ?? 0}
-                        />
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-white/60 p-2 col-span-2">
-                      <div className="text-[var(--color-muted)] text-xs">
-                        Net
-                      </div>
-                      <div
-                        className={
-                          (job.computed?.netProfitCents ?? 0) >= 0
-                            ? "text-emerald-600 font-semibold"
-                            : "text-red-600 font-semibold"
-                        }
-                      >
-                        <CountMoney cents={job.computed?.netProfitCents ?? 0} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 text-xs text-[var(--color-muted)]">
-                    <div>Updated {fmtDateTime(job.updatedAt)}</div>
-                    <div>Created {fmtDateTime(job.createdAt)}</div>
-                  </div>
-
-                  <div className="mt-3 text-right">
-                    <Link
-                      to={`/job/${job.id}`}
-                      className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                    >
-                      View
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-            {filteredJobs.length === 0 && (
-              <div className="text-center text-[var(--color-muted)]">
-                No jobs match the current filters.
-              </div>
-            )}
-          </div>
-
-          {/* ====== DESKTOP TABLE (sm and up) ====== */}
-          <motion.div
-            className="hidden sm:block rounded-tr-2xl  shadow-md  bg-[var(--color-card)] overflow-hidden"
-            variants={staggerParent}
-            initial="initial"
-            animate="animate"
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-white/60 text-[var(--color-muted)]">
-                  <tr>
-                    <th className="text-left px-4 py-3">Address</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-right px-4 py-3">Total Job Pay</th>
-                    <th className="text-right px-4 py-3">Expenses</th>
-                    <th className="text-right px-4 py-3">Net</th>
-                    <th className="text-left px-4 py-3">Last Updated</th>
-                    <th className="text-right px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredJobs.map((job, idx) => {
-                    const a = addr(job.address);
-                    return (
-                      <motion.tr
-                        key={job.id}
-                        variants={item}
-                        className={
-                          idx % 2 === 0 ? "bg-white/40" : "bg-white/20"
-                        }
-                      >
-                        <td className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
                           <div className="font-medium text-[var(--color-text)]">
-                            <Link
-                              to={`/job/${job.id}`}
-                              className="hover:underline"
-                            >
-                              {a.display || "—"}
-                            </Link>
+                            {a.display || "—"}
                           </div>
                           {(a.city || a.state || a.zip) && (
                             <div className="text-xs text-[var(--color-muted)]">
@@ -958,32 +864,42 @@ export default function JobsPage() {
                                 .join(", ")}
                             </div>
                           )}
-                        </td>
+                        </div>
+                        <span
+                          className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase ${statusClasses(
+                            job.status
+                          )}`}
+                        >
+                          {job.status}
+                        </span>
+                      </div>
 
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-block rounded-md px-2 py-1 text-[10px] font-semibold uppercase ${statusClasses(
-                              job.status
-                            )}`}
-                          >
-                            {job.status}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-3 text-right">
-                          <CountMoney
-                            cents={job.earnings?.totalEarningsCents ?? 0}
-                          />
-                        </td>
-
-                        <td className="px-4 py-3 text-right">
-                          <CountMoney
-                            cents={job.computed?.totalExpensesCents ?? 0}
-                          />
-                        </td>
-
-                        <td className="px-4 py-3 text-right">
-                          <span
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <div className="rounded-lg bg-white/60 p-2">
+                          <div className="text-[var(--color-muted)] text-xs">
+                            Earnings
+                          </div>
+                          <div className="font-medium">
+                            <CountMoney
+                              cents={job.earnings?.totalEarningsCents ?? 0}
+                            />
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-white/60 p-2 text-right">
+                          <div className="text-[var(--color-muted)] text-xs">
+                            Expenses
+                          </div>
+                          <div className="font-medium">
+                            <CountMoney
+                              cents={job.computed?.totalExpensesCents ?? 0}
+                            />
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-white/60 p-2 col-span-2">
+                          <div className="text-[var(--color-muted)] text-xs">
+                            Net
+                          </div>
+                          <div
                             className={
                               (job.computed?.netProfitCents ?? 0) >= 0
                                 ? "text-emerald-600 font-semibold"
@@ -993,54 +909,184 @@ export default function JobsPage() {
                             <CountMoney
                               cents={job.computed?.netProfitCents ?? 0}
                             />
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <div className="text-[var(--color-text)]">
-                            {fmtDateTime(job.updatedAt)}
                           </div>
-                          <div className="text-xs text-[var(--color-muted)]">
-                            Created {fmtDateTime(job.createdAt)}
-                          </div>
-                        </td>
+                        </div>
+                      </div>
 
-                        <td className="px-4 py-3 text-right">
-                          <Link
-                            to={`/job/${job.id}`}
-                            className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                      <div className="mt-3 text-xs text-[var(--color-muted)]">
+                        <div>Updated {fmtDateTime(job.updatedAt)}</div>
+                        <div>Created {fmtDateTime(job.createdAt)}</div>
+                      </div>
+
+                      <div className="mt-3 text-right">
+                        <Link
+                          to={`/job/${job.id}`}
+                          className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                        >
+                          View
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filteredJobs.length === 0 && (
+                  <div className="text-center text-[var(--color-muted)]">
+                    No jobs match the current filters.
+                  </div>
+                )}
+              </div>
+
+              {/* ====== DESKTOP TABLE (sm and up) ====== */}
+              <motion.div
+                className="hidden sm:block rounded-tr-2xl  shadow-md  bg-[var(--color-card)] overflow-hidden"
+                variants={staggerParent}
+                initial="initial"
+                animate="animate"
+              >
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-white/60 text-[var(--color-muted)]">
+                      <tr>
+                        <th className="text-left px-4 py-3">Address</th>
+                        <th className="text-left px-4 py-3">Status</th>
+                        <th className="text-right px-4 py-3">Total Job Pay</th>
+                        <th className="text-right px-4 py-3">Expenses</th>
+                        <th className="text-right px-4 py-3">Net</th>
+                        <th className="text-left px-4 py-3">Last Updated</th>
+                        <th className="text-right px-4 py-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredJobs.map((job, idx) => {
+                        const a = addr(job.address);
+                        return (
+                          <motion.tr
+                            key={job.id}
+                            variants={item}
+                            className={
+                              idx % 2 === 0 ? "bg-white/40" : "bg-white/20"
+                            }
                           >
-                            View
-                          </Link>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                  {filteredJobs.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        className="px-4 py-6 text-center text-[var(--color-muted)]"
-                      >
-                        No jobs match the current filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-[var(--color-text)]">
+                                <Link
+                                  to={`/job/${job.id}`}
+                                  className="hover:underline"
+                                >
+                                  {a.display || "—"}
+                                </Link>
+                              </div>
+                              {(a.city || a.state || a.zip) && (
+                                <div className="text-xs text-[var(--color-muted)]">
+                                  {[a.city, a.state, a.zip]
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-block rounded-md px-2 py-1 text-[10px] font-semibold uppercase ${statusClasses(
+                                  job.status
+                                )}`}
+                              >
+                                {job.status}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <CountMoney
+                                cents={job.earnings?.totalEarningsCents ?? 0}
+                              />
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <CountMoney
+                                cents={job.computed?.totalExpensesCents ?? 0}
+                              />
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  (job.computed?.netProfitCents ?? 0) >= 0
+                                    ? "text-emerald-600 font-semibold"
+                                    : "text-red-600 font-semibold"
+                                }
+                              >
+                                <CountMoney
+                                  cents={job.computed?.netProfitCents ?? 0}
+                                />
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <div className="text-[var(--color-text)]">
+                                {fmtDateTime(job.updatedAt)}
+                              </div>
+                              <div className="text-xs text-[var(--color-muted)]">
+                                Created {fmtDateTime(job.createdAt)}
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <Link
+                                to={`/job/${job.id}`}
+                                className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                              >
+                                View
+                              </Link>
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                      {filteredJobs.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-4 py-6 text-center text-[var(--color-muted)]"
+                          >
+                            No jobs match the current filters.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
+          )}
+
           {/* ====== PAYOUTS (all employees) ====== */}
           <section className="mt-10 rounded-2xl bg-[var(--color-card)] p-4 sm:p-6 shadow-md">
+            {/* Header + controls */}
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold text-[var(--color-text)]">
-                  Payouts
-                </h2>
-                <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  View payouts across all employees. Use the Pending tab to
-                  select payouts, generate a stub, and mark them as paid.
-                </p>
+              <div className="flex items-center gap-2">
+                <div>
+                  <h2 className="text-2xl font-semibold text-[var(--color-text)]">
+                    Payouts
+                  </h2>
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    View payouts across all employees. Use the Pending tab to
+                    select payouts, generate a stub, and mark them as paid.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPayoutsOpen((v) => !v)}
+                  className="ml-1 inline-flex items-center rounded-full border border-[var(--color-border)] bg-white/70 px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                >
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      payoutsOpen ? "rotate-0" : "-rotate-90"
+                    }`}
+                  />
+                  <span className="ml-1 hidden sm:inline">
+                    {payoutsOpen ? "Collapse" : "Expand"}
+                  </span>
+                </button>
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -1071,118 +1117,121 @@ export default function JobsPage() {
               </div>
             </div>
 
-            {/* Create stub CTA (pending only, single employee only) */}
-            {payoutFilter === "pending" && selectedPayoutIds.length > 0 && (
-              <div className="mb-3 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
-                {selectedEmployeeIds.length > 1 && (
-                  <p className="text-xs text-red-700">
-                    Please select payouts for a single employee to create a
-                    stub.
+            {/* Collapsible content */}
+            {payoutsOpen && (
+              <div className="mt-2 section-scroll space-y-3">
+                {/* Create stub CTA (pending only, single employee only) */}
+                {payoutFilter === "pending" && selectedPayoutIds.length > 0 && (
+                  <div className="mb-1 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    {selectedEmployeeIds.length > 1 && (
+                      <p className="text-xs text-red-700">
+                        Please select payouts for a single employee to create a
+                        stub.
+                      </p>
+                    )}
+
+                    {canCreateStub && (
+                      <button
+                        type="button"
+                        onClick={() => setStubOpen(true)}
+                        className="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)]"
+                      >
+                        Create stub ({selectedPayoutIds.length})
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* States */}
+                {payoutsLoading && (
+                  <p className="text-sm text-[var(--color-muted)]">
+                    Loading payouts…
                   </p>
                 )}
-
-                {canCreateStub && (
-                  <button
-                    type="button"
-                    onClick={() => setStubOpen(true)}
-                    className="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)]"
-                  >
-                    Create stub ({selectedPayoutIds.length})
-                  </button>
+                {payoutsError && (
+                  <p className="text-sm text-red-600">{payoutsError}</p>
                 )}
-              </div>
-            )}
+                {!payoutsLoading &&
+                  !payoutsError &&
+                  filteredPayouts.length === 0 && (
+                    <p className="text-sm text-[var(--color-muted)]">
+                      No payouts match the current filters.
+                    </p>
+                  )}
 
-            {/* States */}
-            {payoutsLoading && (
-              <p className="text-sm text-[var(--color-muted)]">
-                Loading payouts…
-              </p>
-            )}
-            {payoutsError && (
-              <p className="text-sm text-red-600">{payoutsError}</p>
-            )}
-            {!payoutsLoading &&
-              !payoutsError &&
-              filteredPayouts.length === 0 && (
-                <p className="text-sm text-[var(--color-muted)]">
-                  No payouts match the current filters.
-                </p>
-              )}
+                {/* List */}
+                {!payoutsLoading &&
+                  !payoutsError &&
+                  filteredPayouts.length > 0 && (
+                    <ul className="divide-y divide-[var(--color-border)] rounded-xl bg-white/70">
+                      {filteredPayouts.map((p) => {
+                        const a = addr((p as any).jobAddressSnapshot as any);
+                        const employeeName = payoutEmployeeName(p);
+                        const isPending = !p.paidAt;
+                        const isSelected = selectedPayoutIds.includes(p.id);
+                        const amountCents = (p as any).amountCents ?? 0;
 
-            {/* List */}
-            {!payoutsLoading && !payoutsError && filteredPayouts.length > 0 && (
-              <ul className="divide-y divide-[var(--color-border)] rounded-xl bg-white/70">
-                {filteredPayouts.map((p) => {
-                  const a = addr((p as any).jobAddressSnapshot as any);
-                  const employeeName = payoutEmployeeName(p);
-                  const isChecked = selectedPayoutIds.includes(p.id);
-
-                  const statusLabel = p.paidAt ? "Paid" : "Pending";
-                  const statusClasses =
-                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
-                    (p.paidAt
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-yellow-100 text-yellow-800");
-
-                  return (
-                    <li
-                      key={p.id}
-                      className="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="flex items-start gap-2">
-                        {payoutFilter === "pending" && (
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => togglePayoutSelected(p.id)}
-                            className="mt-1 h-4 w-4 rounded border-gray-300 text-cyan-700"
-                          />
-                        )}
-
-                        <div>
-                          <div className="font-medium text-[var(--color-text)]">
-                            {employeeName || "Unknown employee"}
-                          </div>
-                          <div className="text-xs text-[var(--color-muted)]">
-                            {a.display || "—"}
-                          </div>
-                          {(a.city || a.state || a.zip) && (
-                            <div className="text-[11px] text-[var(--color-muted)]">
-                              {[a.city, a.state, a.zip]
-                                .filter(Boolean)
-                                .join(", ")}
+                        return (
+                          <li
+                            key={p.id}
+                            className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div>
+                              <div className="text-sm font-medium text-[var(--color-text)]">
+                                {employeeName || "Unknown employee"}
+                              </div>
+                              <div className="text-xs text-[var(--color-muted)]">
+                                {a.display || "—"}
+                              </div>
+                              {(a.city || a.state || a.zip) && (
+                                <div className="text-[11px] text-[var(--color-muted)]">
+                                  {[a.city, a.state, a.zip]
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </div>
+                              )}
+                              <div className="mt-1 text-[11px] text-[var(--color-muted)]">
+                                Created {fmtDateTime(p.createdAt)}{" "}
+                                {p.paidAt
+                                  ? `• Paid ${fmtDateTime(p.paidAt)}`
+                                  : "• Pending"}
+                              </div>
                             </div>
-                          )}
 
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-muted)]">
-                            <span className={statusClasses}>{statusLabel}</span>
-                            {p.createdAt && (
-                              <span>
-                                Created: {fmtDateTime(p.createdAt as any)}
-                              </span>
-                            )}
-                            {p.paidAt && (
-                              <span>Paid: {fmtDateTime(p.paidAt as any)}</span>
-                            )}
-                            {p.category && (
-                              <span className="rounded-full bg-gray-100 px-2 py-0.5">
-                                {(p as any).category}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <div className="text-[11px] text-[var(--color-muted)]">
+                                  Amount
+                                </div>
+                                <div className="text-sm font-semibold text-[var(--color-text)]">
+                                  {money(amountCents)}
+                                </div>
+                              </div>
 
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-emerald-600">
-                          {money((p as any).amountCents)}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                              {payoutFilter === "pending" && (
+                                <label className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-accent)]"
+                                    checked={isSelected}
+                                    onChange={() => togglePayoutSelected(p.id)}
+                                  />
+                                  Select
+                                </label>
+                              )}
+
+                              {!isPending && (
+                                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-700">
+                                  Paid
+                                </span>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+              </div>
             )}
           </section>
         </motion.div>
