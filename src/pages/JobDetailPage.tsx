@@ -400,11 +400,6 @@ export default function JobDetailPage() {
     }
   }
 
-  // ---- Status mutation ----
-  async function setStatus(status: JobStatus) {
-    if (!job) return;
-    await saveJob({ ...job, status });
-  }
   async function confirmMarkPunched() {
     if (!job) return;
     const now = Timestamp.now();
@@ -767,13 +762,20 @@ export default function JobDetailPage() {
 
             <button
               type="button"
+              disabled={!!job.punchedAt || job.status === "completed"}
               onClick={() => {
+                if (job.punchedAt || job.status === "completed") return;
                 setSchedulePunchOpen(true);
-                // pre-fill with existing date or today
+
                 const base = job.punchScheduledFor ?? new Date();
                 setSchedulePunchDate(toYMD(base));
               }}
-              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              className={
+                "rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs " +
+                (job.punchedAt || job.status === "completed"
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60"
+                  : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+              }
             >
               Schedule punch
             </button>
@@ -891,13 +893,6 @@ export default function JobDetailPage() {
                     className="shrink-0 rounded-full shadow-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 p-2 hover:bg-[var(--color-card-hover)]"
                   >
                     <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setInvoiceModalOpen(true)}
-                    className="rounded-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 shadow-md"
-                    title="Create invoice or receipt"
-                  >
-                    Create Invoice / Receipt
                   </button>
                 </div>
               </div>
@@ -1536,12 +1531,6 @@ export default function JobDetailPage() {
           Permanent deletion removes it forever.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            onClick={() => setStatus("archived")}
-            className="rounded-md border border-red-200 bg-white px-3 py-2 text-sm text-red-700 hover:bg-red-100"
-          >
-            Archive job
-          </button>
           <button
             onClick={permanentlyDeleteJob}
             className="rounded-md bg-red-700 px-3 py-2 text-sm text-white hover:bg-red-600"

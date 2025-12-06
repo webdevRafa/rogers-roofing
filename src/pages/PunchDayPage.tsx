@@ -163,7 +163,7 @@ export default function PunchDayPage() {
     <div className="mx-auto w-[min(900px,94vw)] py-8 pt-24">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text)]">
+          <h1 className="text-2xl font-semibold font-poppins text-[var(--color-text)]">
             Punches for {displayDate}
           </h1>
           <p className="text-xs text-[var(--color-muted)]">

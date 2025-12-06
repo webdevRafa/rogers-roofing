@@ -558,7 +558,7 @@ export default function JobsPage() {
   return (
     <>
       <div>
-        <div className="bg-gradient-to-b from-cyan-900 to-[var(--color-logo)]">
+        <div className="bg-gradient-to-b from-[var(--color-primary)] to-[var(--color-logo)]">
           <nav className="top-0 z-10 backdrop-blur">
             <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 md:px-0">
               <div className="text-lg md:text-3xl font-poppins text-white  uppercase flex justify-between w-full items-center">
