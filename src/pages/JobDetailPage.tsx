@@ -66,6 +66,8 @@ function statusClasses(status: JobStatus) {
       return "bg-blue-100 text-blue-700";
     case "paid":
       return "bg-emerald-100 text-emerald-700";
+    case "completed": // ← NEW
+      return "bg-emerald-100 text-emerald-700";
     case "closed":
       return "bg-gray-200 text-gray-700";
     case "archived":
@@ -145,6 +147,7 @@ export default function JobDetailPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [schedulePunchOpen, setSchedulePunchOpen] = useState(false);
   const [schedulePunchDate, setSchedulePunchDate] = useState<string>("");
+  const [confirmPunchedOpen, setConfirmPunchedOpen] = useState(false);
 
   const activeEmployees = useMemo(
     () => employees.filter((e) => e.isActive !== false),
@@ -401,6 +404,17 @@ export default function JobDetailPage() {
   async function setStatus(status: JobStatus) {
     if (!job) return;
     await saveJob({ ...job, status });
+  }
+  async function confirmMarkPunched() {
+    if (!job) return;
+    const now = Timestamp.now();
+    await saveJob({
+      ...job,
+      status: "completed", // mark job as completed
+      punchedAt: now,
+      punchScheduledFor: null, // clear any scheduled date
+    });
+    setConfirmPunchedOpen(false);
   }
 
   // ---- Mutations ----
@@ -767,16 +781,7 @@ export default function JobDetailPage() {
             {!job.punchedAt && (
               <button
                 type="button"
-                onClick={async () => {
-                  if (!job) return;
-                  const now = Timestamp.now();
-                  await saveJob({
-                    ...job,
-                    status: "closed", // mark job as complete
-                    punchedAt: now,
-                    punchScheduledFor: null, // optional: clear schedule
-                  });
-                }}
+                onClick={() => setConfirmPunchedOpen(true)}
                 className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
               >
                 Mark as punched
@@ -1471,6 +1476,49 @@ export default function JobDetailPage() {
                 className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ===== Confirm Mark as Punched Modal ===== */}
+      {confirmPunchedOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                Confirm job completion
+              </h2>
+              <button
+                type="button"
+                onClick={() => setConfirmPunchedOpen(false)}
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-[var(--color-muted)]">
+              Are you sure this house has been fully punched and the job is
+              complete? This will mark the job as{" "}
+              <span className="font-semibold">completed</span>.
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmPunchedOpen(false)}
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmMarkPunched}
+                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+              >
+                Yes, mark completed
               </button>
             </div>
           </div>

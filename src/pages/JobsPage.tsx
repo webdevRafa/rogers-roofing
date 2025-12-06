@@ -57,6 +57,8 @@ function statusClasses(status: JobStatus) {
       return "bg-blue-100 text-blue-700";
     case "paid":
       return "bg-emerald-100 text-emerald-700";
+    case "completed": // ← NEW
+      return "bg-emerald-100 text-emerald-700";
     case "closed":
       return "bg-gray-200 text-gray-700";
     case "archived":
@@ -102,7 +104,7 @@ type PayoutFilter = "all" | "pending" | "paid";
 
 // Support all statuses + "all" filter
 type StatusFilter = "all" | JobStatus;
-const STATUS_OPTIONS: JobStatus[] = ["pending", "paid"];
+const STATUS_OPTIONS: JobStatus[] = ["pending", "completed"];
 
 // Small util: yyyy-mm-dd from Date
 const toYMD = (d: Date) => d.toISOString().slice(0, 10);

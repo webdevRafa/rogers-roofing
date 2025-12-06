@@ -214,6 +214,7 @@ export type JobStatus =
   | "invoiced"
   | "paid"
   | "closed"
+  | "completed"
   | "archived";
 
 export type JobComputed = {
