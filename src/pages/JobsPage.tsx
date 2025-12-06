@@ -558,7 +558,7 @@ export default function JobsPage() {
   return (
     <>
       <div>
-        <div className="bg-gradient-to-b from-[var(--color-primary)] to-[var(--color-logo)]">
+        <div className="bg-gradient-to-tr from-[var(--color-logo)] via-red-950 to-[var(--color-logo)]">
           <nav className="top-0 z-10 backdrop-blur">
             <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 md:px-0">
               <div className="text-lg md:text-3xl font-poppins text-white  uppercase flex justify-between w-full items-center">
@@ -571,6 +571,37 @@ export default function JobsPage() {
               </div>
             </div>
           </nav>
+        </div>
+
+        {/* MAIN NAV BUTTONS */}
+        <div className="max-w-[1200px] mx-auto mt-5 flex gap-5 justify-center">
+          <button
+            onClick={() => navigate("/employees")}
+            className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+          >
+            Employees
+          </button>
+          <button
+            onClick={() => setOpenForm((v) => !v)}
+            className=" rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-xs"
+          >
+            + New Job
+          </button>
+          <button
+            onClick={() => navigate("/punches")}
+            className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+          >
+            Punch calendar
+          </button>
+
+          <button
+            onClick={handleLogout}
+            disabled={signingOut}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-red-100 disabled:opacity-50"
+            title="Sign out"
+          >
+            {signingOut ? "Signing out…" : "Logout"}
+          </button>
         </div>
         <motion.div
           className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10"
@@ -603,7 +634,7 @@ export default function JobsPage() {
               </button>
             </div>
 
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-row gap-2 sm:flex-row sm:items-center">
               {/* Search toggle */}
               <div className="relative">
                 <button
@@ -636,7 +667,7 @@ export default function JobsPage() {
               </div>
 
               {/* ✅ NEW: Filter dates toggle + active-chip */}
-              <div className="flex items-center gap-2">
+              <div>
                 <button
                   onClick={() => setShowFilters((v) => !v)}
                   className="inline-flex items-center justify-center rounded-xl  px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
@@ -667,34 +698,6 @@ export default function JobsPage() {
                   </div>
                 )}
               </div>
-
-              <button
-                onClick={() => navigate("/employees")}
-                className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Employees
-              </button>
-              <button
-                onClick={() => setOpenForm((v) => !v)}
-                className=" rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-sm"
-              >
-                + New Job
-              </button>
-              <button
-                onClick={() => navigate("/punches")}
-                className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Punch calendar
-              </button>
-
-              <button
-                onClick={handleLogout}
-                disabled={signingOut}
-                className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-text)] hover:bg-red-100 disabled:opacity-50"
-                title="Sign out"
-              >
-                {signingOut ? "Signing out…" : "Logout"}
-              </button>
             </div>
           </motion.header>
 
