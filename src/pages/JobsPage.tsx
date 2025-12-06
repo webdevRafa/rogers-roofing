@@ -1034,7 +1034,7 @@ export default function JobsPage() {
           <section className="mt-10 rounded-2xl bg-[var(--color-card)] p-4 sm:p-6 shadow-md">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-[var(--color-text)]">
+                <h2 className="text-2xl font-semibold text-[var(--color-text)]">
                   Payouts
                 </h2>
                 <p className="mt-1 text-xs text-[var(--color-muted)]">
@@ -1228,31 +1228,26 @@ function GlobalPayoutStubModal({
         {/* Header */}
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-wider text-gray-500">
-              Payout Stub
-            </div>
             <h2 className="text-2xl font-semibold">
               Roger&apos;s Roofing &amp; Contracting LLC
             </h2>
             {/* Static company address */}
-            <p className="mt-1 text-sm text-gray-600">3618 Angus Crossing</p>
-            <p className="mt-0 text-xs text-gray-600">
-              San Antonio, Texas 75245
-            </p>
+            <h1>3618 Angus Crossing</h1>
+            <p className="mt-0 text-xs">San Antonio, Texas 75245</p>
 
             {/* Dynamic employee info */}
             {employee && (
               <>
-                <p className="mt-3 text-sm text-gray-600">
-                  Stub for: <span className="font-medium">{employee.name}</span>
-                </p>
+                <h1 className="mt-3 mb-0 text-lg">
+                  <span className="font-medium">{employee.name}</span>
+                </h1>
                 {empAddr && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <h1 className="mt-[-3px] text-md">
                     {empAddr.fullLine ||
                       [empAddr.line1, empAddr.city, empAddr.state, empAddr.zip]
                         .filter(Boolean)
                         .join(", ")}
-                  </p>
+                  </h1>
                 )}
               </>
             )}
