@@ -10,12 +10,14 @@ import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import PunchCalendarPage from "./pages/PunchCalendarPage";
 import PunchDayPage from "./pages/PunchDayPage";
+import ScrollToTop from "./components/ScrollToTop"; // ⬅️ ADD THIS
 
 export default function App() {
   return (
     <>
       <div className="relative z-30 min-h-[1000px] bg-neutral-100 ">
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             <Route
               path="/jobs"
