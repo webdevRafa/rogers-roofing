@@ -1170,6 +1170,7 @@ export default function JobsPage() {
                         const isPending = !p.paidAt;
                         const isSelected = selectedPayoutIds.includes(p.id);
                         const amountCents = (p as any).amountCents ?? 0;
+                        const jobId = (p as any).jobId as string | undefined;
 
                         return (
                           <li
@@ -1207,6 +1208,17 @@ export default function JobsPage() {
                                   {money(amountCents)}
                                 </div>
                               </div>
+
+                              {/* View Job button (if payout has a jobId) */}
+                              {jobId && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/job/${jobId}`)}
+                                  className="rounded-md border border-[var(--color-border)] px-3 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                                >
+                                  View Job
+                                </button>
+                              )}
 
                               {/* Status pill on the right */}
                               {isPending ? (
