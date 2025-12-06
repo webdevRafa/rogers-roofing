@@ -80,7 +80,7 @@ export default function EmployeesPage() {
 
   return (
     <>
-      <div className="bg-gradient-to-b from-indigo-900 to-[var(--color-logo)] py-15 px-4 md:px-0">
+      <div className="bg-gradient-to-b from-cyan-900 to-[var(--color-logo)] py-15 px-4 md:px-0">
         <div className="max-w-[1200px] mx-auto">
           <h1 className="text-4xl font-semibold text-white">Employees</h1>
           <button
@@ -106,7 +106,7 @@ export default function EmployeesPage() {
               <button
                 onClick={createEmployee}
                 disabled={creating || !name.trim()}
-                className="rounded-lg bg-gradient-to-b from-indigo-900 to-[var(--color-logo)] px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
+                className="rounded-lg bg-gradient-to-b from-emerald-900 to-[var(--color-logo)] px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
               >
                 {creating ? "Saving…" : "Add"}
               </button>
