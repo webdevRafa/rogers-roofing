@@ -1256,7 +1256,7 @@ function GlobalPayoutStubModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100"
+              className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 print:hidden"
             >
               Close
             </button>
@@ -1318,7 +1318,7 @@ function GlobalPayoutStubModal({
         {/* Totals + actions (same as EmployeeDetailPage stub) */}
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-gray-700">
-            <div>
+            <div className="print:hidden">
               <span className="font-medium">Number of payouts:</span>{" "}
               {payouts.length}
             </div>
@@ -1331,7 +1331,7 @@ function GlobalPayoutStubModal({
             <button
               type="button"
               onClick={() => window.print()}
-              className="rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+              className="rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 print:hidden"
             >
               Print / Save PDF
             </button>
@@ -1339,7 +1339,7 @@ function GlobalPayoutStubModal({
               type="button"
               onClick={onConfirmPaid}
               disabled={saving}
-              className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+              className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 print:hidden"
             >
               {saving ? "Marking as paid…" : "Mark all as paid"}
             </button>

@@ -14,7 +14,7 @@ import PunchDayPage from "./pages/PunchDayPage";
 export default function App() {
   return (
     <>
-      <div className="relative z-30 min-h-[1000px] bg-black/4">
+      <div className="relative z-30 min-h-[1000px] ">
         <BrowserRouter>
           <Routes>
             <Route
