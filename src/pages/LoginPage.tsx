@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import roofing from "../assets/roofing.webp";
 import logo from "../assets/rogers-roofing.webp";
+import { Eye, EyeOff } from "lucide-react";
 
 // Assumes you export `auth` from ../firebase/firebaseConfig
 import { auth } from "../firebase/firebaseConfig";
@@ -16,6 +17,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleEmailLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,17 +40,14 @@ const LoginPage = () => {
 
   return (
     <>
-      <div className="w-full h-[100vh] flex items-center justify-center relative px-4 bg-amber-50/50">
+      <div className="w-full h-[100vh] flex items-center justify-center relative px-4 ">
         {/* login box */}
-        <div className="bg-[var(--color-card)] shadow-md w-full max-w-[380px] pb-6 rounded-2xl border-2 border-white">
+        <div className="bg-[var(--color-card)] shadow-md w-full max-w-[380px] pb-6  border-2 border-white">
           <img
             className="max-w-[200px] mx-auto mb-0"
             src={logo}
             alt="Rogers Roofing"
           />
-          <h1 className="text-center mt-0 mb-4 tracking-wide uppercase text-lg opacity-80 font-poppin">
-            admin login
-          </h1>
 
           {/* Error */}
           {err && (
@@ -85,22 +84,40 @@ const LoginPage = () => {
               >
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg bg-neutral-100 border border-white/10 px-3 py-2 outline-none focus:border-white/30"
-                placeholder="••••••••"
-              />
+
+              {/* Wrapper so we can position the eye icon inside the input */}
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-lg bg-neutral-100 border border-white/10 px-3 py-2 pr-10 outline-none focus:border-white/30"
+                  placeholder="••••••••"
+                />
+
+                {/* Eye toggle button */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-500 hover:text-neutral-800 focus:outline-none"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full mt-2 rounded-lg px-4 py-2.5 font-medium bg-[var(--color-logo)] text-white hover:bg-[var(--color-primary)] transition disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full mt-2 rounded-lg px-4 py-2.5 text-xs bg-[var(--color-logo)] text-white hover:bg-[var(--color-primary)] transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? "Signing in…" : "Sign in"}
             </button>
