@@ -679,7 +679,7 @@ export default function JobsPage() {
         >
           {/* Header */}
           <motion.header
-            className="mb-4 sm:mb-6 flex flex-wrap items-center justify-start gap-2 max-w-[800px]"
+            className="mb-4 sm:mb-6 flex flex-wrap bg-white/60 hover:bg-white transition duration-300 ease-in-out p-6 rounded-lg shadow-md items-center justify-start gap-2 w-full"
             {...fadeUp(0)}
           >
             <div className="flex items-center gap-2">
@@ -1141,7 +1141,7 @@ export default function JobsPage() {
           )}
 
           {/* ====== PAYOUTS (all employees) ====== */}
-          <section className="mt-10 rounded-2xl bg-[var(--color-card)] p-4 sm:p-6 shadow-md">
+          <section className="mt-10 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md">
             {/* Header + controls */}
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
@@ -1153,7 +1153,7 @@ export default function JobsPage() {
                     <button
                       type="button"
                       onClick={() => setPayoutsOpen((v) => !v)}
-                      className="ml-1 inline-flex items-center rounded-full border border-[var(--color-border)] bg-white/70 px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                      className="ml-1 inline-flex items-center text-xs rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] px-2 py-1 text-white "
                     >
                       <ChevronDown
                         className={`h-4 w-4 transition-transform ${
