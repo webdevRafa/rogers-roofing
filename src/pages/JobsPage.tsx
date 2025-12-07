@@ -1431,14 +1431,19 @@ function GlobalPayoutStubModal({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
       <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
         {/* Header */}
-        <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="mb-4 flex  items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold">
-              Roger&apos;s Roofing &amp; Contracting LLC
-            </h2>
-            {/* Static company address */}
-            <h1>3618 Angus Crossing</h1>
-            <p className="mt-0 text-xs">San Antonio, Texas 75245</p>
+            <div className="flex gap-2 items-center">
+              <img src={logo} className="max-w-[100px]" alt="" />
+              <div>
+                <h2 className="text-2xl font-semibold">
+                  Roger&apos;s Roofing &amp; Contracting LLC
+                </h2>
+                {/* Static company address */}
+                <h1>3618 Angus Crossing</h1>
+                <p className="mt-0 text-xs">San Antonio, Texas 75245</p>
+              </div>
+            </div>
 
             {/* Dynamic employee info */}
             {employee && (
