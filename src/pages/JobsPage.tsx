@@ -1069,29 +1069,31 @@ export default function JobsPage() {
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <div>
-                  <h2 className="text-2xl font-semibold text-[var(--color-text)]">
-                    Payouts
-                  </h2>
+                  <div className="flex gap-5">
+                    <h2 className="text-2xl font-semibold text-[var(--color-text)]">
+                      Payouts
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setPayoutsOpen((v) => !v)}
+                      className="ml-1 inline-flex items-center rounded-full border border-[var(--color-border)] bg-white/70 px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                    >
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${
+                          payoutsOpen ? "rotate-0" : "-rotate-90"
+                        }`}
+                      />
+                      <span className="ml-1 hidden sm:inline">
+                        {payoutsOpen ? "Collapse" : "Expand"}
+                      </span>
+                    </button>
+                  </div>
+
                   <p className="mt-1 text-xs text-[var(--color-muted)]">
                     View payouts across all employees. Use the Pending tab to
                     select payouts, generate a stub, and mark them as paid.
                   </p>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setPayoutsOpen((v) => !v)}
-                  className="ml-1 inline-flex items-center rounded-full border border-[var(--color-border)] bg-white/70 px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                >
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      payoutsOpen ? "rotate-0" : "-rotate-90"
-                    }`}
-                  />
-                  <span className="ml-1 hidden sm:inline">
-                    {payoutsOpen ? "Collapse" : "Expand"}
-                  </span>
-                </button>
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
