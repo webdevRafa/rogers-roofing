@@ -640,19 +640,6 @@ export default function JobsPage() {
             </span>
           </button>
 
-          {/* Add New Job */}
-          <button
-            onClick={() => setOpenForm((v) => !v)}
-            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
-            aria-label="Add New Job"
-          >
-            <SquarePlus className="h-4 w-4" />
-
-            <span className="pointer-events-none w-[80px] absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-              Add New Job
-            </span>
-          </button>
-
           {/* Punch Calendar */}
           <button
             onClick={() => navigate("/punches")}
@@ -776,6 +763,19 @@ export default function JobsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Add New Job */}
+              <button
+                onClick={() => setOpenForm((v) => !v)}
+                className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80  text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+                aria-label="Add New Job"
+              >
+                <SquarePlus className="h-4 w-4" />
+
+                <span className="pointer-events-none w-[80px] absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+                  Add New Job
+                </span>
+              </button>
             </div>
           </motion.header>
 

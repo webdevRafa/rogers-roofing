@@ -85,9 +85,9 @@ export default function EmployeesPage() {
           <h1 className="text-4xl font-semibold text-white">Employees</h1>
           <button
             onClick={() => navigate("/jobs")}
-            className="text-sm text-neutral-200 hover:underline"
+            className="text-sm text-neutral-200 hover:underline cursor-pointer"
           >
-            ← Back to Jobs
+            ← Back to Home
           </button>
         </div>
       </div>
@@ -106,7 +106,7 @@ export default function EmployeesPage() {
               <button
                 onClick={createEmployee}
                 disabled={creating || !name.trim()}
-                className="rounded-lg bg-gradient-to-b from-emerald-900 to-[var(--color-logo)] px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
+                className="rounded-lg bg-gradient-to-b from-cyan-900 to-[var(--color-logo)] px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
               >
                 {creating ? "Saving…" : "Add"}
               </button>

@@ -722,7 +722,11 @@ export default function JobDetailPage() {
             to="/jobs"
             className="text-sm text-[var(--color-primary)] hover:underline"
           >
-            &larr; Back
+            <div className="flex items-center gap-1">
+              <ChevronLeft size="30" />
+
+              <p className="text-[var(--color-primary)]">back to jobs</p>
+            </div>
           </Link>
           <h1 className="mt-2 text-4xl font-bold uppercase text-[var(--color-logo)]">
             {job.address?.fullLine}
