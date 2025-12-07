@@ -762,11 +762,8 @@ export default function JobsPage() {
 
           {/* Create Job form */}
           {openForm && (
-            <motion.section
-              className="mb-4 shadow-md  p-4 bg-[var(--color-brown)]/10"
-              {...fadeUp(0.08)}
-            >
-              <div className="flex w-full flex-col justify-center gap-2 sm:flex-row sm:gap-3">
+            <motion.section className="mb-4 shadow-md  p-4 " {...fadeUp(0.08)}>
+              <div className="flex w-full flex-col justify-start gap-2 sm:flex-row sm:gap-3">
                 <input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
@@ -777,7 +774,7 @@ export default function JobsPage() {
                   <button
                     onClick={createJob}
                     disabled={loading}
-                    className="w-full sm:w-auto  bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-sm  disabled:opacity-50"
+                    className="w-full sm:w-auto  bg-[var(--color-brown)] transition duration-300 ease-in-out text-white px-4 py-1.5 text-sm  disabled:opacity-50"
                   >
                     {loading ? "Saving..." : "Create"}
                   </button>
