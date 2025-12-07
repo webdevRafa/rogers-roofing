@@ -27,7 +27,15 @@ import { getAuth, signOut } from "firebase/auth";
 
 import { motion, AnimatePresence, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
-import { Search, Filter, ChevronDown } from "lucide-react";
+import {
+  Search,
+  Filter,
+  ChevronDown,
+  LogOut,
+  CalendarDays,
+  SquarePlus,
+  Users,
+} from "lucide-react";
 import logo from "../assets/rogers-roofing.webp";
 
 // ---------- Animation helpers ----------
@@ -558,7 +566,7 @@ export default function JobsPage() {
   return (
     <>
       <div>
-        <div className="bg-gradient-to-tr from-[var(--color-logo)] via-red-950 to-[var(--color-logo)]">
+        <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
           <nav className="top-0 z-10 backdrop-blur">
             <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 md:px-0">
               <div className="text-lg md:text-3xl font-poppins text-white  uppercase flex justify-between w-full items-center">
@@ -579,28 +587,28 @@ export default function JobsPage() {
             onClick={() => navigate("/employees")}
             className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
           >
-            Employees
+            <Users />
           </button>
           <button
             onClick={() => setOpenForm((v) => !v)}
-            className=" rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-xs"
+            className=" rounded-lg bg-[var(--color-brown)] hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-xs"
           >
-            + New Job
+            <SquarePlus />
           </button>
           <button
             onClick={() => navigate("/punches")}
             className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
           >
-            Punch calendar
+            <CalendarDays />
           </button>
 
           <button
             onClick={handleLogout}
             disabled={signingOut}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-red-100 disabled:opacity-50"
+            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-primary)] disabled:opacity-50"
             title="Sign out"
           >
-            {signingOut ? "Signing out…" : "Logout"}
+            <LogOut />
           </button>
         </div>
         <motion.div
