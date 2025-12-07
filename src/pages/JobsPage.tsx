@@ -978,14 +978,15 @@ export default function JobsPage() {
 
               {/* ====== DESKTOP TABLE (sm and up) ====== */}
               <motion.div
-                className="hidden sm:block rounded-tr-2xl  shadow-md  bg-[var(--color-card)] overflow-hidden"
+                className="hidden sm:block rounded-tr-2xl shadow-md bg-[var(--color-card)] "
                 variants={staggerParent}
                 initial="initial"
                 animate="animate"
               >
-                <div className="overflow-x-auto">
+                {/* This is now the vertical scroll container for the table */}
+                <div className="max-h-[420px] overflow-y-auto overflow-x-auto section-scroll">
                   <table className="w-full text-sm">
-                    <thead className="sticky  top-0 z-10 bg-white/90 text-[var(--color-muted)] backdrop-blur border-b border-[var(--color-border)]/60">
+                    <thead className="sticky top-0 z-10 bg-white/90 text-[var(--color-muted)] backdrop-blur border-b border-[var(--color-border)]/60">
                       <tr>
                         <th className="text-left px-4 py-3">Address</th>
                         <th className="text-left px-4 py-3">Status</th>
@@ -996,6 +997,7 @@ export default function JobsPage() {
                         <th className="text-right px-4 py-3">Actions</th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {pagedJobs.map((job, idx) => {
                         const a = addr(job.address);
@@ -1095,6 +1097,7 @@ export default function JobsPage() {
                   </table>
                 </div>
               </motion.div>
+
               {/* Jobs pagination controls */}
               {filteredJobs.length > 0 && (
                 <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-muted)]">
