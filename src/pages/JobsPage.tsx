@@ -887,78 +887,42 @@ export default function JobsPage() {
                   return (
                     <div
                       key={job.id}
-                      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+                      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-medium text-[var(--color-text)]">
+                      <div className="flex items-center gap-2">
+                        {/* Address (left, truncated) */}
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate text-sm font-medium text-[var(--color-text)]">
                             {a.display || "—"}
                           </div>
-                          {(a.city || a.state || a.zip) && (
-                            <div className="text-xs text-[var(--color-muted)]">
-                              {[a.city, a.state, a.zip]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </div>
-                          )}
                         </div>
+
+                        {/* Status pill */}
                         <span
-                          className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase ${statusClasses(
+                          className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase ${statusClasses(
                             job.status
                           )}`}
                         >
                           {job.status}
                         </span>
-                      </div>
 
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                        <div className="rounded-lg bg-white/60 p-2">
-                          <div className="text-[var(--color-muted)] text-xs">
-                            Earnings
-                          </div>
-                          <div className="font-medium">
-                            <CountMoney
-                              cents={job.earnings?.totalEarningsCents ?? 0}
-                            />
-                          </div>
+                        {/* Net profit */}
+                        <div
+                          className={
+                            (job.computed?.netProfitCents ?? 0) >= 0
+                              ? "shrink-0 text-xs font-semibold text-emerald-600"
+                              : "shrink-0 text-xs font-semibold text-red-600"
+                          }
+                        >
+                          <CountMoney
+                            cents={job.computed?.netProfitCents ?? 0}
+                          />
                         </div>
-                        <div className="rounded-lg bg-white/60 p-2 text-right">
-                          <div className="text-[var(--color-muted)] text-xs">
-                            Expenses
-                          </div>
-                          <div className="font-medium">
-                            <CountMoney
-                              cents={job.computed?.totalExpensesCents ?? 0}
-                            />
-                          </div>
-                        </div>
-                        <div className="rounded-lg bg-white/60 p-2 col-span-2">
-                          <div className="text-[var(--color-muted)] text-xs">
-                            Net
-                          </div>
-                          <div
-                            className={
-                              (job.computed?.netProfitCents ?? 0) >= 0
-                                ? "text-emerald-600 font-semibold"
-                                : "text-red-600 font-semibold"
-                            }
-                          >
-                            <CountMoney
-                              cents={job.computed?.netProfitCents ?? 0}
-                            />
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="mt-3 text-xs text-[var(--color-muted)]">
-                        <div>Updated {fmtDateTime(job.updatedAt)}</div>
-                        <div>Created {fmtDateTime(job.createdAt)}</div>
-                      </div>
-
-                      <div className="mt-3 text-right">
+                        {/* View button */}
                         <Link
                           to={`/job/${job.id}`}
-                          className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                          className="shrink-0 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
                         >
                           View
                         </Link>
