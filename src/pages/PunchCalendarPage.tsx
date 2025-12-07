@@ -215,12 +215,8 @@ export default function PunchCalendarPage() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-2 text-[11px] text-[var(--color-muted)]">
-                    {count === 0
-                      ? "No punches"
-                      : count === 1
-                      ? "1 punch"
-                      : `${count} punches`}
+                  <div className="mt-2   text-center text-[var(--color-logo)] rounded-sm text-md max-w-[30px] mx-auto py-2">
+                    {count === 0 ? "" : count === 1 ? "1" : `${count} punches`}
                   </div>
                 </button>
               );

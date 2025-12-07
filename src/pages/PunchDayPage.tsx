@@ -263,7 +263,7 @@ export default function PunchDayPage() {
                   type="button"
                   onClick={createJobForDay}
                   disabled={creating || !address.trim()}
-                  className="inline-flex items-center justify-center rounded-lg bg-[var(--color-logo)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-900 disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-lg bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition cursor-pointer disabled:opacity-60"
                 >
                   {creating ? "Creating…" : "Create job"}
                 </button>
