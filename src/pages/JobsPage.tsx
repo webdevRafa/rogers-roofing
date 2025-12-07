@@ -209,6 +209,14 @@ export default function JobsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [signingOut, setSigningOut] = useState(false);
 
+  // Pagination for jobs
+  const [jobsPage, setJobsPage] = useState(1);
+  const JOBS_PER_PAGE = 20;
+
+  // Pagination for payouts
+  const [payoutsPage, setPayoutsPage] = useState(1);
+  const PAYOUTS_PER_PAGE = 20;
+
   // ✅ collapsible sections
   const [jobsOpen, setJobsOpen] = useState(true);
   const [payoutsOpen, setPayoutsOpen] = useState(false);
@@ -378,6 +386,16 @@ export default function JobsPage() {
     });
   }, [jobs, statusFilter, startDate, endDate, searchTerm]);
 
+  // Reset jobs page on jobs/filter changes
+  useEffect(() => {
+    setJobsPage(1);
+  }, [statusFilter, startDate, endDate, datePreset, searchTerm, jobs.length]);
+
+  // Reset payouts page on payouts/filter changes
+  useEffect(() => {
+    setPayoutsPage(1);
+  }, [payoutFilter, payoutSearch, payouts.length]);
+
   const totalNet = useMemo(
     () =>
       filteredJobs.reduce(
@@ -386,6 +404,19 @@ export default function JobsPage() {
       ),
     [filteredJobs]
   );
+
+  // Derive paged data from filtered arrays
+  const jobsTotalPages = Math.max(
+    1,
+    Math.ceil(filteredJobs.length / JOBS_PER_PAGE)
+  );
+
+  const pagedJobs = useMemo(() => {
+    const start = (jobsPage - 1) * JOBS_PER_PAGE;
+    const end = start + JOBS_PER_PAGE;
+    return filteredJobs.slice(start, end);
+  }, [filteredJobs, jobsPage]);
+
   // ---- Filtered payouts (tab + search) ----
   const filteredPayouts = useMemo(() => {
     const term = payoutSearch.trim().toLowerCase();
@@ -416,6 +447,18 @@ export default function JobsPage() {
       return true;
     });
   }, [payouts, payoutFilter, payoutSearch]);
+
+  // Paged Layouts
+  const payoutsTotalPages = Math.max(
+    1,
+    Math.ceil(filteredPayouts.length / PAYOUTS_PER_PAGE)
+  );
+
+  const pagedPayouts = useMemo(() => {
+    const start = (payoutsPage - 1) * PAYOUTS_PER_PAGE;
+    const end = start + PAYOUTS_PER_PAGE;
+    return filteredPayouts.slice(start, end);
+  }, [filteredPayouts, payoutsPage]);
 
   const selectedPayouts = useMemo(
     () => payouts.filter((p) => selectedPayoutIds.includes(p.id)),
@@ -878,7 +921,7 @@ export default function JobsPage() {
 
               {/* ====== MOBILE CARDS (default) ====== */}
               <div className="grid gap-3 sm:hidden">
-                {filteredJobs.map((job) => {
+                {pagedJobs.map((job) => {
                   const a = addr(job.address);
                   return (
                     <div
@@ -926,7 +969,7 @@ export default function JobsPage() {
                     </div>
                   );
                 })}
-                {filteredJobs.length === 0 && (
+                {pagedJobs.length === 0 && (
                   <div className="text-center text-[var(--color-muted)]">
                     No jobs match the current filters.
                   </div>
@@ -954,7 +997,7 @@ export default function JobsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredJobs.map((job, idx) => {
+                      {pagedJobs.map((job, idx) => {
                         const a = addr(job.address);
                         return (
                           <motion.tr
@@ -1038,7 +1081,7 @@ export default function JobsPage() {
                           </motion.tr>
                         );
                       })}
-                      {filteredJobs.length === 0 && (
+                      {pagedJobs.length === 0 && (
                         <tr>
                           <td
                             colSpan={7}
@@ -1052,6 +1095,42 @@ export default function JobsPage() {
                   </table>
                 </div>
               </motion.div>
+              {/* Jobs pagination controls */}
+              {filteredJobs.length > 0 && (
+                <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-muted)]">
+                  <span>
+                    Showing{" "}
+                    {filteredJobs.length === 0
+                      ? 0
+                      : (jobsPage - 1) * JOBS_PER_PAGE + 1}{" "}
+                    – {Math.min(jobsPage * JOBS_PER_PAGE, filteredJobs.length)}{" "}
+                    of {filteredJobs.length} jobs
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={jobsPage === 1}
+                      onClick={() => setJobsPage((p) => Math.max(1, p - 1))}
+                      className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
+                    >
+                      Prev
+                    </button>
+                    <span>
+                      Page {jobsPage} / {jobsTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={jobsPage === jobsTotalPages}
+                      onClick={() =>
+                        setJobsPage((p) => Math.min(jobsTotalPages, p + 1))
+                      }
+                      className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1152,7 +1231,7 @@ export default function JobsPage() {
                 )}
                 {!payoutsLoading &&
                   !payoutsError &&
-                  filteredPayouts.length === 0 && (
+                  pagedPayouts.length === 0 && (
                     <p className="text-sm text-[var(--color-muted)]">
                       No payouts match the current filters.
                     </p>
@@ -1161,9 +1240,9 @@ export default function JobsPage() {
                 {/* List */}
                 {!payoutsLoading &&
                   !payoutsError &&
-                  filteredPayouts.length > 0 && (
+                  pagedPayouts.length > 0 && (
                     <ul className="divide-y divide-[var(--color-border)] rounded-xl bg-white/70">
-                      {filteredPayouts.map((p) => {
+                      {pagedPayouts.map((p) => {
                         const a = addr((p as any).jobAddressSnapshot as any);
                         const employeeName = payoutEmployeeName(p);
                         const isPending = !p.paidAt;
@@ -1248,6 +1327,50 @@ export default function JobsPage() {
                       })}
                     </ul>
                   )}
+                {/* Payouts pagination controls */}
+                {filteredPayouts.length > 0 && (
+                  <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-muted)]">
+                    <span>
+                      Showing{" "}
+                      {filteredPayouts.length === 0
+                        ? 0
+                        : (payoutsPage - 1) * PAYOUTS_PER_PAGE + 1}{" "}
+                      –{" "}
+                      {Math.min(
+                        payoutsPage * PAYOUTS_PER_PAGE,
+                        filteredPayouts.length
+                      )}{" "}
+                      of {filteredPayouts.length} payouts
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={payoutsPage === 1}
+                        onClick={() =>
+                          setPayoutsPage((p) => Math.max(1, p - 1))
+                        }
+                        className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
+                      >
+                        Prev
+                      </button>
+                      <span>
+                        Page {payoutsPage} / {payoutsTotalPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={payoutsPage === payoutsTotalPages}
+                        onClick={() =>
+                          setPayoutsPage((p) =>
+                            Math.min(payoutsTotalPages, p + 1)
+                          )
+                        }
+                        className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </section>
