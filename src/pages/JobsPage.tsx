@@ -689,7 +689,7 @@ export default function JobsPage() {
               <button
                 type="button"
                 onClick={() => setJobsOpen((v) => !v)}
-                className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-white/70 px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                className={`inline-flex bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-xs text-white `}
               >
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${
@@ -792,7 +792,7 @@ export default function JobsPage() {
                   className={[
                     "whitespace-nowrap px-3 py-1 text-xs uppercase tracking-wide transition-colors",
                     statusFilter === f
-                      ? "bg-cyan-800 hover:bg-cyan-700 border-transparent text-white shadow-sm"
+                      ? "bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] border-transparent text-white shadow-sm"
                       : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
                   ].join(" ")}
                 >
@@ -912,12 +912,12 @@ export default function JobsPage() {
             <div className="mt-2 section-scroll space-y-4">
               {/* Totals */}
               <motion.div
-                className="mb-0 rounded-tr-2xl p-2 text-md max-w-[400px] shadow-md bg-gray-50/35  text-[var(--color-text)]"
+                className="mb-0 rounded-tr-2xl p-2 text-sm max-w-[400px] shadow-md bg-gray-50/35  text-[var(--color-text)]"
                 {...fadeUp(0.1)}
               >
                 Total net across {filteredJobs.length} job
                 {filteredJobs.length === 1 ? "" : "s"}:{" "}
-                <span className="font-bold text-emerald-600">
+                <span className="font-semibold text-emerald-600">
                   <CountMoney cents={totalNet} />
                 </span>
               </motion.div>
