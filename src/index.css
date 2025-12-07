@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+.section-scroll {
+  max-height: 24rem;       /* ~384px, tweak as you like */
+  overflow-y: auto;        /* enable vertical scrolling when content exceeds max-height */
+  padding-right: 0.25rem;  /* tiny breathing room next to scrollbar */
+}
+
+/* Optional: hide scrollbar on WebKit (Chrome/Safari) while keeping scrollability */
+.section-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.section-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+.section-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
 :root {
   --color-background: #FFFFFF;
   --color-surface: #ECECE9;

@@ -639,7 +639,7 @@ export default function JobsPage() {
         </div>
 
         <motion.div
-          className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10"
+          className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10 "
           variants={staggerParent}
           initial="initial"
           animate="animate"
@@ -736,29 +736,25 @@ export default function JobsPage() {
             </div>
           </motion.header>
 
-          {/* Status Filters (scrollable on mobile) */}
-          <motion.div
-            className="mb-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            {...fadeUp(0.05)}
-          >
-            {filters.map((f) => (
-              <motion.button
-                key={f}
-                onClick={() => setStatusFilter(f)}
-                className={[
-                  "whitespace-nowrap   px-3 py-1 text-xs uppercase tracking-wide transition-colors",
-                  statusFilter === f
-                    ? "bg-cyan-800 hover:bg-cyan-700 border-transparent text-white shadow-sm"
-                    : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
-                ].join(" ")}
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                variants={item}
-              >
-                {f}
-              </motion.button>
-            ))}
-          </motion.div>
+          {/* Status Filters (scrollable on mobile) – only when My Jobs is expanded */}
+          {jobsOpen && (
+            <div className="mb-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {filters.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setStatusFilter(f)}
+                  className={[
+                    "whitespace-nowrap px-3 py-1 text-xs uppercase tracking-wide transition-colors",
+                    statusFilter === f
+                      ? "bg-cyan-800 hover:bg-cyan-700 border-transparent text-white shadow-sm"
+                      : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
+                  ].join(" ")}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Create Job form */}
           {openForm && (
@@ -870,7 +866,7 @@ export default function JobsPage() {
             <div className="mt-2 section-scroll space-y-4">
               {/* Totals */}
               <motion.div
-                className="mb-0 rounded-tr-2xl p-2 text-xl font-semibold max-w-[400px] shadow-md bg-gray-50/35  text-[var(--color-text)]"
+                className="mb-0 rounded-tr-2xl p-2 text-md max-w-[400px] shadow-md bg-gray-50/35  text-[var(--color-text)]"
                 {...fadeUp(0.1)}
               >
                 Total net across {filteredJobs.length} job
