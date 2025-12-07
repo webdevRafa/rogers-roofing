@@ -16,6 +16,7 @@ import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import type { Employee, EmployeeAddress, PayoutDoc } from "../types/types";
 import { ChevronDown, ChevronLeft } from "lucide-react";
+import logo from "../assets/rogers-roofing.webp";
 
 // ---------- Small helpers ----------
 
@@ -624,46 +625,56 @@ function PayoutStubModal({
   onMarkPaid: () => Promise<void>;
   saving: boolean;
 }) {
-  const addr = normalizeEmployeeAddress(employee.address);
+  const empAddr = normalizeEmployeeAddress(employee.address);
   const totalCents = payouts.reduce((sum, p) => sum + (p.amountCents ?? 0), 0);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
       <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
+        {/* Header – matches GlobalPayoutStubModal */}
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-wider text-gray-500">
-              Payout Stub
+            <div className="flex items-center gap-2">
+              <img src={logo} className="max-w-[100px]" alt="" />
+              <div>
+                <h2 className="text-2xl font-semibold">
+                  Roger&apos;s Roofing &amp; Contracting LLC
+                </h2>
+                {/* Static company address */}
+                <h1>3618 Angus Crossing</h1>
+                <p className="mt-0 text-xs">San Antonio, Texas 75245</p>
+              </div>
             </div>
-            <h2 className="text-2xl font-semibold">
-              Roger&apos;s Roofing &amp; Contracting LLC
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Stub for: <span className="font-medium">{employee.name}</span>
-            </p>
-            {addr && (
-              <p className="mt-1 text-xs text-gray-500">
-                {addr.fullLine ||
-                  [addr.line1, addr.city, addr.state, addr.zip]
+
+            {/* Dynamic employee info */}
+            <h1 className="mt-3 mb-0 text-lg">
+              <span className="font-medium">{employee.name}</span>
+            </h1>
+            {empAddr && (
+              <h1 className="mt-[-3px] text-md">
+                {empAddr.fullLine ||
+                  [empAddr.line1, empAddr.city, empAddr.state, empAddr.zip]
                     .filter(Boolean)
                     .join(", ")}
-              </p>
+              </h1>
             )}
           </div>
+
           <div className="text-right text-xs text-gray-500">
             <button
+              type="button"
               onClick={onClose}
-              className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100"
+              className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 print:hidden"
             >
               Close
             </button>
           </div>
         </div>
 
-        {/* Table of payouts */}
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-600">
+        {/* Table – ONLY Address / SqCount / Rate / Total (same layout as Global) */}
+        <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
+          <table className="min-w-full text-xs sm:text-sm">
+            <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-3 py-2 text-left">Address</th>
                 <th className="px-3 py-2 text-left">SqCount</th>
@@ -675,13 +686,13 @@ function PayoutStubModal({
               {payouts.map((p) => {
                 const a = normalizeJobAddress(p.jobAddressSnapshot);
                 return (
-                  <tr key={p.id} className="border-t last:border-b-0">
+                  <tr key={p.id} className="border-t border-gray-100">
                     <td className="px-3 py-2 align-top">
                       <div className="font-medium text-gray-900">
                         {a.display || "—"}
                       </div>
                       {(a.city || a.state || a.zip) && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-[11px] text-gray-500">
                           {[a.city, a.state, a.zip].filter(Boolean).join(", ")}
                         </div>
                       )}
@@ -697,7 +708,7 @@ function PayoutStubModal({
                         : "—"}
                     </td>
                     <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-900">
-                      {money(p.amountCents)}
+                      {money(p.amountCents ?? 0)}
                     </td>
                   </tr>
                 );
@@ -706,10 +717,10 @@ function PayoutStubModal({
           </table>
         </div>
 
-        {/* Totals + actions */}
+        {/* Totals + actions – same style as GlobalPayoutStubModal */}
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-gray-700">
-            <div>
+            <div className="print:hidden">
               <span className="font-medium">Number of payouts:</span>{" "}
               {payouts.length}
             </div>
@@ -722,7 +733,7 @@ function PayoutStubModal({
             <button
               type="button"
               onClick={() => window.print()}
-              className="rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+              className="rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 print:hidden"
             >
               Print / Save PDF
             </button>
@@ -730,7 +741,7 @@ function PayoutStubModal({
               type="button"
               onClick={onMarkPaid}
               disabled={saving}
-              className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+              className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 print:hidden"
             >
               {saving ? "Marking as paid…" : "Mark all as paid"}
             </button>
