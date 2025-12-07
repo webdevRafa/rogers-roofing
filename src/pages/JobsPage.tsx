@@ -646,7 +646,7 @@ export default function JobsPage() {
         >
           {/* Header */}
           <motion.header
-            className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-2"
             {...fadeUp(0)}
           >
             <div className="flex items-center gap-2">
