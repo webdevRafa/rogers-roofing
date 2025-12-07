@@ -311,17 +311,12 @@ export default function PunchDayPage() {
               <h3 className="text-sm font-semibold text-[var(--color-text)]">
                 No punches scheduled for this day
               </h3>
-              <p className="max-w-md text-sm text-[var(--color-muted)]">
-                When you schedule jobs to punch on this date, they will appear
-                here. Use the{" "}
-                <span className="font-semibold">“New job for this day”</span>{" "}
-                button above to get started.
-              </p>
+
               {!openForm && (
                 <button
                   type="button"
                   onClick={() => setOpenForm(true)}
-                  className="mt-2 inline-flex items-center gap-2 rounded-full bg-[var(--color-logo)] px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-900"
+                  className="mt-2 inline-flex items-center gap-2 rounded-full bg-[var(--color-brown)] px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-900"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Create job for {displayDate}
