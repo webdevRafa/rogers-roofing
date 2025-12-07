@@ -1525,15 +1525,7 @@ export default function JobDetailPage() {
       )}
 
       {/* ===== Danger zone ===== */}
-      <motion.section
-        className="mt-10 rounded-2xl border border-red-200 bg-red-50 p-4"
-        {...fadeUp(0.27)}
-      >
-        <h3 className="mb-2 text-lg font-semibold text-red-800">Danger zone</h3>
-        <p className="mb-4 text-sm text-red-700">
-          Archiving hides this job from normal views but keeps its history.
-          Permanent deletion removes it forever.
-        </p>
+      <motion.section className="mt-10 rounded-2xl p-4" {...fadeUp(0.27)}>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             onClick={permanentlyDeleteJob}

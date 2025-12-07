@@ -15,7 +15,7 @@ import {
 import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import type { Employee, EmployeeAddress, PayoutDoc } from "../types/types";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft } from "lucide-react";
 
 // ---------- Small helpers ----------
 
@@ -275,15 +275,18 @@ export default function EmployeeDetailPage() {
 
   return (
     <div className="mx-auto w-[min(900px,94vw)] py-8 pt-40">
-      <button
+      <div
         onClick={() => navigate("/employees")}
-        className="mb-4 text-sm text-blue-600 hover:underline"
+        className="flex gap-0 items-center mb-10 cursor-pointer hover:underline group"
       >
-        ← Back to Employees
-      </button>
+        <button className="text-sm text-blue-600 opacity-60 group-hover:opacity-100 transition duration-200 ease-in-out ">
+          <ChevronLeft />
+        </button>
+        <p>Back to Employees</p>
+      </div>
 
       {/* Employee profile card (collapsible) */}
-      <div className="rounded-2xl bg-white/50 shadow">
+      <div className="rounded-2xl bg-white/50 shadow hover:bg-white transition duration-300 ease-in-out">
         {/* Header / toggle */}
         <button
           type="button"
@@ -423,7 +426,7 @@ export default function EmployeeDetailPage() {
       </div>
 
       {/* Payouts section */}
-      <section className="mt-8 rounded-2xl bg-white/50 p-6 shadow">
+      <section className="mt-8 rounded-2xl bg-white/50 hover:bg-white transition duration-300 ease-in-out p-6 shadow">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold">

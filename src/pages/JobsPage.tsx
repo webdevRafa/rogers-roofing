@@ -612,7 +612,7 @@ export default function JobsPage() {
         <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
           <nav className="top-0 z-10 backdrop-blur">
             <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 md:px-0">
-              <div className="text-lg md:text-3xl font-poppins text-white  uppercase flex justify-between w-full items-center">
+              <div className="text-lg md:text-3xl poppins text-white  uppercase flex justify-between w-full items-center">
                 Roger's Roofing & Contracting LLC
                 <img
                   className="max-w-[100px] md:max-w-[150px] rounded-2xl shadow-md"
@@ -680,7 +680,7 @@ export default function JobsPage() {
             {...fadeUp(0)}
           >
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text)]">
+              <h1 className="text-xl sm:text-2xl poppins text-[var(--color-text)]">
                 My Jobs
               </h1>
               <button
@@ -985,7 +985,7 @@ export default function JobsPage() {
               >
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-white/60 text-[var(--color-muted)]">
+                    <thead className="sticky  top-0 z-10 bg-white/90 text-[var(--color-muted)] backdrop-blur border-b border-[var(--color-border)]/60">
                       <tr>
                         <th className="text-left px-4 py-3">Address</th>
                         <th className="text-left px-4 py-3">Status</th>

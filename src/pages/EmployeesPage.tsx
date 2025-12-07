@@ -80,9 +80,9 @@ export default function EmployeesPage() {
 
   return (
     <>
-      <div className="bg-gradient-to-b from-cyan-900 to-[var(--color-logo)] py-15 px-4 md:px-0">
+      <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)] py-15 px-4 md:px-0">
         <div className="max-w-[1200px] mx-auto">
-          <h1 className="text-4xl font-semibold text-white">Employees</h1>
+          <h1 className="text-3xl poppins uppercase text-white">Employees</h1>
           <button
             onClick={() => navigate("/jobs")}
             className="text-sm text-neutral-200 hover:underline cursor-pointer"
@@ -94,8 +94,10 @@ export default function EmployeesPage() {
       <div className="mx-auto max-w-[1200px] py-8 ">
         {/* Add employee */}
         <section className="mb-6 rounded-xl  p-4 shadow">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between max-w-[500px]">
-            <h2 className="text-lg font-medium">Add new employee</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-start">
+            <h2 className="text-lg font-medium poppins text-[var(--color-logo)] ">
+              New
+            </h2>
             <div className="flex gap-2 flex-row sm:items-center">
               <input
                 value={name}
