@@ -4,6 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/firebaseConfig";
 import type { Job } from "../types/types";
 import { jobConverter } from "../types/types";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  RotateCcw,
+} from "lucide-react";
 
 type FsTimestampLike = { toDate: () => Date };
 function isFsTimestamp(x: unknown): x is FsTimestampLike {
@@ -84,106 +91,142 @@ export default function PunchCalendarPage() {
   });
 
   return (
-    <div className="mx-auto w-[min(900px,94vw)] py-8 pt-24">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text)]">
-            Punch Calendar
-          </h1>
-          <p className="text-xs text-[var(--color-muted)]">
-            View how many jobs are scheduled to be punched each day.
-          </p>
-        </div>
-        <button
-          onClick={() => navigate("/jobs")}
-          className="text-sm text-blue-600 hover:underline"
-        >
-          ← Back to Jobs
-        </button>
-      </div>
-
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          <button
-            onClick={() => changeMonth(-1)}
-            className="rounded-lg border border-[var(--color-border)] bg-white px-2 py-1 text-xs hover:bg-[var(--color-card-hover)]"
-          >
-            ‹ Prev
-          </button>
-          <div className="px-3 text-[var(--color-text)] font-medium">
-            {monthLabel}
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
+      {/* Hero / header */}
+      <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
+        <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 py-10 md:flex-row md:items-center md:justify-between md:px-0">
+          <div>
+            <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white/70">
+              <CalendarDays className="h-4 w-4" />
+              <span>Punch schedule</span>
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">
+              Punch Calendar
+            </h1>
+            <p className="mt-1 text-sm text-white/80">
+              See how many jobs are scheduled to be punched each day, then jump
+              into a specific date.
+            </p>
           </div>
-          <button
-            onClick={() => changeMonth(1)}
-            className="rounded-lg border border-[var(--color-border)] bg-white px-2 py-1 text-xs hover:bg-[var(--color-card-hover)]"
-          >
-            Next ›
-          </button>
-        </div>
-        <button
-          onClick={() => setMonth(new Date())}
-          className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-        >
-          Today
-        </button>
-      </div>
 
-      <div className="grid grid-cols-7 gap-1 text-[11px] text-[var(--color-muted)]">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div key={d} className="px-1 py-1 text-center font-medium">
-            {d}
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-1 grid grid-cols-7 gap-1">
-        {/* leading blanks */}
-        {(() => {
-          const first = getMonthStart(month);
-          const blanks = first.getDay();
-          return Array.from({ length: blanks }).map((_, i) => (
-            <div key={`blank-${i}`} />
-          ));
-        })()}
-
-        {days.map((d) => {
-          const key = toYMD(d);
-          const count = counts.get(key) ?? 0;
-          const isToday = toYMD(d) === toYMD(new Date());
-
-          return (
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              key={key}
               type="button"
-              onClick={() => navigate(`/punches/${key}`)}
-              className={[
-                "h-20 w-full rounded-lg border px-1 py-1 text-left text-xs transition",
-                count > 0
-                  ? "border-[var(--color-primary)] bg-[var(--color-card-hover)] hover:bg-[var(--color-primary)]/10"
-                  : "border-[var(--color-border)] bg-white hover:bg-[var(--color-card-hover)]",
-                isToday ? "ring-2 ring-[var(--color-accent)]" : "",
-              ].join(" ")}
+              onClick={() => navigate("/jobs")}
+              className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[var(--color-text)] font-semibold">
-                  {d.getDate()}
-                </span>
-                {isToday && (
-                  <span className="rounded-full bg-[var(--color-accent)]/20 px-1.5 py-0.5 text-[9px] uppercase text-[var(--color-text)]">
-                    Today
-                  </span>
-                )}
-              </div>
-              <div className="mt-2 text-[11px] text-[var(--color-muted)]">
-                {count === 0
-                  ? "No punches"
-                  : count === 1
-                  ? "1 punch"
-                  : `${count} punches`}
-              </div>
+              <Home className="h-4 w-4" />
+              Jobs overview
             </button>
-          );
-        })}
+
+            <button
+              type="button"
+              onClick={() => setMonth(new Date())}
+              className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-logo)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Today
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Page content */}
+      <div className="mx-auto w-[min(1100px,94vw)] space-y-4 py-8">
+        {/* Month controls */}
+        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                Month
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-[var(--color-text)]">
+                {monthLabel}
+              </h2>
+              <p className="text-xs text-[var(--color-muted)]">
+                Use the arrows to move between months or jump back to today.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => changeMonth(-1)}
+                className="inline-flex items-center justify-center rounded-full border border-[var(--color-border)] bg-white px-2 py-2 text-xs text-[var(--color-text)] shadow-sm transition hover:bg-[var(--color-card-hover)]"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => changeMonth(1)}
+                className="inline-flex items-center justify-center rounded-full border border-[var(--color-border)] bg-white px-2 py-2 text-xs text-[var(--color-text)] shadow-sm transition hover:bg-[var(--color-card-hover)]"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Calendar grid */}
+        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-5 shadow-sm">
+          <div className="grid grid-cols-7 gap-1 text-[11px] text-[var(--color-muted)]">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+              <div key={d} className="px-1 py-1 text-center font-medium">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-1 grid grid-cols-7 gap-1">
+            {/* leading blanks */}
+            {(() => {
+              const first = getMonthStart(month);
+              const blanks = first.getDay();
+              return Array.from({ length: blanks }).map((_, i) => (
+                <div key={`blank-${i}`} />
+              ));
+            })()}
+
+            {days.map((d) => {
+              const key = toYMD(d);
+              const count = counts.get(key) ?? 0;
+              const isToday = toYMD(d) === toYMD(new Date());
+
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => navigate(`/punches/${key}`)}
+                  className={[
+                    "h-20 w-full rounded-xl border px-2 py-1 text-left text-xs transition",
+                    count > 0
+                      ? "border-[var(--color-primary)] bg-[var(--color-card-hover)] hover:bg-[var(--color-primary)]/10"
+                      : "border-[var(--color-border)] bg-white hover:bg-[var(--color-card-hover)]",
+                    isToday ? "ring-2 ring-[var(--color-accent)]" : "",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--color-text)] font-semibold">
+                      {d.getDate()}
+                    </span>
+                    {isToday && (
+                      <span className="rounded-full bg-[var(--color-accent)]/20 px-1.5 py-0.5 text-[9px] uppercase text-[var(--color-text)]">
+                        Today
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 text-[11px] text-[var(--color-muted)]">
+                    {count === 0
+                      ? "No punches"
+                      : count === 1
+                      ? "1 punch"
+                      : `${count} punches`}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );
