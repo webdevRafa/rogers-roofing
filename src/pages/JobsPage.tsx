@@ -211,7 +211,7 @@ export default function JobsPage() {
 
   // ✅ collapsible sections
   const [jobsOpen, setJobsOpen] = useState(true);
-  const [payoutsOpen, setPayoutsOpen] = useState(true);
+  const [payoutsOpen, setPayoutsOpen] = useState(false);
 
   // ✅ hide/show date filters
   const [showFilters, setShowFilters] = useState(false);
