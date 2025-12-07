@@ -582,7 +582,7 @@ export default function JobsPage() {
         </div>
 
         {/* MAIN NAV BUTTONS (icon-only with hover labels) */}
-        <div className="max-w-[1200px] mx-auto mt-5 flex gap-4 justify-center">
+        <div className="max-w-[1200px] mx-auto mt-5 flex gap-4 justify-end px-4 md:px-0">
           {/* Employees */}
           <button
             onClick={() => navigate("/employees")}
@@ -646,7 +646,7 @@ export default function JobsPage() {
         >
           {/* Header */}
           <motion.header
-            className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-2"
+            className="mb-4 sm:mb-6 flex flex-wrap items-center justify-start gap-2 max-w-[800px]"
             {...fadeUp(0)}
           >
             <div className="flex items-center gap-2">
