@@ -581,36 +581,63 @@ export default function JobsPage() {
           </nav>
         </div>
 
-        {/* MAIN NAV BUTTONS */}
-        <div className="max-w-[1200px] mx-auto mt-5 flex gap-5 justify-center">
+        {/* MAIN NAV BUTTONS (icon-only with hover labels) */}
+        <div className="max-w-[1200px] mx-auto mt-5 flex gap-4 justify-center">
+          {/* Employees */}
           <button
             onClick={() => navigate("/employees")}
-            className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+            aria-label="Employees"
           >
-            <Users />
-          </button>
-          <button
-            onClick={() => setOpenForm((v) => !v)}
-            className=" rounded-lg bg-[var(--color-brown)] hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)] px-4 py-1.5 text-xs"
-          >
-            <SquarePlus />
-          </button>
-          <button
-            onClick={() => navigate("/punches")}
-            className="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-          >
-            <CalendarDays />
+            <Users className="h-4 w-4" />
+
+            {/* Hover label */}
+            <span className="pointer-events-none absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+              Employees
+            </span>
           </button>
 
+          {/* Add New Job */}
+          <button
+            onClick={() => setOpenForm((v) => !v)}
+            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+            aria-label="Add New Job"
+          >
+            <SquarePlus className="h-4 w-4" />
+
+            <span className="pointer-events-none w-[80px] absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+              Add New Job
+            </span>
+          </button>
+
+          {/* Punch Calendar */}
+          <button
+            onClick={() => navigate("/punches")}
+            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+            aria-label="Punch Calendar"
+          >
+            <CalendarDays className="h-4 w-4" />
+
+            <span className="pointer-events-none absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+              Punch Calendar
+            </span>
+          </button>
+
+          {/* Sign out */}
           <button
             onClick={handleLogout}
             disabled={signingOut}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-primary)] disabled:opacity-50"
-            title="Sign out"
+            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-red-100 disabled:opacity-50"
+            aria-label="Sign out"
           >
-            <LogOut />
+            <LogOut className="h-4 w-4" />
+
+            <span className="pointer-events-none absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+              {signingOut ? "Signing out…" : "Sign out"}
+            </span>
           </button>
         </div>
+
         <motion.div
           className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10"
           variants={staggerParent}
@@ -736,7 +763,7 @@ export default function JobsPage() {
           {/* Create Job form */}
           {openForm && (
             <motion.section
-              className="mb-4 shadow-md bg-[var(--color-card)] p-4"
+              className="mb-4 shadow-md  p-4 bg-[var(--color-brown)]/10"
               {...fadeUp(0.08)}
             >
               <div className="flex w-full flex-col justify-center gap-2 sm:flex-row sm:gap-3">
@@ -744,7 +771,7 @@ export default function JobsPage() {
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Job address (e.g., 123 Main St, San Antonio, TX)"
-                  className="w-full max-w-[500px] rounded-lg border border-[var(--color-border)] bg-white/70 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className="w-full max-w-[500px] rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
                 <div className="flex items-center gap-2">
                   <button
