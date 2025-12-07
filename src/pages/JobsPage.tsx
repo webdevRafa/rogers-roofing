@@ -488,6 +488,9 @@ export default function JobsPage() {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
+  function clearSelectedPayouts() {
+    setSelectedPayoutIds([]);
+  }
 
   async function markSelectedPayoutsAsPaid() {
     if (selectedPayoutIds.length === 0) return;
@@ -1200,10 +1203,10 @@ export default function JobsPage() {
 
             {/* Collapsible content */}
             {payoutsOpen && (
-              <div className="mt-2 section-scroll space-y-3">
+              <div className="mt-2 section-scroll space-y-3 max-h-[420px] overflow-y-auto relative">
                 {/* Create stub CTA (pending only, single employee only) */}
                 {payoutFilter === "pending" && selectedPayoutIds.length > 0 && (
-                  <div className="mb-1 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="bg-white sticky top-0 z-20 mb-1 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
                     {selectedEmployeeIds.length > 1 && (
                       <p className="text-xs text-red-700">
                         Please select payouts for a single employee to create a
@@ -1211,15 +1214,25 @@ export default function JobsPage() {
                       </p>
                     )}
 
-                    {canCreateStub && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {canCreateStub && (
+                        <button
+                          type="button"
+                          onClick={() => setStubOpen(true)}
+                          className="rounded-lg bg-[var(--color-brown)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)]"
+                        >
+                          Create stub ({selectedPayoutIds.length})
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={() => setStubOpen(true)}
-                        className="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)]"
+                        onClick={clearSelectedPayouts}
+                        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
                       >
-                        Create stub ({selectedPayoutIds.length})
+                        Clear all
                       </button>
-                    )}
+                    </div>
                   </div>
                 )}
 
