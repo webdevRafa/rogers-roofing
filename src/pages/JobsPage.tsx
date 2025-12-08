@@ -114,8 +114,13 @@ type PayoutFilter = "all" | "pending" | "paid";
 type StatusFilter = "all" | JobStatus;
 const STATUS_OPTIONS: JobStatus[] = ["pending", "completed"];
 
-// Small util: yyyy-mm-dd from Date
-const toYMD = (d: Date) => d.toISOString().slice(0, 10);
+// Small util: yyyy-mm-dd from Date (LOCAL time)
+const toYMD = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 // ---- Type guards & date utils ----
 function isFsTimestamp(val: unknown): val is { toDate: () => Date } {
@@ -218,7 +223,7 @@ export default function JobsPage() {
   const PAYOUTS_PER_PAGE = 20;
 
   // ✅ collapsible sections
-  const [jobsOpen, setJobsOpen] = useState(true);
+  const [jobsOpen, setJobsOpen] = useState(false);
   const [payoutsOpen, setPayoutsOpen] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(true); // NEW: upcoming section toggle
 
@@ -391,22 +396,32 @@ export default function JobsPage() {
     });
   }, [jobs, statusFilter, startDate, endDate, searchTerm]);
 
-  // ---- Upcoming jobs (punch scheduled in the future) ----
+  // ---- Upcoming jobs (punch scheduled today or in the future) ----
   const upcomingJobs = useMemo(() => {
-    const now = Date.now();
+    const todayYMD = toYMD(new Date());
 
-    const byDate = (j: Job) =>
-      toMillis((j as any).punchScheduledFor ?? null) ?? 0;
+    const jobPunchYMD = (j: Job): string | null => {
+      const ms = toMillis((j as any).punchScheduledFor ?? null);
+      if (ms == null) return null;
+      return toYMD(new Date(ms));
+    };
 
     return jobs
       .filter((j) => {
-        const ms = byDate(j);
-        if (!ms) return false;
-        if (ms < now) return false;
+        const ymd = jobPunchYMD(j);
+        if (!ymd) return false;
+
+        // Drop dates strictly before today; keep today and future
+        if (ymd < todayYMD) return false;
+
         if (j.status === "completed" || j.status === "closed") return false;
         return true;
       })
-      .sort((a, b) => byDate(a) - byDate(b));
+      .sort((a, b) => {
+        const ay = jobPunchYMD(a) ?? "";
+        const by = jobPunchYMD(b) ?? "";
+        return ay.localeCompare(by);
+      });
   }, [jobs]);
 
   // Reset jobs page on jobs/filter changes
@@ -1210,8 +1225,7 @@ export default function JobsPage() {
                     Upcoming jobs
                   </h2>
                   <p className="mt-1 text-xs text-[var(--color-muted)]">
-                    Quick overview of jobs scheduled to be punched. You can
-                    reschedule or jump into the job detail page from here.
+                    Roll with the punches.
                   </p>
                 </div>
 
@@ -1226,7 +1240,7 @@ export default function JobsPage() {
               <button
                 type="button"
                 onClick={() => setUpcomingOpen((v) => !v)}
-                className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
+                className="inline-flex max-w-[100px] items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
               >
                 <ChevronDown
                   className={`mr-1 h-4 w-4 transition-transform ${
@@ -1262,21 +1276,42 @@ export default function JobsPage() {
                       );
 
                       let dateLabel = "Not set";
+                      let bucket: "today" | "tomorrow" | "later" = "later";
+                      let bucketLabel: string | null = null;
+                      let bucketClass = "";
+
                       if (ms != null) {
-                        // Normalize to the same YYYY-MM-DD key used by PunchCalendar/PunchDay
-                        const ymd = toYMD(new Date(ms)); // uses toISOString().slice(0, 10)
-                        // Then render that date at local midnight, so UI shows the same calendar day
+                        const d = new Date(ms);
+                        const ymd = toYMD(d);
                         dateLabel = new Date(
                           ymd + "T00:00:00"
                         ).toLocaleDateString();
+
+                        const todayYMD = toYMD(new Date());
+                        const today = new Date(todayYMD + "T00:00:00");
+                        const jobDate = new Date(ymd + "T00:00:00");
+
+                        const diffDays = Math.round(
+                          (jobDate.getTime() - today.getTime()) / 86_400_000
+                        );
+
+                        if (diffDays === 0) {
+                          bucket = "today";
+                          bucketLabel = "Today";
+                          bucketClass = "bg-orange-100 text-orange-800";
+                        } else if (diffDays === 1) {
+                          bucket = "tomorrow";
+                          bucketLabel = "Tomorrow";
+                          bucketClass = "bg-sky-100 text-sky-800";
+                        }
                       }
 
                       return (
                         <div
                           key={job.id}
-                          className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                          className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-2 sm:gap-3 sm:py-3 sm:flex-row sm:items-center sm:justify-between"
                         >
-                          {/* Left side: address + meta */}
+                          {/* Left: address + punch date */}
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="truncate text-sm font-semibold text-[var(--color-text)]">
@@ -1292,7 +1327,7 @@ export default function JobsPage() {
                             </div>
 
                             {(a.city || a.state || a.zip) && (
-                              <div className="text-xs text-[var(--color-muted)]">
+                              <div className="hidden text-xs text-[var(--color-muted)] sm:block">
                                 {[a.city, a.state, a.zip]
                                   .filter(Boolean)
                                   .join(", ")}
@@ -1303,9 +1338,27 @@ export default function JobsPage() {
                               <CalendarDays className="mr-1 h-3 w-3" />
                               Punch date: {dateLabel}
                             </div>
+                            {bucketLabel && (
+                              <span
+                                className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase sm:hidden ${bucketClass}`}
+                              >
+                                {bucketLabel}
+                              </span>
+                            )}
                           </div>
 
-                          {/* Right side: actions */}
+                          {/* Middle: Today / Tomorrow badge centered */}
+                          {bucketLabel && (
+                            <div className="hidden flex-1 justify-center sm:flex">
+                              <span
+                                className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase ${bucketClass}`}
+                              >
+                                {bucketLabel}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Right: actions */}
                           <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
                             <button
                               type="button"
