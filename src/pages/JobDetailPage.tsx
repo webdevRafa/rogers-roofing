@@ -17,7 +17,13 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
-import { X, ChevronLeft, ChevronRight, Camera } from "lucide-react";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Camera,
+  Image as ImageIcon,
+} from "lucide-react";
 
 import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
 import { motion, type MotionProps } from "framer-motion";
@@ -268,7 +274,8 @@ export default function JobDetailPage() {
   const payeeRef = useRef<HTMLInputElement | null>(null);
   const materialRef = useRef<HTMLSelectElement | null>(null);
   const noteRef = useRef<HTMLInputElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   // Keep separate inputs per tab (name, sqft, rate)
   type PayoutInput = {
@@ -1299,9 +1306,22 @@ export default function JobDetailPage() {
               uploadPhoto();
             }}
           >
-            {/* Hidden file input that can open camera on mobile */}
+            {/* CAMERA ONLY input */}
             <input
-              ref={fileInputRef}
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment" // forces back camera
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setPhotoFile(file);
+              }}
+              className="sr-only"
+            />
+
+            {/* GALLERY ONLY input */}
+            <input
+              ref={galleryInputRef}
               type="file"
               accept="image/*"
               onChange={(e) => {
@@ -1314,16 +1334,27 @@ export default function JobDetailPage() {
             {/* Left side: pick photo + filename + caption */}
             <div className="flex-1 space-y-2">
               {/* Main CTA button – opens camera / gallery */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              >
-                <Camera className="h-4 w-4 text-[var(--color-primary)]" />
-                <span>
-                  {photoFile ? "Change photo" : "Take or choose a photo"}
-                </span>
-              </button>
+              <div className="flex gap-2">
+                {/* Take Photo Button */}
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
+                >
+                  <Camera className="h-4 w-4 text-[var(--color-primary)]" />
+                  <span>Camera</span>
+                </button>
+
+                {/* Choose from Gallery Button */}
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
+                >
+                  <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
+                  <span>Gallery</span>
+                </button>
+              </div>
 
               {/* File name / helper text */}
               <div className="text-xs text-[var(--color-muted)] truncate max-w-full">
