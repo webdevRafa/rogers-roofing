@@ -1276,7 +1276,6 @@ export default function JobsPage() {
                       );
 
                       let dateLabel = "Not set";
-                      let bucket: "today" | "tomorrow" | "later" = "later";
                       let bucketLabel: string | null = null;
                       let bucketClass = "";
 
@@ -1296,11 +1295,9 @@ export default function JobsPage() {
                         );
 
                         if (diffDays === 0) {
-                          bucket = "today";
                           bucketLabel = "Today";
                           bucketClass = "bg-orange-100 text-orange-800";
                         } else if (diffDays === 1) {
-                          bucket = "tomorrow";
                           bucketLabel = "Tomorrow";
                           bucketClass = "bg-sky-100 text-sky-800";
                         }

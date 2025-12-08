@@ -713,8 +713,8 @@ export default function JobDetailPage() {
       animate="animate"
     >
       {/* Header */}
-      <motion.div
-        className="mb-6 flex flex-wrap items-center justify-between gap-3"
+      <motion.header
+        className="mb-8 flex flex-wrap items-start justify-between gap-4 rounded-2xl bg-[var(--color-card)]/80 px-4 py-4 shadow-sm ring-1 ring-black/5 sm:px-6 sm:py-5"
         {...fadeUp(0)}
       >
         <div>
@@ -903,10 +903,13 @@ export default function JobDetailPage() {
             </div>
           )}
         </div>
-      </motion.div>
+      </motion.header>
 
       {/* Stat row + profit bar */}
-      <motion.div className="rounded-2xl shadow-md p-4" {...fadeUp(0.05)}>
+      <motion.div
+        className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5"
+        {...fadeUp(0.05)}
+      >
         <div className="grid gap-4 sm:grid-cols-4 ">
           <Stat label="Payouts" cents={totals.payouts} />
           <Stat label="Materials" cents={totals.materials} />
@@ -1571,10 +1574,10 @@ function MotionCard({
 }) {
   return (
     <motion.section
-      className="rounded-2xl shadow-md bg-white py-6 px-4"
+      className="rounded-2xl bg-white/80 py-5 px-4 sm:px-5 shadow-sm ring-1 ring-black/5"
       {...fadeUp(delay)}
     >
-      <h2 className="mb-3 text-2xl   p-2 font-semibold text-[var(--color-text)]">
+      <h2 className="mb-4 text-lg font-semibold tracking-tight text-[var(--color-text)]">
         {title}
       </h2>
       {children}
