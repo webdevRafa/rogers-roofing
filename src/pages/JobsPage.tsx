@@ -220,6 +220,11 @@ export default function JobsPage() {
   // ✅ collapsible sections
   const [jobsOpen, setJobsOpen] = useState(true);
   const [payoutsOpen, setPayoutsOpen] = useState(false);
+  const [upcomingOpen, setUpcomingOpen] = useState(true); // NEW: upcoming section toggle
+
+  // 🔁 Reschedule punch modal
+  const [rescheduleJob, setRescheduleJob] = useState<Job | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<string>("");
 
   // ✅ hide/show date filters
   const [showFilters, setShowFilters] = useState(false);
@@ -385,6 +390,24 @@ export default function JobsPage() {
       return true;
     });
   }, [jobs, statusFilter, startDate, endDate, searchTerm]);
+
+  // ---- Upcoming jobs (punch scheduled in the future) ----
+  const upcomingJobs = useMemo(() => {
+    const now = Date.now();
+
+    const byDate = (j: Job) =>
+      toMillis((j as any).punchScheduledFor ?? null) ?? 0;
+
+    return jobs
+      .filter((j) => {
+        const ms = byDate(j);
+        if (!ms) return false;
+        if (ms < now) return false;
+        if (j.status === "completed" || j.status === "closed") return false;
+        return true;
+      })
+      .sort((a, b) => byDate(a) - byDate(b));
+  }, [jobs]);
 
   // Reset jobs page on jobs/filter changes
   useEffect(() => {
@@ -587,6 +610,43 @@ export default function JobsPage() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  // 🔁 Reschedule punch for a job (inline modal)
+  function openReschedule(job: Job) {
+    const ms = toMillis((job as any).punchScheduledFor ?? null);
+    const base = ms ? new Date(ms) : new Date();
+    setRescheduleJob(job);
+    setRescheduleDate(toYMD(base));
+  }
+
+  function closeReschedule() {
+    setRescheduleJob(null);
+    setRescheduleDate("");
+  }
+
+  async function handleSaveReschedule() {
+    if (!rescheduleJob || !rescheduleDate) return;
+
+    try {
+      const ref = doc(collection(db, "jobs"), rescheduleJob.id).withConverter(
+        jobConverter
+      );
+
+      await setDoc(
+        ref,
+        {
+          punchScheduledFor: new Date(rescheduleDate),
+          updatedAt: serverTimestamp() as FieldValue,
+        },
+        { merge: true }
+      );
+
+      closeReschedule();
+    } catch (e) {
+      console.error("Failed to reschedule punch", e);
+      alert("Failed to reschedule punch. Please try again.");
     }
   }
 
@@ -1140,6 +1200,148 @@ export default function JobsPage() {
             </div>
           )}
 
+          {/* ====== UPCOMING JOBS (punch schedule overview) ====== */}
+          <section className="mt-8 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
+            {/* Header */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-semibold text-[var(--color-text)]">
+                    Upcoming jobs
+                  </h2>
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    Quick overview of jobs scheduled to be punched. You can
+                    reschedule or jump into the job detail page from here.
+                  </p>
+                </div>
+
+                {upcomingJobs.length > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                    {upcomingJobs.length} job
+                    {upcomingJobs.length === 1 ? "" : "s"} scheduled
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setUpcomingOpen((v) => !v)}
+                className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
+              >
+                <ChevronDown
+                  className={`mr-1 h-4 w-4 transition-transform ${
+                    upcomingOpen ? "rotate-0" : "-rotate-90"
+                  }`}
+                />
+                <span className="hidden sm:inline">
+                  {upcomingOpen ? "Collapse" : "Expand"}
+                </span>
+                <span className="sm:hidden">
+                  {upcomingOpen ? "Hide" : "Show"}
+                </span>
+              </button>
+            </div>
+
+            {upcomingOpen && (
+              <>
+                {upcomingJobs.length === 0 ? (
+                  <div className="mt-4 rounded-xl border border-dashed border-[var(--color-border)] bg-white/60 px-4 py-3 text-xs text-[var(--color-muted)]">
+                    No upcoming punches scheduled. Use{" "}
+                    <span className="font-semibold text-[var(--color-logo)]">
+                      Schedule punch
+                    </span>{" "}
+                    on a job detail page or from the Punch Calendar to start
+                    filling this list.
+                  </div>
+                ) : (
+                  <div className="mt-4 max-h-[360px] overflow-y-auto section-scroll space-y-3">
+                    {upcomingJobs.map((job) => {
+                      const a = addr(job.address);
+                      const ms = toMillis(
+                        (job as any).punchScheduledFor ?? null
+                      );
+
+                      let dateLabel = "Not set";
+                      if (ms != null) {
+                        // Normalize to the same YYYY-MM-DD key used by PunchCalendar/PunchDay
+                        const ymd = toYMD(new Date(ms)); // uses toISOString().slice(0, 10)
+                        // Then render that date at local midnight, so UI shows the same calendar day
+                        dateLabel = new Date(
+                          ymd + "T00:00:00"
+                        ).toLocaleDateString();
+                      }
+
+                      return (
+                        <div
+                          key={job.id}
+                          className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          {/* Left side: address + meta */}
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="truncate text-sm font-semibold text-[var(--color-text)]">
+                                {a.display || "—"}
+                              </div>
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${statusClasses(
+                                  job.status
+                                )}`}
+                              >
+                                {job.status}
+                              </span>
+                            </div>
+
+                            {(a.city || a.state || a.zip) && (
+                              <div className="text-xs text-[var(--color-muted)]">
+                                {[a.city, a.state, a.zip]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                              </div>
+                            )}
+
+                            <div className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 border border-emerald-200">
+                              <CalendarDays className="mr-1 h-3 w-3" />
+                              Punch date: {dateLabel}
+                            </div>
+                          </div>
+
+                          {/* Right side: actions */}
+                          <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => openReschedule(job)}
+                              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                            >
+                              Reschedule
+                            </button>
+
+                            <Link
+                              to={`/job/${job.id}`}
+                              className="rounded-lg bg-[var(--color-brown)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-brown-hover)]"
+                            >
+                              View job
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/punches")}
+                    className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                  >
+                    <CalendarDays className="mr-1 h-3 w-3" />
+                    Open Punch Calendar
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+
           {/* ====== PAYOUTS (all employees) ====== */}
           <section className="mt-10 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
             {/* Header + controls */}
@@ -1391,6 +1593,59 @@ export default function JobsPage() {
             )}
           </section>
         </motion.div>
+
+        {/* 🔁 Reschedule punch modal */}
+        {rescheduleJob && (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                Reschedule punch
+              </h3>
+
+              <p className="mt-1 text-xs text-[var(--color-muted)]">
+                Choose a new date for this punch. This will update the
+                job&apos;s <strong>punchScheduledFor</strong> field and reflect
+                in the Punch Calendar and this Upcoming list.
+              </p>
+
+              <div className="mt-4 rounded-lg bg-[var(--color-card)]/40 px-3 py-2 text-sm">
+                <div className="font-medium">
+                  {addr(rescheduleJob.address).display || "—"}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                  New punch date
+                </label>
+                <input
+                  type="date"
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeReschedule}
+                  className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveReschedule}
+                  disabled={!rescheduleDate}
+                  className="rounded-lg bg-[var(--color-brown)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-brown-hover)] disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Save date
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {stubOpen && selectedPayouts.length > 0 && (
         <GlobalPayoutStubModal
