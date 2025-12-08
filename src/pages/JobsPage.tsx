@@ -1321,7 +1321,7 @@ export default function JobsPage() {
                         } else if (diffDays > 1) {
                           bucketLabel = "Later";
                           bucketClass =
-                            "bg-orange-100 text-[var(--color-logo)]/60";
+                            "bg-orange-100 text-[var(--color-logo)]/60 opacity-50";
                         }
                       }
 
@@ -1337,7 +1337,7 @@ export default function JobsPage() {
                                 {a.display || "—"}
                               </div>
                               <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${statusClasses(
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] opacity-60 font-semibold uppercase ${statusClasses(
                                   job.status
                                 )}`}
                               >
@@ -1353,13 +1353,13 @@ export default function JobsPage() {
                               </div>
                             )}
 
-                            <div className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 border border-emerald-200">
+                            <div className="mt-2 inline-flex mr-2 items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 border border-emerald-200">
                               <CalendarDays className="mr-1 h-3 w-3" />
                               Punch date: {dateLabel}
                             </div>
                             {bucketLabel && (
                               <span
-                                className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase sm:hidden ${bucketClass}`}
+                                className={`inline-flex items-center translate-y-[-2px] rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase sm:hidden ${bucketClass}`}
                               >
                                 {bucketLabel}
                               </span>
