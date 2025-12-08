@@ -122,6 +122,25 @@ const toYMD = (d: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+// Format a YYYY-MM-DD string into something like "Dec 8, 2025"
+function formatYmdForChip(ymd: string | ""): string {
+  if (!ymd) return "…"; // placeholder when start or end is missing
+
+  const [yearStr, monthStr, dayStr] = ymd.split("-");
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1; // JS months are 0-based
+  const day = Number(dayStr);
+
+  const date = new Date(year, monthIndex, day);
+  if (Number.isNaN(date.getTime())) return "…";
+
+  return date.toLocaleDateString(undefined, {
+    month: "short", // "Dec"
+    day: "numeric", // "8"
+    year: "numeric", // "2025"
+  });
+}
+
 // ---- Type guards & date utils ----
 function isFsTimestamp(val: unknown): val is { toDate: () => Date } {
   return typeof (val as { toDate?: () => Date })?.toDate === "function";
@@ -681,7 +700,9 @@ export default function JobsPage() {
 
   const rangeLabel =
     presetLabel ??
-    (startDate || endDate ? `${startDate || "…"} → ${endDate || "…"}` : null);
+    (startDate || endDate
+      ? `${formatYmdForChip(startDate)} → ${formatYmdForChip(endDate)}`
+      : null);
 
   // JSX BEGINS HERE
   return (
@@ -689,7 +710,7 @@ export default function JobsPage() {
       <div>
         <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
           <nav className="top-0 z-10 backdrop-blur">
-            <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 md:px-0">
+            <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 lg:px-0">
               <div className="text-lg md:text-3xl poppins text-white  uppercase flex justify-between w-full items-center">
                 Roger's Roofing & Contracting LLC
                 <img
@@ -703,7 +724,7 @@ export default function JobsPage() {
         </div>
 
         {/* MAIN NAV BUTTONS (icon-only with hover labels) */}
-        <div className="max-w-[1200px] mx-auto mt-5 flex gap-4 justify-end px-4 md:px-0">
+        <div className="max-w-[1200px] mx-auto mt-5 flex gap-4 justify-end px-4 lg:px-0">
           {/* Employees */}
           <button
             onClick={() => navigate("/employees")}
@@ -735,7 +756,7 @@ export default function JobsPage() {
           <button
             onClick={handleLogout}
             disabled={signingOut}
-            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-red-100 disabled:opacity-50"
+            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-red-900 text-white hover:bg-red-100 disabled:opacity-50"
             aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
@@ -759,7 +780,7 @@ export default function JobsPage() {
           >
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl poppins text-[var(--color-text)]">
-                My Jobs
+                Jobs
               </h1>
               <button
                 type="button"
@@ -777,12 +798,12 @@ export default function JobsPage() {
               </button>
             </div>
 
-            <div className="flex flex-row gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-row md:gap-2 sm:flex-row sm:items-center">
               {/* Search toggle */}
               <div className="relative">
                 <button
                   onClick={() => setShowSearch((v) => !v)}
-                  className="inline-flex items-center justify-center rounded-xl   px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)] w-full sm:w-auto"
+                  className="inline-flex items-center justify-center rounded-xl   px-3 py-2 text-sm text-[var(--color-text)] hover:shadow-md transition duration-300 ease-out w-full sm:w-auto"
                   title="Search addresses"
                   aria-label="Search addresses"
                 >
@@ -810,10 +831,14 @@ export default function JobsPage() {
               </div>
 
               {/* ✅ NEW: Filter dates toggle + active-chip */}
-              <div>
+              <div className="flex items-center">
                 <button
                   onClick={() => setShowFilters((v) => !v)}
-                  className="inline-flex items-center justify-center rounded-xl  px-3 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                  className={`inline-flex items-center justify-center rounded-xl mr-2 px-1 md:px-3 py-1 text-xs hover:shadow-md  text-[var(--color-text)]  transition duration-300 ease-out ${
+                    hasActiveDateFilter
+                      ? "bg-[var(--color-brown-hover)] text-white"
+                      : ""
+                  }`}
                   title="Filter by date"
                   aria-expanded={showFilters}
                   aria-controls="date-filters"
@@ -845,14 +870,13 @@ export default function JobsPage() {
               {/* Add New Job */}
               <button
                 onClick={() => setOpenForm((v) => !v)}
-                className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80  text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+                className="group relative flex  items-center justify-center rounded-lg px-3 p-1 hover:shadow-md  text-[var(--color-text)]  transition duration-300 ease-out"
                 aria-label="Add New Job"
               >
-                <SquarePlus className="h-4 w-4" />
-
-                <span className="pointer-events-none w-[80px] absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-                  Add New Job
-                </span>
+                <div className="flex items-center gap-1">
+                  <SquarePlus className="h-4 w-4" />{" "}
+                  <span className="text-xs">New</span>
+                </div>
               </button>
             </div>
           </motion.header>
@@ -1222,12 +1246,24 @@ export default function JobsPage() {
               <div className="flex items-center gap-3">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-semibold text-[var(--color-text)]">
-                    Upcoming jobs
+                    Punches
                   </h2>
-                  <p className="mt-1 text-xs text-[var(--color-muted)]">
-                    Roll with the punches.
-                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setUpcomingOpen((v) => !v)}
+                  className="inline-flex max-w-[100px] items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
+                >
+                  <ChevronDown
+                    className={`mr-1 h-4 w-4 transition-transform ${
+                      upcomingOpen ? "rotate-0" : "-rotate-90"
+                    }`}
+                  />
+                  <span className="hidden sm:inline">
+                    {upcomingOpen ? "Collapse" : "Expand"}
+                  </span>
+                  <span className="sm:hidden">{upcomingOpen ? "" : ""}</span>
+                </button>
 
                 {upcomingJobs.length > 0 && (
                   <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
@@ -1236,24 +1272,6 @@ export default function JobsPage() {
                   </span>
                 )}
               </div>
-
-              <button
-                type="button"
-                onClick={() => setUpcomingOpen((v) => !v)}
-                className="inline-flex max-w-[100px] items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
-              >
-                <ChevronDown
-                  className={`mr-1 h-4 w-4 transition-transform ${
-                    upcomingOpen ? "rotate-0" : "-rotate-90"
-                  }`}
-                />
-                <span className="hidden sm:inline">
-                  {upcomingOpen ? "Collapse" : "Expand"}
-                </span>
-                <span className="sm:hidden">
-                  {upcomingOpen ? "Hide" : "Show"}
-                </span>
-              </button>
             </div>
 
             {upcomingOpen && (
@@ -1422,7 +1440,7 @@ export default function JobsPage() {
                     </button>
                   </div>
 
-                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                  <p className="mt-3 text-xs text-[var(--color-muted)]">
                     View payouts across all employees. Use the Pending tab to
                     select payouts, generate a stub, and mark them as paid.
                   </p>

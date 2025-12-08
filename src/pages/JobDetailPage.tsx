@@ -17,7 +17,7 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Camera } from "lucide-react";
 
 import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
 import { motion, type MotionProps } from "framer-motion";
@@ -253,6 +253,7 @@ export default function JobDetailPage() {
   const payeeRef = useRef<HTMLInputElement | null>(null);
   const materialRef = useRef<HTMLSelectElement | null>(null);
   const noteRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Keep separate inputs per tab (name, sqft, rate)
   type PayoutInput = {
@@ -894,7 +895,7 @@ export default function JobDetailPage() {
                       setEditingPricing(true);
                     }}
                     title="Edit pricing"
-                    className="shrink-0 rounded-full shadow-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/4 p-2 hover:bg-[var(--color-card-hover)]"
+                    className="shrink-0 rounded-full shadow-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/1 p-2 hover:bg-[var(--color-card-hover)]"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -907,7 +908,7 @@ export default function JobDetailPage() {
 
       {/* Stat row + profit bar */}
       <motion.div
-        className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-black/5"
+        className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
         {...fadeUp(0.05)}
       >
         <div className="grid gap-4 sm:grid-cols-4 ">
@@ -1056,7 +1057,7 @@ export default function JobDetailPage() {
             {(job?.expenses?.payouts ?? []).map((p) => (
               <motion.li
                 key={p.id}
-                className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/2 p-3 shadow-md"
+                className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/1 p-3 shadow-md"
                 variants={item}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -1169,7 +1170,7 @@ export default function JobDetailPage() {
             {(job?.expenses?.materials ?? []).map((m) => (
               <motion.li
                 key={m.id}
-                className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/2 p-3 shadow-md"
+                className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/1 p-3 shadow-md"
                 variants={item}
               >
                 <div className="min-w-0">
@@ -1245,7 +1246,7 @@ export default function JobDetailPage() {
               .map((n) => (
                 <motion.li
                   key={n.id}
-                  className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/2 p-3 shadow-md"
+                  className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/1 p-3 shadow-md"
                   variants={item}
                 >
                   <div className="flex min-w-0 items-center gap-2">
@@ -1277,32 +1278,62 @@ export default function JobDetailPage() {
         <MotionCard title="Photos" delay={0.25}>
           {/* Upload panel */}
           <form
-            className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] mb-3"
+            className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-stretch"
             onSubmit={(e) => {
               e.preventDefault();
               uploadPhoto();
             }}
           >
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_240px]">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
-                className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)]"
-              />
+            {/* Hidden file input that can open camera on mobile */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+              className="sr-only"
+            />
+
+            {/* Left side: pick photo + filename + caption */}
+            <div className="flex-1 space-y-2">
+              {/* Main CTA button – opens camera / gallery */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              >
+                <Camera className="h-4 w-4 text-[var(--color-primary)]" />
+                <span>
+                  {photoFile ? "Change photo" : "Take or choose a photo"}
+                </span>
+              </button>
+
+              {/* File name / helper text */}
+              <div className="text-xs text-[var(--color-muted)] truncate max-w-full">
+                {photoFile
+                  ? `Selected: ${photoFile.name}`
+                  : "You can snap a picture on your phone or select one from your gallery."}
+              </div>
+
+              {/* Caption input */}
               <input
                 value={photoCaption}
                 onChange={(e) => setPhotoCaption(e.target.value)}
-                placeholder="Optional caption"
-                className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                placeholder="Optional caption (e.g. 'Front elevation', 'Before', 'After')"
+                className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
-            <button
-              disabled={uploading || !photoFile}
-              className="rounded-lg px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 disabled:opacity-60 hover:bg-cyan-700 transition duration-300 ease-in-out"
-            >
-              {uploading ? "Uploading…" : "Upload"}
-            </button>
+
+            {/* Right side: Upload button */}
+            <div className="sm:w-32 flex items-end">
+              <button
+                type="submit"
+                disabled={uploading || !photoFile}
+                className="w-full rounded-lg bg-cyan-800 px-4 py-2 text-sm font-semibold text-[var(--btn-text)] shadow-sm transition duration-200 ease-in-out hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {uploading ? "Uploading…" : "Upload"}
+              </button>
+            </div>
           </form>
 
           {/* Thumbnails grid */}
@@ -1535,7 +1566,7 @@ export default function JobDetailPage() {
             className="rounded-md bg-red-700 px-3 py-2 text-sm text-white hover:bg-red-600"
             title="Permanently delete this job"
           >
-            Permanently delete…
+            Permanently delete job…
           </button>
         </div>
       </motion.section>
