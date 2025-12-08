@@ -80,15 +80,17 @@ export default function EmployeesPage() {
 
   return (
     <>
-      <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)] py-15 px-4 md:px-0">
-        <div className="max-w-[1200px] mx-auto">
-          <h1 className="text-3xl poppins uppercase text-white">Employees</h1>
-          <button
-            onClick={() => navigate("/jobs")}
-            className="text-sm text-neutral-200 hover:underline cursor-pointer"
-          >
-            ← Back to Home
-          </button>
+      <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)] py-15 px-8 md:px-0">
+        <div className="max-w-[1200px] mx-auto flex justify-end md:justify-start">
+          <div>
+            <h1 className="text-3xl poppins uppercase text-white">Employees</h1>
+            <button
+              onClick={() => navigate("/jobs")}
+              className="text-sm text-neutral-200 hover:underline cursor-pointer"
+            >
+              ← Back to Home
+            </button>
+          </div>
         </div>
       </div>
       <div className="mx-auto max-w-[1200px] py-8 ">
@@ -108,7 +110,7 @@ export default function EmployeesPage() {
               <button
                 onClick={createEmployee}
                 disabled={creating || !name.trim()}
-                className="rounded-lg bg-gradient-to-b from-cyan-900 to-[var(--color-logo)] px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
+                className="rounded-lg bg-gradient-to-b from-[var(--color-brown)] to-[var(--color-logo)] px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
               >
                 {creating ? "Saving…" : "Add"}
               </button>

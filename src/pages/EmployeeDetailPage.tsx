@@ -93,7 +93,6 @@ export default function EmployeeDetailPage() {
   const navigate = useNavigate();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,8 +142,6 @@ export default function EmployeeDetailPage() {
         });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setLoading(false);
       }
     })();
   }, [id]);
@@ -270,7 +267,6 @@ export default function EmployeeDetailPage() {
     );
   }
 
-  if (loading) return <div className="p-6">Loading…</div>;
   if (error) return <div className="p-6 text-red-600">{error}</div>;
   if (!employee) return <div className="p-6">Not found.</div>;
 

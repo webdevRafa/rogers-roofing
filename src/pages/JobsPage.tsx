@@ -724,39 +724,41 @@ export default function JobsPage() {
         </div>
 
         {/* MAIN NAV BUTTONS (icon-only with hover labels) */}
-        <div className="max-w-[1200px] mx-auto mt-5 flex gap-4 justify-end px-4 lg:px-0">
-          {/* Employees */}
-          <button
-            onClick={() => navigate("/employees")}
-            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-            aria-label="Employees"
-          >
-            <Users className="h-4 w-4" />
+        <div className="max-w-[1200px] mx-auto mt-5 flex gap-4 justify-between items-center px-4 lg:px-0">
+          <div className="flex gap-2">
+            {/* Employees */}
+            <button
+              onClick={() => navigate("/employees")}
+              className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              aria-label="Employees"
+            >
+              <Users className="h-4 w-4" />
 
-            {/* Hover label */}
-            <span className="pointer-events-none absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-              Employees
-            </span>
-          </button>
+              {/* Hover label */}
+              <span className="pointer-events-none absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+                Employees
+              </span>
+            </button>
 
-          {/* Punch Calendar */}
-          <button
-            onClick={() => navigate("/punches")}
-            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-            aria-label="Punch Calendar"
-          >
-            <CalendarDays className="h-4 w-4" />
+            {/* Punch Calendar */}
+            <button
+              onClick={() => navigate("/punches")}
+              className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              aria-label="Punch Calendar"
+            >
+              <CalendarDays className="h-4 w-4" />
 
-            <span className="pointer-events-none absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-              Punch Calendar
-            </span>
-          </button>
+              <span className="pointer-events-none absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+                Punch Calendar
+              </span>
+            </button>
+          </div>
 
           {/* Sign out */}
           <button
             onClick={handleLogout}
             disabled={signingOut}
-            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-red-900 text-white hover:bg-red-100 disabled:opacity-50"
+            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-red-800 text-white  disabled:opacity-50"
             aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
