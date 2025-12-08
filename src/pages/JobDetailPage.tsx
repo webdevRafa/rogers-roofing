@@ -247,6 +247,21 @@ export default function JobDetailPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoCaption, setPhotoCaption] = useState("");
 
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(photoFile);
+    setPreviewUrl(url);
+
+    // Clean up object URL when file changes or component unmounts
+    return () => URL.revokeObjectURL(url);
+  }, [photoFile]);
+
   // Tabs for payouts
   type PayoutTab = "shingles" | "felt" | "technician";
   const [payoutTab, setPayoutTab] = useState<PayoutTab>("shingles");
@@ -1289,8 +1304,10 @@ export default function JobDetailPage() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
-              onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setPhotoFile(file);
+              }}
               className="sr-only"
             />
 
@@ -1314,6 +1331,19 @@ export default function JobDetailPage() {
                   ? `Selected: ${photoFile.name}`
                   : "You can snap a picture on your phone or select one from your gallery."}
               </div>
+              {/* 🔍 Preview of selected image */}
+              {previewUrl && (
+                <div>
+                  <div className="mb-1 text-xs text-[var(--color-muted)]">
+                    Preview
+                  </div>
+                  <img
+                    src={previewUrl}
+                    alt="Selected preview"
+                    className="h-32 w-full rounded-lg border border-[var(--color-border)] object-cover"
+                  />
+                </div>
+              )}
 
               {/* Caption input */}
               <input
