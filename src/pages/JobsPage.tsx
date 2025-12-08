@@ -637,7 +637,7 @@ export default function JobsPage() {
       await setDoc(
         ref,
         {
-          punchScheduledFor: new Date(rescheduleDate),
+          punchScheduledFor: new Date(rescheduleDate + "T00:00:00"),
           updatedAt: serverTimestamp() as FieldValue,
         },
         { merge: true }
