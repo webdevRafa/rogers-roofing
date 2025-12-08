@@ -204,7 +204,7 @@ export default function PunchCalendarPage() {
                   className={[
                     "h-20 w-full rounded-xl border px-2 py-1 text-left text-xs transition",
                     count > 0
-                      ? "border-[var(--color-primary)] bg-[var(--color-card-hover)] hover:bg-[var(--color-primary)]/10"
+                      ? "border-[var(--color-border)] bg-emerald-100/30 hover:bg-[var(--color-primary)]/10"
                       : "border-[var(--color-border)] bg-white hover:bg-[var(--color-card-hover)]",
                     isToday ? "ring-2 ring-[var(--color-accent)]" : "",
                   ].join(" ")}
@@ -219,8 +219,8 @@ export default function PunchCalendarPage() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-2   text-center text-[var(--color-logo)] rounded-sm text-md max-w-[30px] mx-auto py-2">
-                    {count === 0 ? "" : count === 1 ? "1" : `${count} punches`}
+                  <div className="mt-2  font-bold text-center text-[var(--color-logo)] rounded-sm text-md  mx-auto py-2">
+                    {count === 0 ? "" : count === 1 ? "1 👊" : `${count} 👊`}
                   </div>
                 </button>
               );
