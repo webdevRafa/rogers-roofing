@@ -1300,6 +1300,10 @@ export default function JobsPage() {
                         } else if (diffDays === 1) {
                           bucketLabel = "Tomorrow";
                           bucketClass = "bg-sky-100 text-sky-800";
+                        } else if (diffDays > 1) {
+                          bucketLabel = "Later";
+                          bucketClass =
+                            "bg-orange-100 text-[var(--color-logo)]/60";
                         }
                       }
 
