@@ -249,10 +249,10 @@ export default function PunchCalendarPage() {
                   {hasAnything && (
                     <>
                       {/* Mobile: compact color-only badges with counts (no text labels) */}
-                      <div className="mt-2 flex items-center justify-center gap-0.5 text-[11px] font-semibold md:hidden">
+                      <div className="mt-2 flex items-center justify-center gap-0 text-[11px] font-semibold md:hidden">
                         {dayCounts.felt > 0 && (
                           <span
-                            className="inline-flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-sky-100 text-[10px] font-semibold text-sky-800"
+                            className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-sky-100 text-[10px] font-semibold text-sky-800"
                             aria-label={`${dayCounts.felt} felt`}
                           >
                             {dayCounts.felt}
