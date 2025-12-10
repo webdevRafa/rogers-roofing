@@ -443,7 +443,11 @@ export default function JobsPage() {
         const feltDone = toMs((j as any).feltCompletedAt ?? null);
         const shDone = toMs((j as any).shinglesCompletedAt ?? null);
 
-        // only show jobs where at least one material stage is scheduled or done
+        // ❌ if BOTH materials are completed, this job belongs
+        // only in the "ready for punch" list, not here
+        if (feltDone != null && shDone != null) return false;
+
+        // ✅ show jobs where at least one material stage is scheduled or done
         return (
           feltSch != null || shSch != null || feltDone != null || shDone != null
         );

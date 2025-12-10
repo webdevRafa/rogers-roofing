@@ -162,6 +162,10 @@ export default function JobDetailPage() {
   const [shinglesScheduleEditing, setShinglesScheduleEditing] = useState(false);
   const [shinglesScheduleDate, setShinglesScheduleDate] = useState<string>("");
 
+  // Confirm "mark done" modals for felt / shingles
+  const [confirmFeltDoneOpen, setConfirmFeltDoneOpen] = useState(false);
+  const [confirmShinglesDoneOpen, setConfirmShinglesDoneOpen] = useState(false);
+
   const activeEmployees = useMemo(
     () => employees.filter((e) => e.isActive !== false),
     [employees]
@@ -775,6 +779,12 @@ export default function JobDetailPage() {
     job.status === "closed" ||
     job.status === "archived";
 
+  const canSchedulePunch =
+    !job.punchedAt &&
+    job.status !== "completed" &&
+    feltCompletedMs != null &&
+    shinglesCompletedMs != null;
+
   const hasPricing =
     job.pricing &&
     Number.isFinite(job.pricing.sqft) &&
@@ -883,7 +893,7 @@ export default function JobDetailPage() {
                     disabled={jobIsLocked}
                     onClick={() => {
                       if (jobIsLocked) return;
-                      void markFeltCompleted();
+                      setConfirmFeltDoneOpen(true);
                     }}
                     className={
                       "rounded-md px-2 py-0.5 text-[10px] " +
@@ -940,7 +950,7 @@ export default function JobDetailPage() {
                     disabled={jobIsLocked}
                     onClick={() => {
                       if (jobIsLocked) return;
-                      void markShinglesCompleted();
+                      setConfirmShinglesDoneOpen(true);
                     }}
                     className={
                       "rounded-md px-2 py-0.5 text-[10px] " +
@@ -954,57 +964,6 @@ export default function JobDetailPage() {
                 )}
               </div>
             </div>
-
-            {/* Inline editors for dates */}
-            {feltScheduleEditing && (
-              <div className="mt-1 flex items-center gap-2">
-                <input
-                  type="date"
-                  value={feltScheduleDate}
-                  onChange={(e) => setFeltScheduleDate(e.target.value)}
-                  className="rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[11px] text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => void saveFeltSchedule()}
-                  className="rounded-md bg-cyan-800 px-2 py-1 text-[10px] font-semibold text-white hover:bg-cyan-700"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFeltScheduleEditing(false)}
-                  className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-
-            {shinglesScheduleEditing && (
-              <div className="mt-1 flex items-center gap-2">
-                <input
-                  type="date"
-                  value={shinglesScheduleDate}
-                  onChange={(e) => setShinglesScheduleDate(e.target.value)}
-                  className="rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[11px] text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => void saveShinglesSchedule()}
-                  className="rounded-md bg-cyan-800 px-2 py-1 text-[10px] font-semibold text-white hover:bg-cyan-700"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShinglesScheduleEditing(false)}
-                  className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
           </div>
           {/* Punch scheduling / completion controls */}
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1022,9 +981,9 @@ export default function JobDetailPage() {
 
             <button
               type="button"
-              disabled={!!job.punchedAt || job.status === "completed"}
+              disabled={!canSchedulePunch}
               onClick={() => {
-                if (job.punchedAt || job.status === "completed") return;
+                if (!canSchedulePunch) return;
                 setSchedulePunchOpen(true);
 
                 const base = job.punchScheduledFor ?? new Date();
@@ -1032,7 +991,7 @@ export default function JobDetailPage() {
               }}
               className={
                 "rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs " +
-                (job.punchedAt || job.status === "completed"
+                (!canSchedulePunch
                   ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60"
                   : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
               }
@@ -1040,7 +999,7 @@ export default function JobDetailPage() {
               Schedule punch
             </button>
 
-            {!job.punchedAt && (
+            {canSchedulePunch && (
               <button
                 type="button"
                 onClick={() => setConfirmPunchedOpen(true)}
@@ -1747,6 +1706,102 @@ export default function JobDetailPage() {
           </div>
         </div>
       )}
+      {/* ===== Schedule Felt Modal ===== */}
+      {feltScheduleEditing && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                Schedule felt
+              </h2>
+              <button
+                type="button"
+                onClick={() => setFeltScheduleEditing(false)}
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <label className="mb-2 block text-xs text-[var(--color-muted)]">
+              Felt date
+            </label>
+            <input
+              type="date"
+              value={feltScheduleDate}
+              onChange={(e) => setFeltScheduleDate(e.target.value)}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setFeltScheduleEditing(false)}
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveFeltSchedule()}
+                className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Schedule Shingles Modal ===== */}
+      {shinglesScheduleEditing && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                Schedule shingles
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShinglesScheduleEditing(false)}
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <label className="mb-2 block text-xs text-[var(--color-muted)]">
+              Shingles date
+            </label>
+            <input
+              type="date"
+              value={shinglesScheduleDate}
+              onChange={(e) => setShinglesScheduleDate(e.target.value)}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShinglesScheduleEditing(false)}
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveShinglesSchedule()}
+                className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===== Schedule Punch Modal ===== */}
       {schedulePunchOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
@@ -1846,6 +1901,95 @@ export default function JobDetailPage() {
                 className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
               >
                 Yes, mark completed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ===== Confirm Felt Completed Modal ===== */}
+      {confirmFeltDoneOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                Mark felt as completed?
+              </h2>
+              <button
+                type="button"
+                onClick={() => setConfirmFeltDoneOpen(false)}
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-[var(--color-muted)]">
+              Are you sure the felt work for this job is fully completed?
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmFeltDoneOpen(false)}
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await markFeltCompleted();
+                  setConfirmFeltDoneOpen(false);
+                }}
+                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+              >
+                Yes, mark felt done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Confirm Shingles Completed Modal ===== */}
+      {confirmShinglesDoneOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                Mark shingles as completed?
+              </h2>
+              <button
+                type="button"
+                onClick={() => setConfirmShinglesDoneOpen(false)}
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-[var(--color-muted)]">
+              Are you sure the shingles work for this job is fully completed?
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmShinglesDoneOpen(false)}
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await markShinglesCompleted();
+                  setConfirmShinglesDoneOpen(false);
+                }}
+                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+              >
+                Yes, mark shingles done
               </button>
             </div>
           </div>
