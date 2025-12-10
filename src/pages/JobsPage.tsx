@@ -1332,7 +1332,7 @@ export default function JobsPage() {
             {upcomingOpen && (
               <div className="mt-4 grid gap-6 lg:grid-cols-2">
                 {/* Progress tracker */}
-                <div>
+                <motion.div {...fadeUp(0.05)}>
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
                     Material progress
                   </h3>
@@ -1343,7 +1343,12 @@ export default function JobsPage() {
                       each job, they&apos;ll show up here.
                     </div>
                   ) : (
-                    <div className="max-h-[360px] overflow-y-auto section-scroll space-y-3">
+                    <motion.div
+                      className="max-h-[360px] overflow-y-auto section-scroll space-y-3"
+                      variants={staggerParent}
+                      initial="initial"
+                      animate="animate"
+                    >
                       {materialProgressJobs.map((job) => {
                         const a = addr(job.address);
 
@@ -1386,8 +1391,9 @@ export default function JobsPage() {
                             : "bg-slate-50 text-slate-700 border-slate-200";
 
                         return (
-                          <div
+                          <motion.div
                             key={job.id}
+                            variants={item}
                             className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-2 sm:gap-3 sm:py-3"
                           >
                             <div className="flex flex-wrap items-center gap-2">
@@ -1443,15 +1449,15 @@ export default function JobsPage() {
                                 View job
                               </Link>
                             </div>
-                          </div>
+                          </motion.div>
                         );
                       })}
-                    </div>
+                    </motion.div>
                   )}
-                </div>
+                </motion.div>
 
                 {/* Ready for punch */}
-                <div>
+                <motion.div {...fadeUp(0.12)}>
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
                     Ready for punch
                   </h3>
@@ -1462,7 +1468,12 @@ export default function JobsPage() {
                       it will appear here as ready to be punched.
                     </div>
                   ) : (
-                    <div className="max-h-[360px] overflow-y-auto section-scroll space-y-3">
+                    <motion.div
+                      className="max-h-[360px] overflow-y-auto section-scroll space-y-3"
+                      variants={staggerParent}
+                      initial="initial"
+                      animate="animate"
+                    >
                       {readyForPunchJobs.map((job) => {
                         const a = addr(job.address);
 
@@ -1489,8 +1500,9 @@ export default function JobsPage() {
                             : null;
 
                         return (
-                          <div
+                          <motion.div
                             key={job.id}
+                            variants={item}
                             className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-2 sm:gap-3 sm:py-3"
                           >
                             <div className="flex flex-wrap items-center gap-2 justify-between">
@@ -1543,12 +1555,12 @@ export default function JobsPage() {
                                 View job
                               </Link>
                             </div>
-                          </div>
+                          </motion.div>
                         );
                       })}
-                    </div>
+                    </motion.div>
                   )}
-                </div>
+                </motion.div>
               </div>
             )}
           </section>
