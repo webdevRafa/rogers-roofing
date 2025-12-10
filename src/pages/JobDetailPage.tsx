@@ -901,7 +901,7 @@ export default function JobDetailPage() {
                       "rounded-md px-2 py-0.5 text-[10px] " +
                       (jobIsLocked
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "bg-emerald-700 text-white hover:bg-emerald-600")
+                        : "bg-emerald-600 text-white hover:bg-emerald-500")
                     }
                   >
                     Mark done
