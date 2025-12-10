@@ -36,6 +36,11 @@ function toYMD(d: Date): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+function isScheduledOnDate(value: unknown, ymd: string): boolean {
+  const ms = toMillis(value);
+  if (!ms) return false;
+  return toYMD(new Date(ms)) === ymd;
+}
 
 function addr(a: Job["address"] | null | undefined) {
   if (typeof a === "string")
@@ -178,10 +183,12 @@ export default function PunchDayPage() {
   const jobsForDay = useMemo(() => {
     if (!date) return [];
     return jobs.filter((j) => {
-      const ms = toMillis((j as any).punchScheduledFor);
-      if (!ms) return false;
-      const d = new Date(ms);
-      return toYMD(d) === date;
+      const anyScheduled =
+        isScheduledOnDate((j as any).shinglesScheduledFor, date) ||
+        isScheduledOnDate((j as any).feltScheduledFor, date) ||
+        isScheduledOnDate((j as any).punchScheduledFor, date);
+
+      return anyScheduled;
     });
   }, [jobs, date]);
 
@@ -200,10 +207,10 @@ export default function PunchDayPage() {
               <span>Punch schedule</span>
             </p>
             <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">
-              Punches for {displayDate}
+              Schedule for {displayDate}
             </h1>
             <p className="mt-1 text-sm text-white/80">
-              Jobs scheduled to be punched on this day.
+              Shingles, felt, and punch jobs scheduled for this day.
             </p>
           </div>
 
@@ -249,8 +256,8 @@ export default function PunchDayPage() {
                   Schedule a new job for this day
                 </h2>
                 <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  Create a job already tagged to this punch date. You can add
-                  details and payouts on the job detail page.
+                  Create a job already tagged to this date. You can adjust
+                  shingles, felt, and punch scheduling on the job detail page.
                 </p>
 
                 <input
@@ -273,7 +280,7 @@ export default function PunchDayPage() {
 
                 {date && (
                   <p className="text-[11px] text-[var(--color-muted)]">
-                    This job will be scheduled to punch on{" "}
+                    This job will be scheduled for{" "}
                     {new Date(date + "T00:00:00").toLocaleDateString()}.
                   </p>
                 )}
@@ -289,12 +296,12 @@ export default function PunchDayPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-[var(--color-text)]">
-                Scheduled punches
+                Jobs scheduled for this day
               </h2>
               <p className="text-xs text-[var(--color-muted)]">
                 {jobsForDay.length === 0
-                  ? "No jobs are currently queued to be punched on this date."
-                  : "Review the jobs queued for this punch date and jump into their details."}
+                  ? "No jobs are currently scheduled on this date."
+                  : "Review everything scheduled for this day and jump into job details."}
               </p>
             </div>
 
@@ -312,7 +319,7 @@ export default function PunchDayPage() {
                 <CalendarDays className="h-6 w-6 text-[var(--color-logo)]" />
               </div>
               <h3 className="text-sm font-semibold text-[var(--color-text)]">
-                No punches scheduled for this day
+                No jobs scheduled for this day
               </h3>
 
               {!openForm && (
@@ -330,14 +337,18 @@ export default function PunchDayPage() {
             <ul className="mt-4 space-y-3">
               {jobsForDay.map((j) => {
                 const a = addr(j.address);
-                const ms = toMillis((j as any).punchScheduledFor);
-                const punchTime =
-                  ms != null
-                    ? new Date(ms).toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })
-                    : null;
+
+                // Check which parts of this job are scheduled on this exact date
+                const shinglesMs = toMillis((j as any).shinglesScheduledFor);
+                const feltMs = toMillis((j as any).feltScheduledFor);
+                const punchMs = toMillis((j as any).punchScheduledFor);
+
+                const shinglesOnThisDay =
+                  shinglesMs != null && toYMD(new Date(shinglesMs)) === date;
+                const feltOnThisDay =
+                  feltMs != null && toYMD(new Date(feltMs)) === date;
+                const punchOnThisDay =
+                  punchMs != null && toYMD(new Date(punchMs)) === date;
 
                 return (
                   <li
@@ -360,6 +371,7 @@ export default function PunchDayPage() {
                           </div>
                         )}
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-muted)]">
+                          {/* Status pill stays the same */}
                           <span
                             className={
                               "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
@@ -368,17 +380,44 @@ export default function PunchDayPage() {
                           >
                             {j.status}
                           </span>
-                          <span className="rounded-full bg-slate-50 px-2 py-0.5">
-                            Punch date: {displayDate}
-                            {punchTime ? ` • ${punchTime}` : ""}
-                          </span>
-                          <span className="rounded-full bg-slate-50 px-2 py-0.5">
-                            Created{" "}
-                            {j.createdAt &&
-                              new Date(
-                                toMillis(j.createdAt as unknown) ?? 0
-                              ).toLocaleDateString()}
-                          </span>
+
+                          {/* What’s scheduled on this day */}
+                          {(shinglesOnThisDay ||
+                            feltOnThisDay ||
+                            punchOnThisDay) && (
+                            <span className="inline-flex flex-wrap items-center gap-1 rounded-full bg-slate-50 px-2 py-0.5">
+                              <span className="text-[10px] font-semibold uppercase text-slate-500">
+                                Scheduled:
+                              </span>
+                              {shinglesOnThisDay && (
+                                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+                                  Shingles
+                                </span>
+                              )}
+                              {feltOnThisDay && (
+                                <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-800">
+                                  Felt
+                                </span>
+                              )}
+                              {punchOnThisDay && (
+                                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800">
+                                  Punch
+                                </span>
+                              )}
+                            </span>
+                          )}
+
+                          {/* Updated at */}
+                          {j.updatedAt && (
+                            <span className="rounded-full bg-slate-50 px-2 py-0.5">
+                              Updated{" "}
+                              {isFsTimestamp(j.updatedAt)
+                                ? j.updatedAt.toDate().toLocaleDateString()
+                                : new Date(
+                                    String(j.updatedAt)
+                                  ).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
