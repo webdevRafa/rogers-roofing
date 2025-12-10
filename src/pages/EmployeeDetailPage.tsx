@@ -17,6 +17,7 @@ import { db } from "../firebase/firebaseConfig";
 import type { Employee, EmployeeAddress, PayoutDoc } from "../types/types";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import logo from "../assets/rogers-roofing.webp";
+import { createPortal } from "react-dom";
 
 // ---------- Small helpers ----------
 
@@ -469,15 +470,30 @@ export default function EmployeeDetailPage() {
         </div>
 
         {/* Create stub button (pending only, when items selected) */}
+        {/* Pending tab actions (Create stub + Clear all) */}
         {payoutFilter === "pending" && selectedIds.length > 0 && (
-          <div className="mb-3 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setStubOpen(true)}
-              className="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-primary-600)]"
-            >
-              Create stub ({selectedIds.length})
-            </button>
+          <div className="mb-3 flex justify-between items-center">
+            <div />
+
+            <div className="flex items-center gap-2">
+              {/* CREATE STUB — match JobsPage green button */}
+              <button
+                type="button"
+                onClick={() => setStubOpen(true)}
+                className="rounded-lg bg-emerald-800 hover:bg-emerald-700 transition duration-300 ease-in-out px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                Create stub ({selectedIds.length})
+              </button>
+
+              {/* CLEAR ALL — match JobsPage purple/brown button */}
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-primary-600)] hover:bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-white"
+              >
+                Clear all
+              </button>
+            </div>
           </div>
         )}
 
@@ -584,13 +600,13 @@ export default function EmployeeDetailPage() {
         )}
       </section>
 
-      {/* Stub modal */}
+      {/* Stub modal – now uses the same portal-based layout as JobsPage */}
       {stubOpen && employee && selectedPayouts.length > 0 && (
-        <PayoutStubModal
+        <GlobalPayoutStubModal
           employee={employee}
           payouts={selectedPayouts}
           onClose={() => setStubOpen(false)}
-          onMarkPaid={markSelectedAsPaid}
+          onConfirmPaid={markSelectedAsPaid}
           saving={stubSaving}
         />
       )}
@@ -608,26 +624,43 @@ function normalizeEmployeeAddress(
 
 // ---------- Stub Modal ----------
 
-function PayoutStubModal({
-  employee,
-  payouts,
-  onClose,
-  onMarkPaid,
-  saving,
-}: {
+// ---------- Shared-style Stub Modal (matches JobsPage GlobalPayoutStubModal) ----------
+
+type GlobalPayoutStubModalProps = {
   employee: Employee;
   payouts: PayoutDoc[];
   onClose: () => void;
-  onMarkPaid: () => Promise<void>;
+  onConfirmPaid: () => Promise<void>;
   saving: boolean;
-}) {
-  const empAddr = normalizeEmployeeAddress(employee.address);
+};
+
+function GlobalPayoutStubModal({
+  employee,
+  payouts,
+  onClose,
+  onConfirmPaid,
+  saving,
+}: GlobalPayoutStubModalProps) {
   const totalCents = payouts.reduce((sum, p) => sum + (p.amountCents ?? 0), 0);
 
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
-        {/* Header – matches GlobalPayoutStubModal */}
+  const empAddr = normalizeEmployeeAddress(employee.address);
+
+  const formatCategory = (category: PayoutDoc["category"] | undefined) => {
+    if (category === "shingles") return "Shingles";
+    if (category === "felt") return "Felt";
+    if (category === "technician") return "Technician";
+    return "";
+  };
+
+  // Safety guard (SSR)
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div className="paystub-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="paystub-print-inner w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
+        {/* Header – logo + business + employee */}
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -636,23 +669,31 @@ function PayoutStubModal({
                 <h2 className="text-2xl font-semibold">
                   Roger&apos;s Roofing &amp; Contracting LLC
                 </h2>
-                {/* Static company address */}
                 <h1>3618 Angus Crossing</h1>
                 <p className="mt-0 text-xs">San Antonio, Texas 75245</p>
               </div>
             </div>
 
-            {/* Dynamic employee info */}
             <h1 className="mt-3 mb-0 text-lg">
               <span className="font-medium">{employee.name}</span>
             </h1>
+
             {empAddr && (
-              <h1 className="mt-[-3px] text-md">
-                {empAddr.fullLine ||
-                  [empAddr.line1, empAddr.city, empAddr.state, empAddr.zip]
-                    .filter(Boolean)
-                    .join(", ")}
-              </h1>
+              <>
+                {(empAddr.fullLine || empAddr.line1) && (
+                  <h1 className="mt-[-3px] text-md">
+                    {empAddr.fullLine || empAddr.line1}
+                  </h1>
+                )}
+
+                {(empAddr.city || empAddr.state || empAddr.zip) && (
+                  <p className="text-xs">
+                    {[empAddr.city, empAddr.state, empAddr.zip]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -667,22 +708,29 @@ function PayoutStubModal({
           </div>
         </div>
 
-        {/* Table – ONLY Address / SqCount / Rate / Total (same layout as Global) */}
+        {/* Table – Address / Material / SqCount / Rate / Total */}
         <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
           <table className="min-w-full text-xs sm:text-sm">
             <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-3 py-2 text-left">Address</th>
+                <th className="px-3 py-2 text-left">Material</th>
                 <th className="px-3 py-2 text-left">SqCount</th>
                 <th className="px-3 py-2 text-left">Rate</th>
                 <th className="px-3 py-2 text-right">Total</th>
               </tr>
             </thead>
+
             <tbody>
               {payouts.map((p) => {
                 const a = normalizeJobAddress(p.jobAddressSnapshot);
+                const materialLabel = formatCategory(p.category);
+                const sqft = p.sqft;
+                const rate = p.ratePerSqFt;
+
                 return (
                   <tr key={p.id} className="border-t border-gray-100">
+                    {/* Address */}
                     <td className="px-3 py-2 align-top">
                       <div className="font-medium text-gray-900">
                         {a.display || "—"}
@@ -693,16 +741,25 @@ function PayoutStubModal({
                         </div>
                       )}
                     </td>
+
+                    {/* Material */}
                     <td className="px-3 py-2 align-top text-sm text-gray-800">
-                      {typeof p.sqft === "number"
-                        ? p.sqft.toLocaleString()
+                      {materialLabel || "—"}
+                    </td>
+
+                    {/* SqCount */}
+                    <td className="px-3 py-2 align-top text-sm text-gray-800">
+                      {typeof sqft === "number" ? sqft.toLocaleString() : "—"}
+                    </td>
+
+                    {/* Rate */}
+                    <td className="px-3 py-2 align-top text-sm text-gray-800">
+                      {typeof rate === "number"
+                        ? `$${rate.toFixed(2)}/sq.ft`
                         : "—"}
                     </td>
-                    <td className="px-3 py-2 align-top text-sm text-gray-800">
-                      {typeof p.ratePerSqFt === "number"
-                        ? `$${p.ratePerSqFt.toFixed(2)}/sq.ft`
-                        : "—"}
-                    </td>
+
+                    {/* Total */}
                     <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-900">
                       {money(p.amountCents ?? 0)}
                     </td>
@@ -713,7 +770,7 @@ function PayoutStubModal({
           </table>
         </div>
 
-        {/* Totals + actions – same style as GlobalPayoutStubModal */}
+        {/* Totals + actions – same as JobsPage */}
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-gray-700">
             <div className="print:hidden">
@@ -735,7 +792,7 @@ function PayoutStubModal({
             </button>
             <button
               type="button"
-              onClick={onMarkPaid}
+              onClick={onConfirmPaid}
               disabled={saving}
               className="rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60 print:hidden"
             >
@@ -744,6 +801,7 @@ function PayoutStubModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
