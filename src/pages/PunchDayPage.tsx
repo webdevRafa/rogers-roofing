@@ -152,7 +152,7 @@ export default function PunchDayPage() {
         },
         summaryNotes: "",
         attachments: [],
-        punchScheduledFor: scheduledDate,
+        feltScheduledFor: scheduledDate,
         createdAt: serverTimestamp() as FieldValue,
         updatedAt: serverTimestamp() as FieldValue,
         computed: {
@@ -256,8 +256,8 @@ export default function PunchDayPage() {
                   Schedule a new job for this day
                 </h2>
                 <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  Create a job already tagged to this date. You can adjust
-                  shingles, felt, and punch scheduling on the job detail page.
+                  Create a job already tagged to this date. You can adjust dry
+                  in, shingles and punch scheduling on the job detail page.
                 </p>
 
                 <input
@@ -280,7 +280,7 @@ export default function PunchDayPage() {
 
                 {date && (
                   <p className="text-[11px] text-[var(--color-muted)]">
-                    This job will be scheduled for{" "}
+                    This job will be scheduled for <strong>Dry in</strong> on{" "}
                     {new Date(date + "T00:00:00").toLocaleDateString()}.
                   </p>
                 )}
@@ -329,7 +329,10 @@ export default function PunchDayPage() {
                   className="mt-2 inline-flex items-center gap-2 rounded-full bg-[var(--color-brown)] px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-900"
                 >
                   <PlusCircle className="h-4 w-4" />
-                  Create job for {displayDate}
+                  Create job for <strong className="font-bold">
+                    Dry in
+                  </strong>{" "}
+                  {displayDate}
                 </button>
               )}
             </div>

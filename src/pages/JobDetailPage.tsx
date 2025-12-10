@@ -853,7 +853,7 @@ export default function JobDetailPage() {
               {/* Felt pill */}
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wide">
-                  Felt
+                  DRY IN
                 </span>
                 <span className="text-[11px] text-[var(--color-muted)]">
                   {feltCompletedMs
@@ -1712,7 +1712,7 @@ export default function JobDetailPage() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Schedule felt
+                Schedule DRY IN
               </h2>
               <button
                 type="button"
@@ -1725,7 +1725,7 @@ export default function JobDetailPage() {
             </div>
 
             <label className="mb-2 block text-xs text-[var(--color-muted)]">
-              Felt date
+              DRY IN date
             </label>
             <input
               type="date"

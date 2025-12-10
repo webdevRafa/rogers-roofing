@@ -1289,7 +1289,7 @@ export default function JobsPage() {
               <div className="flex items-center gap-3">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-semibold text-[var(--color-text)]">
-                    Felt &amp; shingles progress
+                    Dry in &amp; Shingles progress
                   </h2>
                   <p className="mt-1 text-xs text-[var(--color-muted)]">
                     Track material progress and see which jobs are ready to be
@@ -1410,7 +1410,7 @@ export default function JobsPage() {
                                 }
                               >
                                 <span className="font-semibold uppercase">
-                                  Felt
+                                  Dry in
                                 </span>
                                 <span className="truncate max-w-[140px]">
                                   {feltLabel}
@@ -1521,7 +1521,7 @@ export default function JobsPage() {
                               <div className="flex flex-col gap-1 text-[11px]">
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 border border-emerald-200">
                                   <span className="font-semibold uppercase">
-                                    Felt
+                                    DRY IN
                                   </span>
                                   <span>Completed</span>
                                 </span>
