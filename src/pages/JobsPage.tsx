@@ -1479,6 +1479,13 @@ export default function JobsPage() {
                           lastStage > 0
                             ? new Date(lastStage).toLocaleDateString()
                             : null;
+                        const punchMs = toMillis(
+                          (job as any).punchScheduledFor ?? null
+                        );
+                        const punchDate =
+                          punchMs != null
+                            ? new Date(punchMs).toLocaleDateString()
+                            : null;
 
                         return (
                           <div
@@ -1505,6 +1512,11 @@ export default function JobsPage() {
                                   </div>
                                 )}
                               </div>
+                              {punchDate && (
+                                <div className="flex-1 text-center text-[11px] text-[var(--color-muted)]">
+                                  Scheduled for {punchDate}
+                                </div>
+                              )}
 
                               <div className="flex flex-col gap-1 text-[11px]">
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 border border-emerald-200">

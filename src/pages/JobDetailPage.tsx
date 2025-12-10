@@ -2043,7 +2043,7 @@ function MotionCard({
 }) {
   return (
     <motion.section
-      className="rounded-2xl bg-white/80 py-5 px-4 sm:px-5 shadow-sm ring-1 ring-black/5"
+      className="rounded-2xl bg-white/60 hover:bg-white hover:shadow-lg transition durataion-300 ease-out py-5 px-4 sm:px-5 shadow-sm ring-1 ring-black/5"
       {...fadeUp(delay)}
     >
       <h2 className="mb-4 text-lg font-semibold tracking-tight text-[var(--color-text)]">

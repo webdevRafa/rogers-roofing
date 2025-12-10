@@ -32,6 +32,15 @@ function toYMD(d: Date): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+type DayCounts = {
+  felt: number;
+  shingles: number;
+  punch: number;
+};
+
+function makeEmptyDayCounts(): DayCounts {
+  return { felt: 0, shingles: 0, punch: 0 };
+}
 
 function getMonthStart(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -70,14 +79,28 @@ export default function PunchCalendarPage() {
   const days = useMemo(() => getMonthDays(month), [month]);
 
   const counts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const j of jobs) {
-      const ms = toMillis((j as any).punchScheduledFor);
-      if (!ms) continue;
-      const d = new Date(ms);
+    const map = new Map<string, DayCounts>();
+
+    const bump = (dateMs: number | null, field: keyof DayCounts) => {
+      if (!dateMs) return;
+      const d = new Date(dateMs);
       const key = toYMD(d);
-      map.set(key, (map.get(key) ?? 0) + 1);
+      let entry = map.get(key);
+      if (!entry) {
+        entry = makeEmptyDayCounts();
+        map.set(key, entry);
+      }
+      entry[field] += 1;
+    };
+
+    for (const j of jobs) {
+      const anyJob = j as any;
+
+      bump(toMillis(anyJob.feltScheduledFor), "felt");
+      bump(toMillis(anyJob.shinglesScheduledFor), "shingles");
+      bump(toMillis(anyJob.punchScheduledFor), "punch");
     }
+
     return map;
   }, [jobs]);
 
@@ -102,14 +125,14 @@ export default function PunchCalendarPage() {
           <div>
             <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white/70">
               <CalendarDays className="h-4 w-4" />
-              <span>Punch schedule</span>
+              <span>my schedule</span>
             </p>
             <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">
-              Punch Calendar
+              Calendar
             </h1>
             <p className="mt-1 text-sm text-white/80">
-              See how many jobs are scheduled to be punched each day, then jump
-              into a specific date.
+              See how many felt, shingles, and punches are scheduled each day,
+              then jump into a specific date.
             </p>
           </div>
 
@@ -193,8 +216,11 @@ export default function PunchCalendarPage() {
 
             {days.map((d) => {
               const key = toYMD(d);
-              const count = counts.get(key) ?? 0;
+              const dayCounts = counts.get(key) ?? makeEmptyDayCounts();
               const isToday = toYMD(d) === toYMD(new Date());
+
+              const hasAnything =
+                dayCounts.felt + dayCounts.shingles + dayCounts.punch > 0;
 
               return (
                 <button
@@ -203,8 +229,8 @@ export default function PunchCalendarPage() {
                   onClick={() => navigate(`/punches/${key}`)}
                   className={[
                     "h-20 w-full rounded-xl border px-2 py-1 text-left text-xs transition",
-                    count > 0
-                      ? "border-[var(--color-border)] bg-emerald-100/30 hover:bg-[var(--color-primary)]/10"
+                    hasAnything
+                      ? "border-[var(--color-border)] bg-emerald-50/40 hover:bg-[var(--color-primary)]/10"
                       : "border-[var(--color-border)] bg-white hover:bg-[var(--color-card-hover)]",
                     isToday ? "ring-2 ring-[var(--color-accent)]" : "",
                   ].join(" ")}
@@ -219,12 +245,75 @@ export default function PunchCalendarPage() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-2  font-bold text-center text-[var(--color-logo)] rounded-sm text-md  mx-auto py-2">
-                    {count === 0 ? "" : count === 1 ? "1 👊" : `${count} 👊`}
-                  </div>
+
+                  {hasAnything && (
+                    <>
+                      {/* Mobile: compact color-only badges with counts (no text labels) */}
+                      <div className="mt-2 flex items-center justify-center gap-0.5 text-[11px] font-semibold md:hidden">
+                        {dayCounts.felt > 0 && (
+                          <span
+                            className="inline-flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-sky-100 text-[10px] font-semibold text-sky-800"
+                            aria-label={`${dayCounts.felt} felt`}
+                          >
+                            {dayCounts.felt}
+                          </span>
+                        )}
+                        {dayCounts.shingles > 0 && (
+                          <span
+                            className="inline-flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-100 text-[10px] font-semibold text-amber-800"
+                            aria-label={`${dayCounts.shingles} shingles`}
+                          >
+                            {dayCounts.shingles}
+                          </span>
+                        )}
+                        {dayCounts.punch > 0 && (
+                          <span
+                            className="inline-flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-100 text-[10px] font-semibold text-emerald-800"
+                            aria-label={`${dayCounts.punch} punches`}
+                          >
+                            {dayCounts.punch}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* md+ : keep the full pills with text labels */}
+                      <div className="mt-2 hidden flex-wrap justify-center gap-1 text-[10px] font-semibold md:flex">
+                        {dayCounts.felt > 0 && (
+                          <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-800">
+                            {dayCounts.felt} felt
+                          </span>
+                        )}
+                        {dayCounts.shingles > 0 && (
+                          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-800">
+                            {dayCounts.shingles} shingles
+                          </span>
+                        )}
+                        {dayCounts.punch > 0 && (
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-800">
+                            {dayCounts.punch} punch
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </button>
               );
             })}
+          </div>
+          {/* Mobile legend for colors */}
+          <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-[var(--color-muted)] md:hidden">
+            <div className="flex items-center gap-1">
+              <span className="h-2.5 w-2.5 rounded-full bg-sky-200" />
+              <span>Felt</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-200" />
+              <span>Shingles</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-200" />
+              <span>Punch</span>
+            </div>
           </div>
         </section>
       </div>
