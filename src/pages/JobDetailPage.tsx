@@ -154,6 +154,9 @@ export default function JobDetailPage() {
   const [schedulePunchOpen, setSchedulePunchOpen] = useState(false);
   const [schedulePunchDate, setSchedulePunchDate] = useState<string>("");
   const [confirmPunchedOpen, setConfirmPunchedOpen] = useState(false);
+  // Delete job confirmation modal
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deletingJob, setDeletingJob] = useState(false);
 
   // Felt / shingles scheduling controls
   const [feltScheduleEditing, setFeltScheduleEditing] = useState(false);
@@ -734,19 +737,18 @@ export default function JobDetailPage() {
   // ------- Danger zone -------
   async function permanentlyDeleteJob() {
     if (!job) return;
-    const label = job.address?.fullLine ?? job.id;
-
-    const confirmText = window.prompt(
-      `Type DELETE to permanently remove "${label}". This cannot be undone.`
-    );
-    if (confirmText !== "DELETE") return;
+    setDeletingJob(true);
 
     try {
       await deleteDoc(doc(collection(db, "jobs"), job.id));
-      navigate("/jobs"); // back to list
+      // Close modal (in case navigate is delayed) and go back to jobs list
+      setConfirmDeleteOpen(false);
+      navigate("/jobs");
     } catch (e) {
       console.error("Failed to permanently delete job", e);
       alert("Failed to delete the job. Check console for details.");
+    } finally {
+      setDeletingJob(false);
     }
   }
 
@@ -879,10 +881,10 @@ export default function JobDetailPage() {
                     setFeltScheduleEditing(true);
                   }}
                   className={
-                    "rounded-md px-2 py-0.5 text-[10px] " +
+                    "rounded-md px-2 py-0.5 text-[10px] transition " +
                     (jobIsLocked
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+                      : "bg-cyan-50 text-[var(--color-text)] hover:bg-cyan-100")
                   }
                 >
                   {feltScheduledMs ? "Reschedule" : "Schedule"}
@@ -936,10 +938,10 @@ export default function JobDetailPage() {
                     setShinglesScheduleEditing(true);
                   }}
                   className={
-                    "rounded-md px-2 py-0.5 text-[10px] " +
+                    "rounded-md px-2 py-0.5 text-[10px]  " +
                     (jobIsLocked
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+                      : "bg-amber-50 text-[var(--color-text)] hover:bg-amber-100")
                   }
                 >
                   {shinglesScheduledMs ? "Reschedule" : "Schedule"}
@@ -953,10 +955,10 @@ export default function JobDetailPage() {
                       setConfirmShinglesDoneOpen(true);
                     }}
                     className={
-                      "rounded-md px-2 py-0.5 text-[10px] " +
+                      "rounded-md px-2 py-0.5 text-[10px] transition shadow-sm " +
                       (jobIsLocked
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "bg-emerald-700 text-white hover:bg-emerald-600")
+                        : "bg-emerald-600 text-white hover:bg-emerald-500")
                     }
                   >
                     Mark done
@@ -2000,7 +2002,7 @@ export default function JobDetailPage() {
       <motion.section className="mt-10 rounded-2xl p-4" {...fadeUp(0.27)}>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
-            onClick={permanentlyDeleteJob}
+            onClick={() => setConfirmDeleteOpen(true)}
             className="rounded-md bg-red-700 px-3 py-2 text-sm text-white hover:bg-red-600"
             title="Permanently delete this job"
           >
@@ -2008,6 +2010,53 @@ export default function JobDetailPage() {
           </button>
         </div>
       </motion.section>
+      {/* ===== Confirm Permanently Delete Job Modal ===== */}
+      {confirmDeleteOpen && job && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                Permanently delete this job?
+              </h2>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteOpen(false)}
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-[var(--color-muted)]">
+              This will permanently remove{" "}
+              <span className="font-semibold">
+                {job.address?.fullLine || job.id}
+              </span>{" "}
+              and all of its materials, notes, and photos.{" "}
+              <span className="font-semibold">This cannot be undone.</span>
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteOpen(false)}
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void permanentlyDeleteJob()}
+                disabled={deletingJob}
+                className="rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {deletingJob ? "Deleting…" : "Yes, delete job"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Modal */}
       {invoiceModalOpen && job && (

@@ -239,7 +239,7 @@ export default function PunchDayPage() {
               className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-[var(--color-logo)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <PlusCircle className="h-4 w-4" />
-              {openForm ? "Close job form" : "New job for this day"}
+              {openForm ? "Close job form" : "New job for DRY IN this day"}
             </button>
           </div>
         </div>
@@ -253,11 +253,14 @@ export default function PunchDayPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex-1">
                 <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                  Schedule a new job for this day
+                  Schedule a new job for{" "}
+                  <strong className="font-bold">DRY IN</strong> on this day
                 </h2>
                 <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  Create a job already tagged to this date. You can adjust dry
-                  in, shingles and punch scheduling on the job detail page.
+                  Create a job with{" "}
+                  <strong className="font-bold">DRY IN</strong> already tagged
+                  to this date. You can adjust dry in, shingles and punch
+                  scheduling on the job detail page.
                 </p>
 
                 <input

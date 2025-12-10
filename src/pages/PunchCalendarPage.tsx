@@ -131,7 +131,7 @@ export default function PunchCalendarPage() {
               Calendar
             </h1>
             <p className="mt-1 text-sm text-white/80">
-              See how many felt, shingles, and punches are scheduled each day,
+              See how many Dry in, Shingles, and Punches are scheduled each day,
               then jump into a specific date.
             </p>
           </div>
@@ -277,20 +277,20 @@ export default function PunchCalendarPage() {
                       </div>
 
                       {/* md+ : keep the full pills with text labels */}
-                      <div className="mt-2 hidden flex-wrap justify-center gap-1 text-[10px] font-semibold md:flex">
+                      <div className="mt-0 hidden  justify-center md:items-end lg:items-center md:mt-[-6px] lg:mt-[-10px] gap-1 text-[8px] font-semibold md:flex flex-col ">
                         {dayCounts.felt > 0 && (
                           <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-800">
-                            {dayCounts.felt} felt
+                            {dayCounts.felt} DRY
                           </span>
                         )}
                         {dayCounts.shingles > 0 && (
                           <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-800">
-                            {dayCounts.shingles} shingles
+                            {dayCounts.shingles} SHINGLES
                           </span>
                         )}
                         {dayCounts.punch > 0 && (
                           <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-800">
-                            {dayCounts.punch} punch
+                            {dayCounts.punch} PUNCH
                           </span>
                         )}
                       </div>
