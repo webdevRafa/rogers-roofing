@@ -42,9 +42,9 @@ const LoginPage = () => {
     <>
       <div className="w-full h-[100vh] flex items-center justify-center relative px-4 ">
         {/* login box */}
-        <div className="bg-[var(--color-card)] shadow-md w-full max-w-[380px] pb-6  border-2 border-white">
+        <div className="bg-[var(--color-card)]/60 py-10 shadow-md w-full max-w-[380px] pb-6  border-2 border-white/60">
           <img
-            className="max-w-[200px] mx-auto mb-0"
+            className="max-w-[200px] mx-auto opacity-70 mb-4 shadow-md"
             src={logo}
             alt="Rogers Roofing"
           />
@@ -72,7 +72,7 @@ const LoginPage = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg bg-neutral-100 border border-white/10 px-3 py-2 outline-none focus:border-white/30"
+                className="w-full rounded-lg bg-neutral-100/60 border border-white/10 px-3 py-2 outline-none focus:border-white/30"
                 placeholder="you@example.com"
               />
             </div>
@@ -94,7 +94,7 @@ const LoginPage = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg bg-neutral-100 border border-white/10 px-3 py-2 pr-10 outline-none focus:border-white/30"
+                  className="w-full rounded-lg bg-neutral-100/60 border border-white/10 px-3 py-2 pr-10 outline-none focus:border-white/30"
                   placeholder="••••••••"
                 />
 
@@ -117,7 +117,7 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full mt-2 rounded-lg px-4 py-2.5 text-xs bg-[var(--color-logo)] text-white hover:bg-[var(--color-primary)] transition disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full mt-2 rounded-lg px-4 py-2.5 text-xs bg-[var(--color-logo)]/60 text-white hover:bg-[var(--color-primary)]/60 transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? "Signing in…" : "Sign in"}
             </button>
