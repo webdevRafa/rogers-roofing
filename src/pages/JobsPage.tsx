@@ -415,31 +415,76 @@ export default function JobsPage() {
     });
   }, [jobs, statusFilter, startDate, endDate, searchTerm]);
 
-  // ---- Upcoming jobs (punch scheduled today or in the future) ----
-  const upcomingJobs = useMemo(() => {
-    const todayYMD = toYMD(new Date());
+  // ---- Felt / shingles progress + "ready for punch" lists ----
+  const materialProgressJobs = useMemo(() => {
+    const toMs = (v: unknown): number | null => toMillis(v ?? null);
 
-    const jobPunchYMD = (j: Job): string | null => {
-      const ms = toMillis((j as any).punchScheduledFor ?? null);
-      if (ms == null) return null;
-      return toYMD(new Date(ms));
+    const firstSchedule = (job: Job): number => {
+      const feltSch = toMs((job as any).feltScheduledFor ?? null);
+      const shSch = toMs((job as any).shinglesScheduledFor ?? null);
+      const candidates = [feltSch, shSch].filter((v): v is number => v != null);
+      if (candidates.length === 0) return Number.POSITIVE_INFINITY;
+      return Math.min(...candidates);
     };
 
     return jobs
       .filter((j) => {
-        const ymd = jobPunchYMD(j);
-        if (!ymd) return false;
+        // ignore fully completed / closed / archived jobs
+        if (
+          j.status === "completed" ||
+          j.status === "closed" ||
+          j.status === "archived"
+        ) {
+          return false;
+        }
 
-        // Drop dates strictly before today; keep today and future
-        if (ymd < todayYMD) return false;
+        const feltSch = toMs((j as any).feltScheduledFor ?? null);
+        const shSch = toMs((j as any).shinglesScheduledFor ?? null);
+        const feltDone = toMs((j as any).feltCompletedAt ?? null);
+        const shDone = toMs((j as any).shinglesCompletedAt ?? null);
 
-        if (j.status === "completed" || j.status === "closed") return false;
-        return true;
+        // only show jobs where at least one material stage is scheduled or done
+        return (
+          feltSch != null || shSch != null || feltDone != null || shDone != null
+        );
+      })
+      .sort((a, b) => firstSchedule(a) - firstSchedule(b));
+  }, [jobs]);
+
+  const readyForPunchJobs = useMemo(() => {
+    const toMs = (v: unknown): number | null => toMillis(v ?? null);
+
+    return jobs
+      .filter((j) => {
+        // skip jobs already punched/closed
+        if (
+          j.status === "completed" ||
+          j.status === "closed" ||
+          j.status === "archived"
+        ) {
+          return false;
+        }
+        if ((j as any).punchedAt) return false;
+
+        const feltDone = toMs((j as any).feltCompletedAt ?? null);
+        const shDone = toMs((j as any).shinglesCompletedAt ?? null);
+
+        // ready for punch only when BOTH are completed
+        return feltDone != null && shDone != null;
       })
       .sort((a, b) => {
-        const ay = jobPunchYMD(a) ?? "";
-        const by = jobPunchYMD(b) ?? "";
-        return ay.localeCompare(by);
+        const feltA =
+          toMs((a as any).feltCompletedAt ?? null) ?? Number.MAX_VALUE;
+        const shA =
+          toMs((a as any).shinglesCompletedAt ?? null) ?? Number.MAX_VALUE;
+        const feltB =
+          toMs((b as any).feltCompletedAt ?? null) ?? Number.MAX_VALUE;
+        const shB =
+          toMs((b as any).shinglesCompletedAt ?? null) ?? Number.MAX_VALUE;
+
+        const lastA = Math.max(feltA, shA);
+        const lastB = Math.max(feltB, shB);
+        return lastA - lastB;
       });
   }, [jobs]);
 
@@ -645,14 +690,6 @@ export default function JobsPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  // 🔁 Reschedule punch for a job (inline modal)
-  function openReschedule(job: Job) {
-    const ms = toMillis((job as any).punchScheduledFor ?? null);
-    const base = ms ? new Date(ms) : new Date();
-    setRescheduleJob(job);
-    setRescheduleDate(toYMD(base));
   }
 
   function closeReschedule() {
@@ -1241,20 +1278,24 @@ export default function JobsPage() {
             </div>
           )}
 
-          {/* ====== UPCOMING JOBS (punch schedule overview) ====== */}
+          {/* ====== MATERIAL PROGRESS + READY FOR PUNCH ====== */}
           <section className="mt-8 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
             {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-semibold text-[var(--color-text)]">
-                    Punches
+                    Felt &amp; shingles progress
                   </h2>
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    Track material progress and see which jobs are ready to be
+                    punched.
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setUpcomingOpen((v) => !v)}
-                  className="inline-flex max-w-[100px] items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
+                  className="inline-flex max-w-[120px] items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
                 >
                   <ChevronDown
                     className={`mr-1 h-4 w-4 transition-transform ${
@@ -1264,76 +1305,86 @@ export default function JobsPage() {
                   <span className="hidden sm:inline">
                     {upcomingOpen ? "Collapse" : "Expand"}
                   </span>
-                  <span className="sm:hidden">{upcomingOpen ? "" : ""}</span>
+                  <span className="sm:hidden" />
                 </button>
+              </div>
 
-                {upcomingJobs.length > 0 && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                    {upcomingJobs.length} job
-                    {upcomingJobs.length === 1 ? "" : "s"} scheduled
+              <div className="flex flex-wrap gap-2 text-[11px]">
+                {materialProgressJobs.length > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 font-semibold text-sky-800 border border-sky-200">
+                    {materialProgressJobs.length} job
+                    {materialProgressJobs.length === 1 ? "" : "s"} in progress
+                  </span>
+                )}
+                {readyForPunchJobs.length > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 border border-emerald-200">
+                    {readyForPunchJobs.length} ready for punch
                   </span>
                 )}
               </div>
             </div>
 
             {upcomingOpen && (
-              <>
-                {upcomingJobs.length === 0 ? (
-                  <div className="mt-4 rounded-xl border border-dashed border-[var(--color-border)] bg-white/60 px-4 py-3 text-xs text-[var(--color-muted)]">
-                    No upcoming punches scheduled. Use{" "}
-                    <span className="font-semibold text-[var(--color-logo)]">
-                      Schedule punch
-                    </span>{" "}
-                    on a job detail page or from the Punch Calendar to start
-                    filling this list.
-                  </div>
-                ) : (
-                  <div className="mt-4 max-h-[360px] overflow-y-auto section-scroll space-y-3">
-                    {upcomingJobs.map((job) => {
-                      const a = addr(job.address);
-                      const ms = toMillis(
-                        (job as any).punchScheduledFor ?? null
-                      );
+              <div className="mt-4 grid gap-6 lg:grid-cols-2">
+                {/* Progress tracker */}
+                <div>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+                    Material progress
+                  </h3>
 
-                      let dateLabel = "Not set";
-                      let bucketLabel: string | null = null;
-                      let bucketClass = "";
+                  {materialProgressJobs.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-white/60 px-4 py-3 text-xs text-[var(--color-muted)]">
+                      No jobs have felt or shingles scheduled yet. As you update
+                      each job, they&apos;ll show up here.
+                    </div>
+                  ) : (
+                    <div className="max-h-[360px] overflow-y-auto section-scroll space-y-3">
+                      {materialProgressJobs.map((job) => {
+                        const a = addr(job.address);
 
-                      if (ms != null) {
-                        const d = new Date(ms);
-                        const ymd = toYMD(d);
-                        dateLabel = new Date(
-                          ymd + "T00:00:00"
-                        ).toLocaleDateString();
-
-                        const todayYMD = toYMD(new Date());
-                        const today = new Date(todayYMD + "T00:00:00");
-                        const jobDate = new Date(ymd + "T00:00:00");
-
-                        const diffDays = Math.round(
-                          (jobDate.getTime() - today.getTime()) / 86_400_000
+                        const feltSch = toMillis(
+                          (job as any).feltScheduledFor ?? null
+                        );
+                        const feltDone = toMillis(
+                          (job as any).feltCompletedAt ?? null
+                        );
+                        const shinglesSch = toMillis(
+                          (job as any).shinglesScheduledFor ?? null
+                        );
+                        const shinglesDone = toMillis(
+                          (job as any).shinglesCompletedAt ?? null
                         );
 
-                        if (diffDays === 0) {
-                          bucketLabel = "Today";
-                          bucketClass = "bg-orange-100 text-orange-800";
-                        } else if (diffDays === 1) {
-                          bucketLabel = "Tomorrow";
-                          bucketClass = "bg-sky-100 text-sky-800";
-                        } else if (diffDays > 1) {
-                          bucketLabel = "Later";
-                          bucketClass =
-                            "bg-orange-100 text-[var(--color-logo)]/60 opacity-50";
-                        }
-                      }
+                        const fmt = (ms: number | null) =>
+                          ms == null ? "" : new Date(ms).toLocaleDateString();
 
-                      return (
-                        <div
-                          key={job.id}
-                          className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-2 sm:gap-3 sm:py-3 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          {/* Left: address + punch date */}
-                          <div className="min-w-0">
+                        const feltLabel = feltDone
+                          ? `Completed ${fmt(feltDone)}`
+                          : feltSch
+                          ? `Scheduled ${fmt(feltSch)}`
+                          : "Not scheduled";
+
+                        const shinglesLabel = shinglesDone
+                          ? `Completed ${fmt(shinglesDone)}`
+                          : shinglesSch
+                          ? `Scheduled ${fmt(shinglesSch)}`
+                          : "Not scheduled";
+
+                        const pillClass = (
+                          done: number | null,
+                          scheduled: number | null
+                        ) =>
+                          done != null
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : scheduled != null
+                            ? "bg-sky-50 text-sky-800 border-sky-200"
+                            : "bg-slate-50 text-slate-700 border-slate-200";
+
+                        return (
+                          <div
+                            key={job.id}
+                            className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-2 sm:gap-3 sm:py-3"
+                          >
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="truncate text-sm font-semibold text-[var(--color-text)]">
                                 {a.display || "—"}
@@ -1347,72 +1398,141 @@ export default function JobsPage() {
                               </span>
                             </div>
 
-                            {(a.city || a.state || a.zip) && (
-                              <div className="hidden text-xs text-[var(--color-muted)] sm:block">
-                                {[a.city, a.state, a.zip]
-                                  .filter(Boolean)
-                                  .join(", ")}
+                            <div className="flex flex-wrap gap-2 text-[11px]">
+                              <span
+                                className={
+                                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 " +
+                                  pillClass(feltDone, feltSch)
+                                }
+                              >
+                                <span className="font-semibold uppercase">
+                                  Felt
+                                </span>
+                                <span className="truncate max-w-[140px]">
+                                  {feltLabel}
+                                </span>
+                              </span>
+                              <span
+                                className={
+                                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 " +
+                                  pillClass(shinglesDone, shinglesSch)
+                                }
+                              >
+                                <span className="font-semibold uppercase">
+                                  Shingles
+                                </span>
+                                <span className="truncate max-w-[140px]">
+                                  {shinglesLabel}
+                                </span>
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                              <div className="text-[11px] text-[var(--color-muted)]">
+                                Last updated {fmtDateTime(job.updatedAt)}
                               </div>
-                            )}
-
-                            <div className="mt-2 inline-flex mr-2 items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 border border-emerald-200">
-                              <CalendarDays className="mr-1 h-3 w-3" />
-                              Punch date: {dateLabel}
-                            </div>
-                            {bucketLabel && (
-                              <span
-                                className={`inline-flex items-center translate-y-[-2px] rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase sm:hidden ${bucketClass}`}
+                              <Link
+                                to={`/job/${job.id}`}
+                                className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
                               >
-                                {bucketLabel}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Middle: Today / Tomorrow badge centered */}
-                          {bucketLabel && (
-                            <div className="hidden flex-1 justify-center sm:flex">
-                              <span
-                                className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase ${bucketClass}`}
-                              >
-                                {bucketLabel}
-                              </span>
+                                View job
+                              </Link>
                             </div>
-                          )}
-
-                          {/* Right: actions */}
-                          <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => openReschedule(job)}
-                              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                            >
-                              Reschedule
-                            </button>
-
-                            <Link
-                              to={`/job/${job.id}`}
-                              className="rounded-lg bg-[var(--color-brown)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--color-brown-hover)]"
-                            >
-                              View job
-                            </Link>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/punches")}
-                    className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                  >
-                    <CalendarDays className="mr-1 h-3 w-3" />
-                    Open Punch Calendar
-                  </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </>
+
+                {/* Ready for punch */}
+                <div>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+                    Ready for punch
+                  </h3>
+
+                  {readyForPunchJobs.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-white/60 px-4 py-3 text-xs text-[var(--color-muted)]">
+                      Once both felt and shingles are marked completed on a job,
+                      it will appear here as ready to be punched.
+                    </div>
+                  ) : (
+                    <div className="max-h-[360px] overflow-y-auto section-scroll space-y-3">
+                      {readyForPunchJobs.map((job) => {
+                        const a = addr(job.address);
+
+                        const feltDone = toMillis(
+                          (job as any).feltCompletedAt ?? null
+                        );
+                        const shinglesDone = toMillis(
+                          (job as any).shinglesCompletedAt ?? null
+                        );
+                        const lastStage = Math.max(
+                          feltDone ?? 0,
+                          shinglesDone ?? 0
+                        );
+                        const readySince =
+                          lastStage > 0
+                            ? new Date(lastStage).toLocaleDateString()
+                            : null;
+
+                        return (
+                          <div
+                            key={job.id}
+                            className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-2 sm:gap-3 sm:py-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2 justify-between">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="truncate text-sm font-semibold text-[var(--color-text)]">
+                                    {a.display || "—"}
+                                  </div>
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] opacity-60 font-semibold uppercase ${statusClasses(
+                                      job.status
+                                    )}`}
+                                  >
+                                    {job.status}
+                                  </span>
+                                </div>
+                                {readySince && (
+                                  <div className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+                                    Ready since {readySince}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex flex-col gap-1 text-[11px]">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 border border-emerald-200">
+                                  <span className="font-semibold uppercase">
+                                    Felt
+                                  </span>
+                                  <span>Completed</span>
+                                </span>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 border border-emerald-200">
+                                  <span className="font-semibold uppercase">
+                                    Shingles
+                                  </span>
+                                  <span>Completed</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end">
+                              <Link
+                                to={`/job/${job.id}`}
+                                className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                              >
+                                View job
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </section>
 

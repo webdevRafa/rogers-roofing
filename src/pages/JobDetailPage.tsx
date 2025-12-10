@@ -155,6 +155,13 @@ export default function JobDetailPage() {
   const [schedulePunchDate, setSchedulePunchDate] = useState<string>("");
   const [confirmPunchedOpen, setConfirmPunchedOpen] = useState(false);
 
+  // Felt / shingles scheduling controls
+  const [feltScheduleEditing, setFeltScheduleEditing] = useState(false);
+  const [feltScheduleDate, setFeltScheduleDate] = useState<string>("");
+
+  const [shinglesScheduleEditing, setShinglesScheduleEditing] = useState(false);
+  const [shinglesScheduleDate, setShinglesScheduleDate] = useState<string>("");
+
   const activeEmployees = useMemo(
     () => employees.filter((e) => e.isActive !== false),
     [employees]
@@ -435,6 +442,48 @@ export default function JobDetailPage() {
     setConfirmPunchedOpen(false);
   }
 
+  async function saveFeltSchedule() {
+    if (!job || !feltScheduleDate) return;
+
+    const [year, month, day] = feltScheduleDate.split("-").map(Number);
+    const scheduledDate = new Date(year, month - 1, day);
+
+    await saveJob({
+      ...job,
+      feltScheduledFor: Timestamp.fromDate(scheduledDate),
+    });
+    setFeltScheduleEditing(false);
+  }
+
+  async function saveShinglesSchedule() {
+    if (!job || !shinglesScheduleDate) return;
+
+    const [year, month, day] = shinglesScheduleDate.split("-").map(Number);
+    const scheduledDate = new Date(year, month - 1, day);
+
+    await saveJob({
+      ...job,
+      shinglesScheduledFor: Timestamp.fromDate(scheduledDate),
+    });
+    setShinglesScheduleEditing(false);
+  }
+
+  async function markFeltCompleted() {
+    if (!job) return;
+    await saveJob({
+      ...job,
+      feltCompletedAt: Timestamp.now(),
+    });
+  }
+
+  async function markShinglesCompleted() {
+    if (!job) return;
+    await saveJob({
+      ...job,
+      shinglesCompletedAt: Timestamp.now(),
+    });
+  }
+
   // ---- Mutations ----
   async function addPayout() {
     if (!job) return;
@@ -712,6 +761,20 @@ export default function JobDetailPage() {
   const punchedAtLabel =
     job.punchedAt != null ? fmtDate(job.punchedAt as unknown) : null;
 
+  const feltScheduledMs = toMillis((job as any).feltScheduledFor ?? null);
+  const feltCompletedMs = toMillis((job as any).feltCompletedAt ?? null);
+  const shinglesScheduledMs = toMillis(
+    (job as any).shinglesScheduledFor ?? null
+  );
+  const shinglesCompletedMs = toMillis(
+    (job as any).shinglesCompletedAt ?? null
+  );
+
+  const jobIsLocked =
+    job.status === "completed" ||
+    job.status === "closed" ||
+    job.status === "archived";
+
   const hasPricing =
     job.pricing &&
     Number.isFinite(job.pricing.sqft) &&
@@ -760,7 +823,7 @@ export default function JobDetailPage() {
         </div>
 
         <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
-          {/* Status pill + selector */}
+          {/* Status pill */}
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">
               Status:
@@ -772,6 +835,176 @@ export default function JobDetailPage() {
                 {job.status}
               </span>
             </span>
+          </div>
+
+          {/* Felt / shingles progress controls */}
+          <div className="flex w-full flex-col items-end gap-1 text-[11px]">
+            <div className="flex flex-wrap justify-end gap-2">
+              {/* Felt pill */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide">
+                  Felt
+                </span>
+                <span className="text-[11px] text-[var(--color-muted)]">
+                  {feltCompletedMs
+                    ? `Completed ${new Date(
+                        feltCompletedMs
+                      ).toLocaleDateString()}`
+                    : feltScheduledMs
+                    ? `Scheduled ${new Date(
+                        feltScheduledMs
+                      ).toLocaleDateString()}`
+                    : "Not scheduled"}
+                </span>
+                <button
+                  type="button"
+                  disabled={jobIsLocked}
+                  onClick={() => {
+                    if (jobIsLocked) return;
+                    setFeltScheduleDate(
+                      feltScheduledMs
+                        ? toYMD(new Date(feltScheduledMs))
+                        : toYMD(new Date())
+                    );
+                    setFeltScheduleEditing(true);
+                  }}
+                  className={
+                    "rounded-md px-2 py-0.5 text-[10px] " +
+                    (jobIsLocked
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+                  }
+                >
+                  {feltScheduledMs ? "Reschedule" : "Schedule"}
+                </button>
+                {!feltCompletedMs && (
+                  <button
+                    type="button"
+                    disabled={jobIsLocked}
+                    onClick={() => {
+                      if (jobIsLocked) return;
+                      void markFeltCompleted();
+                    }}
+                    className={
+                      "rounded-md px-2 py-0.5 text-[10px] " +
+                      (jobIsLocked
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-emerald-700 text-white hover:bg-emerald-600")
+                    }
+                  >
+                    Mark done
+                  </button>
+                )}
+              </div>
+
+              {/* Shingles pill */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide">
+                  Shingles
+                </span>
+                <span className="text-[11px] text-[var(--color-muted)]">
+                  {shinglesCompletedMs
+                    ? `Completed ${new Date(
+                        shinglesCompletedMs
+                      ).toLocaleDateString()}`
+                    : shinglesScheduledMs
+                    ? `Scheduled ${new Date(
+                        shinglesScheduledMs
+                      ).toLocaleDateString()}`
+                    : "Not scheduled"}
+                </span>
+                <button
+                  type="button"
+                  disabled={jobIsLocked}
+                  onClick={() => {
+                    if (jobIsLocked) return;
+                    setShinglesScheduleDate(
+                      shinglesScheduledMs
+                        ? toYMD(new Date(shinglesScheduledMs))
+                        : toYMD(new Date())
+                    );
+                    setShinglesScheduleEditing(true);
+                  }}
+                  className={
+                    "rounded-md px-2 py-0.5 text-[10px] " +
+                    (jobIsLocked
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+                  }
+                >
+                  {shinglesScheduledMs ? "Reschedule" : "Schedule"}
+                </button>
+                {!shinglesCompletedMs && (
+                  <button
+                    type="button"
+                    disabled={jobIsLocked}
+                    onClick={() => {
+                      if (jobIsLocked) return;
+                      void markShinglesCompleted();
+                    }}
+                    className={
+                      "rounded-md px-2 py-0.5 text-[10px] " +
+                      (jobIsLocked
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : "bg-emerald-700 text-white hover:bg-emerald-600")
+                    }
+                  >
+                    Mark done
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Inline editors for dates */}
+            {feltScheduleEditing && (
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  type="date"
+                  value={feltScheduleDate}
+                  onChange={(e) => setFeltScheduleDate(e.target.value)}
+                  className="rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[11px] text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveFeltSchedule()}
+                  className="rounded-md bg-cyan-800 px-2 py-1 text-[10px] font-semibold text-white hover:bg-cyan-700"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeltScheduleEditing(false)}
+                  className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {shinglesScheduleEditing && (
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  type="date"
+                  value={shinglesScheduleDate}
+                  onChange={(e) => setShinglesScheduleDate(e.target.value)}
+                  className="rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[11px] text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveShinglesSchedule()}
+                  className="rounded-md bg-cyan-800 px-2 py-1 text-[10px] font-semibold text-white hover:bg-cyan-700"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShinglesScheduleEditing(false)}
+                  className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
           {/* Punch scheduling / completion controls */}
           <div className="flex flex-wrap items-center justify-end gap-2">

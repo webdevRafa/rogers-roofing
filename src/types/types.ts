@@ -235,9 +235,20 @@ export type Job = {
   id: ID;
   orgId?: ID; // multi-tenant future-proofing
   status: JobStatus;
-pricing?: JobPricing;
+  pricing?: JobPricing;
   address: Address;
+
+  /** Final punch information (walkthrough / completion). */
   punchedAt?: Timestamp | Date | FieldValue | null;
+  /** When this job is scheduled to be punched (final walkthrough/finish). */
+  punchScheduledFor?: FSDate;
+
+  /** Material scheduling / completion for this job. */
+  feltScheduledFor?: FSDate;
+  feltCompletedAt?: FSDate;
+  shinglesScheduledFor?: FSDate;
+  shinglesCompletedAt?: FSDate;
+
   earnings: Earnings;
   expenses: Expenses;
 
@@ -247,11 +258,9 @@ pricing?: JobPricing;
   notes?: Note[];
   attachments?: JobAttachment[];
 
-  /** When this job is scheduled to be punched (final walkthrough/finish). */
-  punchScheduledFor?: FSDate;
-
   computed?: JobComputed;
 } & AuditFields;
+
 
 /** Minimal list-row projection. */
 export type JobListItem = {
