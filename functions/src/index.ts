@@ -44,7 +44,7 @@ export const processJobPhoto = onObjectFinalized({ bucket: "rogers-roofing.fireb
     await bucket.file(filePath).download({ destination: tempOriginal });
 
     // Convert → WEBP q=90
-    await sharp(tempOriginal).webp({ quality: 90 }).toFile(tempWebp);
+    await sharp(tempOriginal).rotate().webp({ quality: 90 }).toFile(tempWebp);
 
     // Upload derivative with a token
     const token = randomUUID();
