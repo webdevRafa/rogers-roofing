@@ -17,6 +17,32 @@
 .section-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+@media print {
+  body {
+    margin: 0;
+  }
+
+  /* Hide everything under <body> except the paystub modal */
+  body > *:not(.paystub-print) {
+    display: none !important;
+  }
+
+  /* Make the modal behave like a normal single-page document */
+  .paystub-print {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .paystub-print-inner {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
 
 
 :root {

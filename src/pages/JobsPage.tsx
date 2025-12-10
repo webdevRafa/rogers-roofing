@@ -24,6 +24,7 @@ import { jobConverter } from "../types/types";
 import { recomputeJob, makeAddress } from "../utils/calc";
 import { Link, useNavigate } from "react-router-dom"; // ✅ navigate after create
 import { getAuth, signOut } from "firebase/auth";
+import { createPortal } from "react-dom";
 
 import { motion, AnimatePresence, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
@@ -1678,6 +1679,25 @@ export default function JobsPage() {
                         const amountCents = (p as any).amountCents ?? 0;
                         const jobId = (p as any).jobId as string | undefined;
 
+                        const sqft = p.sqft;
+                        const ratePerSqFt = p.ratePerSqFt;
+                        const category = p.category;
+
+                        const hasSqft =
+                          typeof sqft === "number" && !Number.isNaN(sqft);
+                        const hasRate =
+                          typeof ratePerSqFt === "number" &&
+                          !Number.isNaN(ratePerSqFt);
+
+                        const categoryLabel =
+                          category === "shingles"
+                            ? "Shingles labor"
+                            : category === "felt"
+                            ? "Felt labor"
+                            : category === "technician"
+                            ? "Technician"
+                            : undefined;
+
                         return (
                           <li
                             key={p.id}
@@ -1687,9 +1707,11 @@ export default function JobsPage() {
                               <div className="text-sm font-medium text-[var(--color-text)]">
                                 {employeeName || "Unknown employee"}
                               </div>
+
                               <div className="text-xs text-[var(--color-muted)]">
                                 {a.display || "—"}
                               </div>
+
                               {(a.city || a.state || a.zip) && (
                                 <div className="text-[11px] text-[var(--color-muted)]">
                                   {[a.city, a.state, a.zip]
@@ -1697,6 +1719,34 @@ export default function JobsPage() {
                                     .join(", ")}
                                 </div>
                               )}
+
+                              {(categoryLabel || hasSqft || hasRate) && (
+                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--color-muted)]">
+                                  {categoryLabel && (
+                                    <span className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                                      {categoryLabel}
+                                    </span>
+                                  )}
+
+                                  {hasSqft && (
+                                    <span>{sqft!.toLocaleString()} sq ft</span>
+                                  )}
+
+                                  {hasSqft && hasRate && <span>•</span>}
+
+                                  {hasRate && (
+                                    <span>
+                                      @{" "}
+                                      {ratePerSqFt!.toLocaleString(undefined, {
+                                        style: "currency",
+                                        currency: "USD",
+                                      })}
+                                      /sq ft
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
                               <div className="mt-1 text-[11px] text-[var(--color-muted)]">
                                 Created {fmtDateTime(p.createdAt)}{" "}
                                 {p.paidAt
@@ -1892,9 +1942,20 @@ function GlobalPayoutStubModal({
   // Use the helper we created earlier to normalize the employee address
   const empAddr = employee ? normalizeEmployeeAddress(employee.address) : null;
 
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
+  const formatCategory = (category: PayoutDoc["category"] | undefined) => {
+    if (category === "shingles") return "Shingles";
+    if (category === "felt") return "Felt";
+    if (category === "technician") return "Technician";
+    return "";
+  };
+  // In browsers, render the stub into <body> via a portal
+  if (typeof document === "undefined") {
+    // Safety guard (in case of SSR); nothing to render
+    return null;
+  }
+  return createPortal(
+    <div className="paystub-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="paystub-print-inner w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
         {/* Header */}
         <div className="mb-4 flex  items-start justify-between gap-4">
           <div>
@@ -1916,13 +1977,25 @@ function GlobalPayoutStubModal({
                 <h1 className="mt-3 mb-0 text-lg">
                   <span className="font-medium">{employee.name}</span>
                 </h1>
+
                 {empAddr && (
-                  <h1 className="mt-[-3px] text-md">
-                    {empAddr.fullLine ||
-                      [empAddr.line1, empAddr.city, empAddr.state, empAddr.zip]
-                        .filter(Boolean)
-                        .join(", ")}
-                  </h1>
+                  <>
+                    {/* Street / full line */}
+                    {(empAddr.fullLine || empAddr.line1) && (
+                      <h1 className="mt-[-3px] text-md">
+                        {empAddr.fullLine || empAddr.line1}
+                      </h1>
+                    )}
+
+                    {/* City, state, ZIP on its own line */}
+                    {(empAddr.city || empAddr.state || empAddr.zip) && (
+                      <p className="text-xs">
+                        {[empAddr.city, empAddr.state, empAddr.zip]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -1950,16 +2023,21 @@ function GlobalPayoutStubModal({
             <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-3 py-2 text-left">Address</th>
+                <th className="px-3 py-2 text-left">Material</th>
                 <th className="px-3 py-2 text-left">SqCount</th>
                 <th className="px-3 py-2 text-left">Rate</th>
                 <th className="px-3 py-2 text-right">Total</th>
               </tr>
             </thead>
+
             <tbody>
               {payouts.map((p) => {
                 const a = addr((p as any).jobAddressSnapshot as any);
+                const materialLabel = formatCategory(p.category);
+
                 return (
                   <tr key={p.id} className="border-t border-gray-100">
+                    {/* Address */}
                     <td className="px-3 py-2 align-top">
                       <div className="font-medium text-gray-900">
                         {a.display || "—"}
@@ -1970,16 +2048,27 @@ function GlobalPayoutStubModal({
                         </div>
                       )}
                     </td>
+
+                    {/* Material */}
+                    <td className="px-3 py-2 align-top text-sm text-gray-800">
+                      {materialLabel || "—"}
+                    </td>
+
+                    {/* SqCount */}
                     <td className="px-3 py-2 align-top text-sm text-gray-800">
                       {typeof (p as any).sqft === "number"
                         ? (p as any).sqft.toLocaleString()
                         : "—"}
                     </td>
+
+                    {/* Rate */}
                     <td className="px-3 py-2 align-top text-sm text-gray-800">
                       {typeof (p as any).ratePerSqFt === "number"
                         ? `$${(p as any).ratePerSqFt.toFixed(2)}/sq.ft`
                         : "—"}
                     </td>
+
+                    {/* Total */}
                     <td className="px-3 py-2 align-top text-right text-sm font-semibold text-gray-900">
                       {money((p as any).amountCents ?? 0)}
                     </td>
@@ -2021,6 +2110,7 @@ function GlobalPayoutStubModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
