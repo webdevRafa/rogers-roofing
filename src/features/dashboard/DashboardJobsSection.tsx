@@ -318,7 +318,7 @@ export function DashboardJobsSection({
               key={f}
               onClick={() => setStatusFilter(f)}
               className={[
-                "whitespace-nowrap px-3 py-1 text-xs uppercase tracking-wide transition-colors",
+                "whitespace-nowrap px-3 py-2 text-xs uppercase tracking-wide transition-colors",
                 statusFilter === f
                   ? "bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] border-transparent text-white shadow-sm"
                   : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
@@ -362,7 +362,7 @@ export function DashboardJobsSection({
             className="mb-6 rounded-xl shadow-md bg-[var(--color-card)] p-4"
             {...fadeUp(0.09)}
           >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center  sm:justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-[var(--color-text)]">
                   Filter by last updated date
