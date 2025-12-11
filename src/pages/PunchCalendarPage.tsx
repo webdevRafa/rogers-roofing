@@ -139,7 +139,7 @@ export default function PunchCalendarPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate("/jobs")}
+              onClick={() => navigate("/dashboard")}
               className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
             >
               <Home className="h-4 w-4" />
@@ -226,7 +226,7 @@ export default function PunchCalendarPage() {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => navigate(`/punches/${key}`)}
+                  onClick={() => navigate(`/schedule/${key}`)}
                   className={[
                     "h-20 w-full rounded-xl border px-2 py-1 text-left text-xs transition",
                     hasAnything

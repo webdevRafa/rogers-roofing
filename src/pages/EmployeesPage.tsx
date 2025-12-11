@@ -85,7 +85,7 @@ export default function EmployeesPage() {
           <div>
             <h1 className="text-3xl poppins uppercase text-white">Employees</h1>
             <button
-              onClick={() => navigate("/jobs")}
+              onClick={() => navigate("/dashboard")}
               className="text-sm text-neutral-200 hover:underline cursor-pointer"
             >
               ← Back to Home

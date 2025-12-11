@@ -217,7 +217,7 @@ export default function PunchDayPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate("/punches")}
+              onClick={() => navigate("/schedule")}
               className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
             >
               <ArrowLeft className="h-4 w-4" />

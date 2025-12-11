@@ -771,7 +771,7 @@ export default function DashboardPage() {
 
             {/* Punch Calendar */}
             <button
-              onClick={() => navigate("/punches")}
+              onClick={() => navigate("/schedule")}
               className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
               aria-label="Punch Calendar"
             >

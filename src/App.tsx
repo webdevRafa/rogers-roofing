@@ -29,7 +29,7 @@ export default function App() {
             />
             {/* Punch calendar */}
             <Route
-              path="/punches"
+              path="/schedule"
               element={
                 <AdminOnly>
                   <PunchCalendarPage />
@@ -37,7 +37,7 @@ export default function App() {
               }
             />
             <Route
-              path="/punches/:date"
+              path="/schedule/:date"
               element={
                 <AdminOnly>
                   <PunchDayPage />
