@@ -271,11 +271,15 @@ export default function JobDetailPage() {
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Toast for photo upload status
-  const [photoUploadStatus, setPhotoUploadStatus] = useState<
-    "success" | "error" | null
-  >(null);
-  const [photoUploadMessage, setPhotoUploadMessage] = useState("");
+  // Generic toast (photo uploads, scheduling, etc.)
+  type ToastStatus = "success" | "error";
+  type ToastState = {
+    status: ToastStatus;
+    title: string;
+    message: string;
+  } | null;
+
+  const [toast, setToast] = useState<ToastState>(null);
 
   useEffect(() => {
     if (!photoFile) {
@@ -290,15 +294,14 @@ export default function JobDetailPage() {
     return () => URL.revokeObjectURL(url);
   }, [photoFile]);
 
-  // Auto-hide photo upload toast
+  // Auto-hide global toast
   useEffect(() => {
-    if (!photoUploadStatus) return;
+    if (!toast) return;
     const id = setTimeout(() => {
-      setPhotoUploadStatus(null);
-      setPhotoUploadMessage("");
+      setToast(null);
     }, 3500);
     return () => clearTimeout(id);
-  }, [photoUploadStatus]);
+  }, [toast]);
 
   // Tabs for payouts
   type PayoutTab = "shingles" | "felt" | "technician";
@@ -457,14 +460,25 @@ export default function JobDetailPage() {
 
   async function confirmMarkPunched() {
     if (!job) return;
+
     const now = Timestamp.now();
+
     await saveJob({
       ...job,
       status: "completed", // mark job as completed
       punchedAt: now,
       punchScheduledFor: null, // clear any scheduled date
     });
+
     setConfirmPunchedOpen(false);
+
+    // Show success toast
+    const label = now.toDate().toLocaleString();
+    setToast({
+      status: "success",
+      title: "Job marked complete",
+      message: `This job has been marked as punched and completed on ${label}.`,
+    });
   }
 
   async function saveFeltSchedule() {
@@ -699,18 +713,19 @@ export default function JobDetailPage() {
       setPhotoFile(null);
       setPhotoCaption("");
 
-      // ✅ Show nice success toast instead of alert
-      setPhotoUploadStatus("success");
-      setPhotoUploadMessage(
-        "Upload received — processing. The photo will appear shortly."
-      );
+      setToast({
+        status: "success",
+        title: "Photo upload received",
+        message: "Upload received — processing. The photo will appear shortly.",
+      });
     } catch (e) {
       console.error(e);
-      // ❌ Show error toast instead of alert
-      setPhotoUploadStatus("error");
-      setPhotoUploadMessage(
-        "Upload failed. Please try again or check the console for details."
-      );
+      setToast({
+        status: "error",
+        title: "Photo upload failed",
+        message:
+          "Upload failed. Please try again or check the console for details.",
+      });
     } finally {
       setUploading(false);
     }
@@ -852,23 +867,23 @@ export default function JobDetailPage() {
           <div className="pointer-events-none absolute inset-0 -z-10">
             {/* Photo itself */}
             <div
-              className="absolute inset-0 bg-cover bg-center opacity-20"
+              className="absolute inset-0 bg-cover bg-center opacity-80"
               style={{ backgroundImage: `url(${latestPhotoUrl})` }}
             />
             {/* White wash overlay to keep text readable */}
-            <div className="absolute inset-0 bg-white/65" />
+            <div className="absolute inset-0 " />
           </div>
         )}
 
-        <div>
+        <div className="bg-white rounded-md p-2">
           <Link
             to="/dashboard"
             className="text-sm text-[var(--color-primary)] hover:underline"
           >
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 rounded-md">
               <ChevronLeft size="30" />
 
-              <p className="text-[var(--color-primary)]">back to dashboard</p>
+              <p className="text-[var(--color-primary)] e">back to dashboard</p>
             </div>
           </Link>
           <h1 className="mt-2 text-4xl font-bold uppercase text-[var(--color-logo)]">
@@ -879,10 +894,10 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
+        <div className="flex w-full flex-col items-end gap-2 sm:w-auto ">
           {/* Status pill */}
           <div className="flex items-center gap-2">
-            <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">
+            <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
               Status:
               <span
                 className={`ml-2 rounded-full px-2 py-0.5 ${statusClasses(
@@ -898,7 +913,7 @@ export default function JobDetailPage() {
           <div className="flex w-full flex-col items-end gap-1 text-[11px]">
             <div className="flex flex-wrap justify-end gap-2">
               {/* Felt pill */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wide">
                   DRY IN
                 </span>
@@ -955,7 +970,7 @@ export default function JobDetailPage() {
               </div>
 
               {/* Shingles pill */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wide">
                   Shingles
                 </span>
@@ -1043,14 +1058,14 @@ export default function JobDetailPage() {
                   : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
               }
             >
-              Schedule punch
+              {job.punchScheduledFor ? "Reschedule punch" : "Schedule punch"}
             </button>
 
             {canSchedulePunch && (
               <button
                 type="button"
                 onClick={() => setConfirmPunchedOpen(true)}
-                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+                className="rounded-lg bg-emerald-700 border border-white px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600  cursor-pointer"
               >
                 Mark as punched
               </button>
@@ -1059,7 +1074,7 @@ export default function JobDetailPage() {
 
           {/* Pricing */}
           {!hasPricing || editingPricing ? (
-            <div className="rounded-2xl shadow-md px-5 py-3 text-right w-full sm:w-auto">
+            <div className="rounded-2xl shadow-md px-5 py-3 text-right w-full sm:w-auto ">
               <div className="mb-2 text-xs text-[var(--color-muted)]">
                 Total Job Pay
               </div>
@@ -1128,14 +1143,16 @@ export default function JobDetailPage() {
             </div>
           ) : (
             <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
-              <div className="rounded-xl shadow-md bg-white px-4 py-2 text-right">
-                <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
-                  Sq. ft @ Rate
-                </div>
-                <div className="text-sm font-medium text-[var(--color-text)]">
-                  {Number(displaySqft || 0).toLocaleString()} sq.ft @ $
-                  {displayRate}
-                  /sq.ft <span className="opacity-70">+ $35</span>
+              <div className="rounded-xl shadow-md bg-white px-4 py-2 text-right flex items-center justify-center">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
+                    Sq. ft @ Rate
+                  </div>
+                  <div className="text-sm font-medium text-[var(--color-text)]">
+                    {Number(displaySqft || 0).toLocaleString()} sq.ft @ $
+                    {displayRate}
+                    /sq.ft <span className="opacity-70">+ $35</span>
+                  </div>
                 </div>
               </div>
 
@@ -1678,12 +1695,12 @@ export default function JobDetailPage() {
           </div>
         </MotionCard>
       </div>
-      {/* ===== Photo Upload Toast ===== */}
-      {photoUploadStatus && (
+      {/* ===== Global Toast ===== */}
+      {toast && (
         <div className="fixed right-4 top-20 z-50">
           <div className="flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-white/95 px-4 py-3 text-sm shadow-lg">
             <div className="mt-0.5">
-              {photoUploadStatus === "success" ? (
+              {toast.status === "success" ? (
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               ) : (
                 <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -1693,25 +1710,20 @@ export default function JobDetailPage() {
               <div
                 className={
                   "font-semibold " +
-                  (photoUploadStatus === "success"
+                  (toast.status === "success"
                     ? "text-emerald-700"
                     : "text-red-600")
                 }
               >
-                {photoUploadStatus === "success"
-                  ? "Photo upload received"
-                  : "Photo upload failed"}
+                {toast.title}
               </div>
               <div className="mt-0.5 text-xs text-[var(--color-muted)]">
-                {photoUploadMessage}
+                {toast.message}
               </div>
             </div>
             <button
               type="button"
-              onClick={() => {
-                setPhotoUploadStatus(null);
-                setPhotoUploadMessage("");
-              }}
+              onClick={() => setToast(null)}
               className="ml-2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
               aria-label="Dismiss"
             >
@@ -1938,12 +1950,23 @@ export default function JobDetailPage() {
                     .map((x) => Number(x));
                   const scheduledDate = new Date(year, month - 1, day);
 
+                  const wasScheduledBefore = !!job.punchScheduledFor;
+
                   await saveJob({
                     ...job,
                     punchScheduledFor: Timestamp.fromDate(scheduledDate),
                   });
 
                   setSchedulePunchOpen(false);
+
+                  const label = scheduledDate.toLocaleDateString();
+                  setToast({
+                    status: "success",
+                    title: wasScheduledBefore
+                      ? "Punch rescheduled"
+                      : "Punch scheduled",
+                    message: `Punch is now set for ${label}.`,
+                  });
                 }}
                 className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
               >
@@ -2033,6 +2056,12 @@ export default function JobDetailPage() {
                 onClick={async () => {
                   await markFeltCompleted();
                   setConfirmFeltDoneOpen(false);
+                  setToast({
+                    status: "success",
+                    title: "DRY IN marked complete",
+                    message:
+                      "DRY IN has been marked as completed for this job.",
+                  });
                 }}
                 className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
               >
@@ -2079,6 +2108,12 @@ export default function JobDetailPage() {
                 onClick={async () => {
                   await markShinglesCompleted();
                   setConfirmShinglesDoneOpen(false);
+                  setToast({
+                    status: "success",
+                    title: "Shingles marked complete",
+                    message:
+                      "Shingles have been marked as completed for this job.",
+                  });
                 }}
                 className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
               >
