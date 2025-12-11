@@ -140,6 +140,9 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [signingOut, setSigningOut] = useState(false);
+  const [newFeltDate, setNewFeltDate] = useState("");
+  const [newShinglesDate, setNewShinglesDate] = useState("");
+  const [newPunchDate, setNewPunchDate] = useState("");
 
   // Pagination for jobs
   const [jobsPage, setJobsPage] = useState(1);
@@ -567,14 +570,25 @@ export default function DashboardPage() {
   async function createJob() {
     setLoading(true);
     setError(null);
+
     try {
-      if (!address.trim()) throw new Error("Please enter a job address.");
+      if (!address.trim()) {
+        throw new Error("Please enter a job address.");
+      }
+
       const newRef = doc(collection(db, "jobs"));
+
+      // Base job with the shape that matches `Job` in types.ts
       let job: Job = {
         id: newRef.id,
         status: "pending",
         address: makeAddress(address),
-        earnings: { totalEarningsCents: 0, entries: [], currency: "USD" },
+
+        earnings: {
+          totalEarningsCents: 0,
+          entries: [],
+          currency: "USD",
+        },
         expenses: {
           totalPayoutsCents: 0,
           totalMaterialsCents: 0,
@@ -582,21 +596,45 @@ export default function DashboardPage() {
           materials: [],
           currency: "USD",
         },
+
         summaryNotes: "",
         attachments: [],
         createdAt: serverTimestamp() as FieldValue,
         updatedAt: serverTimestamp() as FieldValue,
-        computed: { totalExpensesCents: 0, netProfitCents: 0 },
+
+        // Will be recomputed, but we can seed zeros
+        computed: {
+          totalExpensesCents: 0,
+          netProfitCents: 0,
+        },
       };
+
+      // Optional scheduling from the modal
+      if (newFeltDate) {
+        job.feltScheduledFor = new Date(newFeltDate + "T00:00:00");
+      }
+      if (newShinglesDate) {
+        job.shinglesScheduledFor = new Date(newShinglesDate + "T00:00:00");
+      }
+      if (newPunchDate) {
+        job.punchScheduledFor = new Date(newPunchDate + "T00:00:00");
+      }
+
+      // Ensure `computed` is consistent with earnings/expenses
       job = recomputeJob(job);
+
+      // Save using the converter
       await setDoc(newRef.withConverter(jobConverter), job);
 
-      // go straight to the job's dynamic page
+      // Go straight to the new job
       navigate(`/job/${newRef.id}`);
 
-      // (Optional clean-up if user navigates back)
+      // Clean up form state (for when user comes back to the dashboard)
       setAddress("");
       setOpenForm(false);
+      setNewFeltDate("");
+      setNewShinglesDate("");
+      setNewPunchDate("");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -694,6 +732,12 @@ export default function DashboardPage() {
             setOpenForm={setOpenForm}
             address={address}
             setAddress={setAddress}
+            newFeltDate={newFeltDate}
+            setNewFeltDate={setNewFeltDate}
+            newShinglesDate={newShinglesDate}
+            setNewShinglesDate={setNewShinglesDate}
+            newPunchDate={newPunchDate}
+            setNewPunchDate={setNewPunchDate}
             createJob={createJob}
             loading={loading}
             error={error}

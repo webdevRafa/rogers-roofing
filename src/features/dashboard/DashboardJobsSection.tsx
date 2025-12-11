@@ -159,6 +159,13 @@ export interface DashboardJobsSectionProps {
   statusFilter: StatusFilter;
   setStatusFilter: Dispatch<SetStateAction<StatusFilter>>;
 
+  newFeltDate: string;
+  setNewFeltDate: (value: string) => void;
+  newShinglesDate: string;
+  setNewShinglesDate: (value: string) => void;
+  newPunchDate: string;
+  setNewPunchDate: (value: string) => void;
+
   // create job form
   openForm: boolean;
   setOpenForm: Dispatch<SetStateAction<boolean>>;
@@ -202,6 +209,12 @@ export function DashboardJobsSection({
   statusFilter,
   setStatusFilter,
 
+  newFeltDate,
+  setNewFeltDate,
+  newShinglesDate,
+  setNewShinglesDate,
+  newPunchDate,
+  setNewPunchDate,
   openForm,
   setOpenForm,
   address,
@@ -330,28 +343,105 @@ export function DashboardJobsSection({
         </div>
       )}
 
-      {/* Create Job form */}
+      {/* Create Job modal */}
       {openForm && (
-        <motion.section className="mb-4 shadow-md p-4" {...fadeUp(0.08)}>
-          <div className="flex w-full flex-col justify-start gap-2 sm:flex-row sm:gap-3">
-            <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Job address (e.g. 123 Main St, San Antonio, TX)"
-              className="w-full max-w-[500px] rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-            <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <motion.div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            {...fadeUp(0.08)}
+          >
+            <h3 className="text-base font-semibold text-[var(--color-text)]">
+              Create new job
+            </h3>
+            <p className="mt-1 text-xs text-[var(--color-muted)]">
+              Only the address is required. You can optionally schedule felt,
+              shingles, and punch.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {/* Address */}
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                  Job address<span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="123 Main St, San Antonio, TX"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+              </div>
+
+              {/* Schedule fields */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                    Schedule felt (optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={newFeltDate}
+                    onChange={(e) => setNewFeltDate(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-xs text-[var(--color-text)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                    Schedule shingles (optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={newShinglesDate}
+                    onChange={(e) => setNewShinglesDate(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-xs text-[var(--color-text)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                    Schedule punch (optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={newPunchDate}
+                    onChange={(e) => setNewPunchDate(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-white px-2 py-1.5 text-xs text-[var(--color-text)]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {error && <div className="mt-3 text-xs text-red-600">{error}</div>}
+
+            <div className="mt-5 flex justify-end gap-2">
               <button
-                onClick={createJob}
-                disabled={loading}
-                className="w-full sm:w-auto bg-[var(--color-brown)] transition duration-300 ease-in-out text-white px-4 py-1.5 text-sm disabled:opacity-50"
+                type="button"
+                onClick={() => {
+                  setOpenForm(false);
+                  setAddress("");
+                  setNewFeltDate("");
+                  setNewShinglesDate("");
+                  setNewPunchDate("");
+                }}
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
               >
-                {loading ? "Saving…" : "Create"}
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Let createJob handle validation & navigation
+                  void createJob();
+                }}
+                disabled={loading}
+                className="rounded-lg bg-[var(--color-brown)] px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--color-brown-hover)] disabled:opacity-50"
+              >
+                {loading ? "Creating…" : "Create job"}
               </button>
             </div>
-          </div>
-          {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
-        </motion.section>
+          </motion.div>
+        </div>
       )}
 
       {/* Date range filters */}
