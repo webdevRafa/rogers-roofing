@@ -743,7 +743,7 @@ export default function JobDetailPage() {
       await deleteDoc(doc(collection(db, "jobs"), job.id));
       // Close modal (in case navigate is delayed) and go back to jobs list
       setConfirmDeleteOpen(false);
-      navigate("/jobs");
+      navigate("/dashboard");
     } catch (e) {
       console.error("Failed to permanently delete job", e);
       alert("Failed to delete the job. Check console for details.");
@@ -817,13 +817,13 @@ export default function JobDetailPage() {
       >
         <div>
           <Link
-            to="/jobs"
+            to="/dashboard"
             className="text-sm text-[var(--color-primary)] hover:underline"
           >
             <div className="flex items-center gap-1">
               <ChevronLeft size="30" />
 
-              <p className="text-[var(--color-primary)]">back to jobs</p>
+              <p className="text-[var(--color-primary)]">back to dashboard</p>
             </div>
           </Link>
           <h1 className="mt-2 text-4xl font-bold uppercase text-[var(--color-logo)]">

@@ -1,6 +1,6 @@
 // src/App.tsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import JobsPage from "./pages/JobsPage";
+import DashboardPage from "./pages/DashboardPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import "./index.css";
 import InvoiceViewer from "./pages/InvoiceViewer";
@@ -20,10 +20,10 @@ export default function App() {
           <ScrollToTop />
           <Routes>
             <Route
-              path="/jobs"
+              path="/dashboard"
               element={
                 <AdminOnly>
-                  <JobsPage />
+                  <DashboardPage />
                 </AdminOnly>
               }
             />

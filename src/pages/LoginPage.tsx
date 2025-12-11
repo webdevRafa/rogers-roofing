@@ -26,7 +26,7 @@ const LoginPage = () => {
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       // ✅ redirect on success
-      navigate("/jobs", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (error: any) {
       const msg =
         error?.code === "auth/invalid-credential"
