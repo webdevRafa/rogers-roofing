@@ -143,7 +143,7 @@ export default function PunchCalendarPage() {
               className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
             >
               <Home className="h-4 w-4" />
-              Jobs overview
+              Dashboard
             </button>
 
             <button
