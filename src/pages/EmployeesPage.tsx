@@ -93,9 +93,9 @@ export default function EmployeesPage() {
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-[1200px] py-8 ">
+      <div className="mx-auto max-w-[1200px] py-8 mt-20 px-4 md:px-0">
         {/* Add employee */}
-        <section className="mb-6 rounded-xl  p-4 shadow">
+        <section className="mb-6 rounded-xl   p-4 shadow">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-start">
             <h2 className="text-lg font-medium poppins text-[var(--color-logo)] ">
               New

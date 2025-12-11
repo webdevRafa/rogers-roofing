@@ -13,7 +13,8 @@ import {
 import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import type { Job, JobStatus, PayoutDoc, Employee } from "../types/types";
-
+import { DashboardHeader } from "../features/dashboard/DashboardHeader";
+import { DashboardJobsSection } from "../features/dashboard/DashboardJobsSection";
 import { GlobalPayoutStubModal } from "../components/GlobalPayoutStubModal";
 
 import { jobConverter } from "../types/types";
@@ -21,18 +22,8 @@ import { recomputeJob, makeAddress } from "../utils/calc";
 import { Link, useNavigate } from "react-router-dom"; // ✅ navigate after create
 import { getAuth, signOut } from "firebase/auth";
 
-import { motion, AnimatePresence, type MotionProps } from "framer-motion";
-import CountUp from "react-countup";
-import {
-  Search,
-  Filter,
-  ChevronDown,
-  LogOut,
-  CalendarDays,
-  SquarePlus,
-  Users,
-} from "lucide-react";
-import logo from "../assets/rogers-roofing.webp";
+import { motion, type MotionProps } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 
 // ---------- Animation helpers ----------
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -73,27 +64,6 @@ function statusClasses(status: JobStatus) {
   }
 }
 
-// ---------- Money display (animated) ----------
-function CountMoney({
-  cents,
-  className = "",
-}: {
-  cents: number;
-  className?: string;
-}) {
-  const dollars = (cents ?? 0) / 100;
-  return (
-    <span className={className}>
-      <CountUp
-        key={cents}
-        end={dollars}
-        decimals={2}
-        prefix="$"
-        duration={0.6}
-      />
-    </span>
-  );
-}
 // Simple money formatter for non-animated numbers (used in payouts section)
 function money(cents: number | null | undefined): string {
   const v = typeof cents === "number" ? cents : 0;
@@ -737,66 +707,12 @@ export default function DashboardPage() {
   return (
     <>
       <div>
-        <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
-          <nav className="top-0 z-10 backdrop-blur">
-            <div className="mx-auto max-w-[1200px] flex items-center justify-between py-10 px-4 lg:px-0">
-              <div className="text-lg md:text-3xl poppins text-white  uppercase flex justify-between w-full items-center">
-                Roger's Roofing & Contracting LLC
-                <img
-                  className="max-w-[100px] md:max-w-[150px] rounded-2xl shadow-md"
-                  src={logo}
-                  alt=""
-                />
-              </div>
-            </div>
-          </nav>
-        </div>
-
-        {/* MAIN NAV BUTTONS (icon-only with hover labels) */}
-        <div className="max-w-[1200px] mx-auto mt-5 flex gap-4 justify-between items-center px-4 lg:px-0">
-          <div className="flex gap-2">
-            {/* Employees */}
-            <button
-              onClick={() => navigate("/employees")}
-              className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              aria-label="Employees"
-            >
-              <Users className="h-4 w-4" />
-
-              {/* Hover label */}
-              <span className="pointer-events-none absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-                Employees
-              </span>
-            </button>
-
-            {/* Punch Calendar */}
-            <button
-              onClick={() => navigate("/schedule")}
-              className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              aria-label="Punch Calendar"
-            >
-              <CalendarDays className="h-4 w-4" />
-
-              <span className="pointer-events-none absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-                Punch Calendar
-              </span>
-            </button>
-          </div>
-
-          {/* Sign out */}
-          <button
-            onClick={handleLogout}
-            disabled={signingOut}
-            className="group relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-red-800 text-white  disabled:opacity-50"
-            aria-label="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-
-            <span className="pointer-events-none absolute -bottom-12 left-1/2 -translate-x-1/2 rounded-md bg-black/80 px-2 py-0.5 text-[10px] text-white opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-              {signingOut ? "Signing out…" : "Sign out"}
-            </span>
-          </button>
-        </div>
+        <DashboardHeader
+          onGoToEmployees={() => navigate("/employees")}
+          onGoToPunchCalendar={() => navigate("/schedule")}
+          onLogout={handleLogout}
+          signingOut={signingOut}
+        />
 
         <motion.div
           className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10 "
@@ -805,470 +721,41 @@ export default function DashboardPage() {
           animate="animate"
         >
           {/* Header */}
-          <motion.header
-            className="mb-4 sm:mb-6 flex flex-wrap bg-white/60 hover:bg-white transition duration-300 ease-in-out p-6 rounded-lg shadow-md hover:shadow-lg items-center justify-start gap-2 w-full"
-            {...fadeUp(0)}
-          >
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl poppins text-[var(--color-text)]">
-                Jobs
-              </h1>
-              <button
-                type="button"
-                onClick={() => setJobsOpen((v) => !v)}
-                className={`inline-flex bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-xs text-white `}
-              >
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${
-                    jobsOpen ? "rotate-0" : "-rotate-90"
-                  }`}
-                />
-                <span className="ml-1 hidden sm:inline">
-                  {jobsOpen ? "Collapse" : "Expand"}
-                </span>
-              </button>
-            </div>
-
-            <div className="flex flex-row md:gap-2 sm:flex-row sm:items-center">
-              {/* Search toggle */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowSearch((v) => !v)}
-                  className="inline-flex items-center justify-center rounded-xl   px-3 py-2 text-sm text-[var(--color-text)] hover:shadow-md transition duration-300 ease-out w-full sm:w-auto"
-                  title="Search addresses"
-                  aria-label="Search addresses"
-                >
-                  <Search size={20} className="mr-2" />
-                  <span className="sm:hidden">Search</span>
-                </button>
-
-                {showSearch && (
-                  <div className="mt-2 sm:absolute sm:right-0 sm:mt-2 w-full sm:w-80 rounded-xl border border-[var(--color-border)] bg-white p-2 shadow-lg">
-                    <input
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search by address, city, state, or ZIP…"
-                      autoFocus
-                      className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                    />
-                    {searchTerm && (
-                      <div className="mt-1 text-xs text-[var(--color-muted)]">
-                        Filtering by:{" "}
-                        <span className="font-medium">{searchTerm}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* ✅ NEW: Filter dates toggle + active-chip */}
-              <div className="flex items-center">
-                <button
-                  onClick={() => setShowFilters((v) => !v)}
-                  className={`inline-flex items-center justify-center rounded-xl mr-2 px-1 md:px-3 py-1 text-xs hover:shadow-md  text-[var(--color-text)]  transition duration-300 ease-out ${
-                    hasActiveDateFilter
-                      ? "bg-[var(--color-brown-hover)] text-white"
-                      : ""
-                  }`}
-                  title="Filter by date"
-                  aria-expanded={showFilters}
-                  aria-controls="date-filters"
-                >
-                  <Filter size={16} className="mr-2" />
-                  {showFilters ? "Hide filters" : "Filter dates"}
-                </button>
-
-                {hasActiveDateFilter && (
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-white px-2 py-1 text-xs text-[var(--color-muted)] border border-[var(--color-border)]">
-                      {rangeLabel}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setDatePreset("custom");
-                        setStartDate("");
-                        setEndDate("");
-                      }}
-                      className="text-xs text-red-700 hover:underline"
-                      title="Clear date filters"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Add New Job */}
-              <button
-                onClick={() => setOpenForm((v) => !v)}
-                className="group relative flex  items-center justify-center rounded-lg px-3 p-1 hover:shadow-md  text-[var(--color-text)]  transition duration-300 ease-out"
-                aria-label="Add New Job"
-              >
-                <div className="flex items-center gap-1">
-                  <SquarePlus className="h-4 w-4" />{" "}
-                  <span className="text-xs">New</span>
-                </div>
-              </button>
-            </div>
-          </motion.header>
-
-          {/* Status Filters (scrollable on mobile) – only when My Jobs is expanded */}
-          {jobsOpen && (
-            <div className="mb-4 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {filters.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setStatusFilter(f)}
-                  className={[
-                    "whitespace-nowrap px-3 py-1 text-xs uppercase tracking-wide transition-colors",
-                    statusFilter === f
-                      ? "bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] border-transparent text-white shadow-sm"
-                      : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
-                  ].join(" ")}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Create Job form */}
-          {openForm && (
-            <motion.section className="mb-4 shadow-md  p-4 " {...fadeUp(0.08)}>
-              <div className="flex w-full flex-col justify-start gap-2 sm:flex-row sm:gap-3">
-                <input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Job address (e.g., 123 Main St, San Antonio, TX)"
-                  className="w-full max-w-[500px] rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                />
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={createJob}
-                    disabled={loading}
-                    className="w-full sm:w-auto  bg-[var(--color-brown)] transition duration-300 ease-in-out text-white px-4 py-1.5 text-sm  disabled:opacity-50"
-                  >
-                    {loading ? "Saving..." : "Create"}
-                  </button>
-                </div>
-              </div>
-              {error && (
-                <div className="mt-3 text-sm text-red-600">{error}</div>
-              )}
-            </motion.section>
-          )}
-
-          {/* ✅ Date range filters (hidden until toggled) */}
-          <AnimatePresence initial={false}>
-            {showFilters && (
-              <motion.section
-                id="date-filters"
-                className="mb-6 rounded-xl shadow-md bg-[var(--color-card)] p-4"
-                {...fadeUp(0.09)}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25, ease: EASE }}
-              >
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto_auto_auto_auto] sm:items-end">
-                  <div className="flex-1">
-                    <label className="mb-1 block text-xs text-[var(--color-muted)]">
-                      Start date
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => {
-                        setDatePreset("custom");
-                        setStartDate(e.target.value);
-                      }}
-                      className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="mb-1 block text-xs text-[var(--color-muted)]">
-                      End date
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => {
-                        setDatePreset("custom");
-                        setEndDate(e.target.value);
-                      }}
-                      className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 sm:ml-2">
-                    <button
-                      onClick={() => applyPreset("last7")}
-                      className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                    >
-                      Last 7 days
-                    </button>
-                    <button
-                      onClick={() => applyPreset("thisMonth")}
-                      className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                    >
-                      This month
-                    </button>
-                    <button
-                      onClick={() => applyPreset("ytd")}
-                      className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                    >
-                      Year to date
-                    </button>
-                    <button
-                      onClick={() => {
-                        setDatePreset("custom");
-                        setStartDate("");
-                        setEndDate("");
-                      }}
-                      className="rounded-lg bg-red-900/70 hover:bg-red-600/80 transition duration-300 ease-in-out px-3 py-2 text-xs text-white"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-                <p className="mt-2 text-xs text-[var(--color-muted)]">
-                  Filters use each job&apos;s <strong>last updated</strong> date
-                  (falls back to created date).
-                </p>
-              </motion.section>
-            )}
-          </AnimatePresence>
-          {jobsOpen && (
-            <div className="mt-2 section-scroll space-y-4">
-              {/* Totals */}
-              <motion.div
-                className="mb-0 rounded-tr-2xl p-2 text-sm max-w-[400px] shadow-md bg-gray-50/35  text-[var(--color-text)]"
-                {...fadeUp(0.1)}
-              >
-                Total net across {filteredJobs.length} job
-                {filteredJobs.length === 1 ? "" : "s"}:{" "}
-                <span className="font-semibold text-emerald-600">
-                  <CountMoney cents={totalNet} />
-                </span>
-              </motion.div>
-
-              {/* ====== MOBILE CARDS (default) ====== */}
-              <div className="grid gap-3 sm:hidden">
-                {pagedJobs.map((job) => {
-                  const a = addr(job.address);
-                  return (
-                    <div
-                      key={job.id}
-                      className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        {/* Address (left, truncated) */}
-                        <div className="flex-1 min-w-0">
-                          <div className="truncate text-sm font-medium text-[var(--color-text)]">
-                            {a.display || "—"}
-                          </div>
-                        </div>
-
-                        {/* Status pill */}
-                        <span
-                          className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase ${statusClasses(
-                            job.status
-                          )}`}
-                        >
-                          {job.status}
-                        </span>
-
-                        {/* Net profit */}
-                        <div
-                          className={
-                            (job.computed?.netProfitCents ?? 0) >= 0
-                              ? "shrink-0 text-xs font-semibold text-emerald-600"
-                              : "shrink-0 text-xs font-semibold text-red-600"
-                          }
-                        >
-                          <CountMoney
-                            cents={job.computed?.netProfitCents ?? 0}
-                          />
-                        </div>
-
-                        {/* View button */}
-                        <Link
-                          to={`/job/${job.id}`}
-                          className="shrink-0 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                        >
-                          View
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
-                {pagedJobs.length === 0 && (
-                  <div className="text-center text-[var(--color-muted)]">
-                    No jobs match the current filters.
-                  </div>
-                )}
-              </div>
-
-              {/* ====== DESKTOP TABLE (sm and up) ====== */}
-              <motion.div
-                className="hidden sm:block rounded-tr-2xl shadow-md bg-[var(--color-card)] "
-                variants={staggerParent}
-                initial="initial"
-                animate="animate"
-              >
-                {/* This is now the vertical scroll container for the table */}
-                <div className="max-h-[420px] overflow-y-auto overflow-x-auto section-scroll">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 z-10 bg-white/90 text-[var(--color-muted)] backdrop-blur border-b border-[var(--color-border)]/60">
-                      <tr>
-                        <th className="text-left px-4 py-3">Address</th>
-                        <th className="text-left px-4 py-3">Status</th>
-                        <th className="text-right px-4 py-3">Total Job Pay</th>
-                        <th className="text-right px-4 py-3">Expenses</th>
-                        <th className="text-right px-4 py-3">Net</th>
-                        <th className="text-left px-4 py-3">Last Updated</th>
-                        <th className="text-right px-4 py-3">Actions</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {pagedJobs.map((job, idx) => {
-                        const a = addr(job.address);
-                        return (
-                          <motion.tr
-                            key={job.id}
-                            variants={item}
-                            className={
-                              idx % 2 === 0 ? "bg-white/40" : "bg-white/20"
-                            }
-                          >
-                            <td className="px-4 py-3">
-                              <div className="font-medium text-[var(--color-text)]">
-                                <Link
-                                  to={`/job/${job.id}`}
-                                  className="hover:underline"
-                                >
-                                  {a.display || "—"}
-                                </Link>
-                              </div>
-                              {(a.city || a.state || a.zip) && (
-                                <div className="text-xs text-[var(--color-muted)]">
-                                  {[a.city, a.state, a.zip]
-                                    .filter(Boolean)
-                                    .join(", ")}
-                                </div>
-                              )}
-                            </td>
-
-                            <td className="px-4 py-3">
-                              <span
-                                className={`inline-block rounded-md px-2 py-1 text-[10px] font-semibold uppercase ${statusClasses(
-                                  job.status
-                                )}`}
-                              >
-                                {job.status}
-                              </span>
-                            </td>
-
-                            <td className="px-4 py-3 text-right">
-                              <CountMoney
-                                cents={job.earnings?.totalEarningsCents ?? 0}
-                              />
-                            </td>
-
-                            <td className="px-4 py-3 text-right">
-                              <CountMoney
-                                cents={job.computed?.totalExpensesCents ?? 0}
-                              />
-                            </td>
-
-                            <td className="px-4 py-3 text-right">
-                              <span
-                                className={
-                                  (job.computed?.netProfitCents ?? 0) >= 0
-                                    ? "text-emerald-600 font-semibold"
-                                    : "text-red-600 font-semibold"
-                                }
-                              >
-                                <CountMoney
-                                  cents={job.computed?.netProfitCents ?? 0}
-                                />
-                              </span>
-                            </td>
-
-                            <td className="px-4 py-3">
-                              <div className="text-[var(--color-text)]">
-                                {fmtDateTime(job.updatedAt)}
-                              </div>
-                              <div className="text-xs text-[var(--color-muted)]">
-                                Created {fmtDateTime(job.createdAt)}
-                              </div>
-                            </td>
-
-                            <td className="px-4 py-3 text-right">
-                              <Link
-                                to={`/job/${job.id}`}
-                                className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                              >
-                                View
-                              </Link>
-                            </td>
-                          </motion.tr>
-                        );
-                      })}
-                      {pagedJobs.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="px-4 py-6 text-center text-[var(--color-muted)]"
-                          >
-                            No jobs match the current filters.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-
-              {/* Jobs pagination controls */}
-              {filteredJobs.length > 0 && (
-                <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-muted)]">
-                  <span>
-                    Showing{" "}
-                    {filteredJobs.length === 0
-                      ? 0
-                      : (jobsPage - 1) * JOBS_PER_PAGE + 1}{" "}
-                    – {Math.min(jobsPage * JOBS_PER_PAGE, filteredJobs.length)}{" "}
-                    of {filteredJobs.length} jobs
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={jobsPage === 1}
-                      onClick={() => setJobsPage((p) => Math.max(1, p - 1))}
-                      className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
-                    >
-                      Prev
-                    </button>
-                    <span>
-                      Page {jobsPage} / {jobsTotalPages}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={jobsPage === jobsTotalPages}
-                      onClick={() =>
-                        setJobsPage((p) => Math.min(jobsTotalPages, p + 1))
-                      }
-                      className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <DashboardJobsSection
+            jobsOpen={jobsOpen}
+            setJobsOpen={setJobsOpen}
+            showSearch={showSearch}
+            setShowSearch={setShowSearch}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            hasActiveDateFilter={hasActiveDateFilter}
+            rangeLabel={rangeLabel}
+            startDate={startDate}
+            endDate={endDate}
+            setDatePreset={setDatePreset}
+            setStartDate={setStartDate}
+            setEndDate={setEndDate}
+            applyPreset={applyPreset}
+            filters={filters}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            openForm={openForm}
+            setOpenForm={setOpenForm}
+            address={address}
+            setAddress={setAddress}
+            createJob={createJob}
+            loading={loading}
+            error={error}
+            filteredJobs={filteredJobs}
+            pagedJobs={pagedJobs}
+            jobsPage={jobsPage}
+            jobsTotalPages={jobsTotalPages}
+            setJobsPage={setJobsPage}
+            JOBS_PER_PAGE={JOBS_PER_PAGE}
+            totalNet={totalNet}
+          />
 
           {/* ====== MATERIAL PROGRESS + READY FOR PUNCH ====== */}
           <section className="mt-8 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
@@ -1553,7 +1040,7 @@ export default function DashboardPage() {
           </section>
 
           {/* ====== PAYOUTS (all employees) ====== */}
-          <section className="mt-10 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
+          <section className="mt-10 mb-40 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
             {/* Header + controls */}
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
