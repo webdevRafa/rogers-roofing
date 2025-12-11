@@ -16,6 +16,7 @@ import type { Job, JobStatus, PayoutDoc, Employee } from "../types/types";
 import { DashboardHeader } from "../features/dashboard/DashboardHeader";
 import { DashboardJobsSection } from "../features/dashboard/DashboardJobsSection";
 import { DashboardProgressSection } from "../features/dashboard/DashboardProgressSection";
+import { DashboardPayoutsSection } from "../features/dashboard/DashboardPayoutsSection";
 
 import { GlobalPayoutStubModal } from "../components/GlobalPayoutStubModal";
 
@@ -25,16 +26,6 @@ import { useNavigate } from "react-router-dom"; // ✅ navigate after create
 import { getAuth, signOut } from "firebase/auth";
 
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
-
-// Simple money formatter for non-animated numbers (used in payouts section)
-function money(cents: number | null | undefined): string {
-  const v = typeof cents === "number" ? cents : 0;
-  return (v / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: "USD",
-  });
-}
 
 // Global payouts tabs
 type PayoutFilter = "all" | "pending" | "paid";
@@ -84,10 +75,6 @@ function toMillis(x: unknown): number | null {
     if (!Number.isNaN(candidate.getTime())) dt = candidate;
   }
   return dt ? dt.getTime() : null;
-}
-function fmtDateTime(x: unknown): string {
-  const ms = toMillis(x);
-  return ms == null ? "—" : new Date(ms).toLocaleString();
 }
 
 // ---- Address normalizer (string or object, supports `fullLine`) ----
@@ -728,304 +715,29 @@ export default function DashboardPage() {
           />
 
           {/* ====== PAYOUTS (all employees) ====== */}
-          <section className="mt-10 mb-40 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
-            {/* Header + controls */}
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <div>
-                  <div className="flex gap-5">
-                    <h2 className="text-2xl font-semibold text-[var(--color-text)]">
-                      Payouts
-                    </h2>
-                    <button
-                      type="button"
-                      onClick={() => setPayoutsOpen((v) => !v)}
-                      className="ml-1 inline-flex items-center text-xs rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] transition duration-300 ease-in-out px-2 py-0 text-white "
-                    >
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform ${
-                          payoutsOpen ? "rotate-0" : "-rotate-90"
-                        }`}
-                      />
-                      <span className="ml-1 hidden sm:inline">
-                        {payoutsOpen ? "Collapse" : "Expand"}
-                      </span>
-                    </button>
-                  </div>
-
-                  <p className="mt-3 text-xs text-[var(--color-muted)]">
-                    View payouts across all employees. Use the Pending tab to
-                    select payouts, generate a stub, and mark them as paid.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <input
-                  value={payoutSearch}
-                  onChange={(e) => setPayoutSearch(e.target.value)}
-                  placeholder="Search by address or employee…"
-                  className="w-full sm:w-72 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                />
-
-                <div className="inline-flex rounded-full border border-[var(--color-border)] bg-white/80 p-1 text-xs">
-                  {(["all", "pending", "paid"] as PayoutFilter[]).map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => setPayoutFilter(f)}
-                      className={
-                        "px-3 py-1 rounded-full capitalize " +
-                        (payoutFilter === f
-                          ? "bg-cyan-800 text-white"
-                          : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
-                      }
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Collapsible content */}
-            {payoutsOpen && (
-              <div className="mt-2 section-scroll space-y-3 max-h-[420px] overflow-y-auto relative">
-                {/* Create stub CTA (pending only, single employee only) */}
-                {payoutFilter === "pending" && selectedPayoutIds.length > 0 && (
-                  <div className="bg-white sticky top-0 z-20 mb-1 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    {selectedEmployeeIds.length > 1 && (
-                      <p className="text-xs text-red-700">
-                        Please select payouts for a single employee to create a
-                        stub.
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {canCreateStub && (
-                        <button
-                          type="button"
-                          onClick={() => setStubOpen(true)}
-                          className="rounded-lg bg-emerald-800 hover:bg-emerald-700 transition duration-300 ease-in-out px-3 py-1.5 text-xs font-semibold text-white"
-                        >
-                          Create stub ({selectedPayoutIds.length})
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={clearSelectedPayouts}
-                        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-primary-600)] hover:bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-white "
-                      >
-                        Clear all
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* States */}
-                {payoutsLoading && (
-                  <p className="text-sm text-[var(--color-muted)]">
-                    Loading payouts…
-                  </p>
-                )}
-                {payoutsError && (
-                  <p className="text-sm text-red-600">{payoutsError}</p>
-                )}
-                {!payoutsLoading &&
-                  !payoutsError &&
-                  pagedPayouts.length === 0 && (
-                    <p className="text-sm text-[var(--color-muted)]">
-                      No payouts match the current filters.
-                    </p>
-                  )}
-
-                {/* List */}
-                {!payoutsLoading &&
-                  !payoutsError &&
-                  pagedPayouts.length > 0 && (
-                    <ul className="divide-y divide-[var(--color-border)] rounded-xl bg-white/70">
-                      {pagedPayouts.map((p) => {
-                        const a = addr((p as any).jobAddressSnapshot as any);
-                        const employeeName = payoutEmployeeName(p);
-                        const isPending = !p.paidAt;
-                        const isSelected = selectedPayoutIds.includes(p.id);
-                        const amountCents = (p as any).amountCents ?? 0;
-                        const jobId = (p as any).jobId as string | undefined;
-
-                        const sqft = p.sqft;
-                        const ratePerSqFt = p.ratePerSqFt;
-                        const category = p.category;
-
-                        const hasSqft =
-                          typeof sqft === "number" && !Number.isNaN(sqft);
-                        const hasRate =
-                          typeof ratePerSqFt === "number" &&
-                          !Number.isNaN(ratePerSqFt);
-
-                        const categoryLabel =
-                          category === "shingles"
-                            ? "Shingles labor"
-                            : category === "felt"
-                            ? "Felt labor"
-                            : category === "technician"
-                            ? "Technician"
-                            : undefined;
-
-                        return (
-                          <li
-                            key={p.id}
-                            className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div>
-                              <div className="text-sm font-medium text-[var(--color-text)]">
-                                {employeeName || "Unknown employee"}
-                              </div>
-
-                              <div className="text-xs text-[var(--color-muted)]">
-                                {a.display || "—"}
-                              </div>
-
-                              {(a.city || a.state || a.zip) && (
-                                <div className="text-[11px] text-[var(--color-muted)]">
-                                  {[a.city, a.state, a.zip]
-                                    .filter(Boolean)
-                                    .join(", ")}
-                                </div>
-                              )}
-
-                              {(categoryLabel || hasSqft || hasRate) && (
-                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--color-muted)]">
-                                  {categoryLabel && (
-                                    <span className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-                                      {categoryLabel}
-                                    </span>
-                                  )}
-
-                                  {hasSqft && (
-                                    <span>{sqft!.toLocaleString()} sq ft</span>
-                                  )}
-
-                                  {hasSqft && hasRate && <span>•</span>}
-
-                                  {hasRate && (
-                                    <span>
-                                      @{" "}
-                                      {ratePerSqFt!.toLocaleString(undefined, {
-                                        style: "currency",
-                                        currency: "USD",
-                                      })}
-                                      /sq ft
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="mt-1 text-[11px] text-[var(--color-muted)]">
-                                Created {fmtDateTime(p.createdAt)}{" "}
-                                {p.paidAt
-                                  ? `• Paid ${fmtDateTime(p.paidAt)}`
-                                  : "• Pending"}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                              <div className="text-right">
-                                <div className="text-[11px] text-[var(--color-muted)]">
-                                  Amount
-                                </div>
-                                <div className="text-sm font-semibold text-[var(--color-text)]">
-                                  {money(amountCents)}
-                                </div>
-                              </div>
-
-                              {/* View Job button (if payout has a jobId) */}
-                              {jobId && (
-                                <button
-                                  type="button"
-                                  onClick={() => navigate(`/job/${jobId}`)}
-                                  className="rounded-md border border-[var(--color-border)] px-3 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                                >
-                                  View Job
-                                </button>
-                              )}
-
-                              {/* Status pill on the right */}
-                              {isPending ? (
-                                <span className="rounded-full bg-yellow-100 px-2 py-1 text-[10px] font-semibold uppercase text-yellow-800">
-                                  Pending
-                                </span>
-                              ) : (
-                                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-700">
-                                  Paid
-                                </span>
-                              )}
-
-                              {/* Checkbox only on Pending tab */}
-                              {payoutFilter === "pending" && (
-                                <label className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
-                                  <input
-                                    type="checkbox"
-                                    className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-accent)]"
-                                    checked={isSelected}
-                                    onChange={() => togglePayoutSelected(p.id)}
-                                  />
-                                  Select
-                                </label>
-                              )}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                {/* Payouts pagination controls */}
-                {filteredPayouts.length > 0 && (
-                  <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-muted)]">
-                    <span>
-                      Showing{" "}
-                      {filteredPayouts.length === 0
-                        ? 0
-                        : (payoutsPage - 1) * PAYOUTS_PER_PAGE + 1}{" "}
-                      –{" "}
-                      {Math.min(
-                        payoutsPage * PAYOUTS_PER_PAGE,
-                        filteredPayouts.length
-                      )}{" "}
-                      of {filteredPayouts.length} payouts
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={payoutsPage === 1}
-                        onClick={() =>
-                          setPayoutsPage((p) => Math.max(1, p - 1))
-                        }
-                        className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
-                      >
-                        Prev
-                      </button>
-                      <span>
-                        Page {payoutsPage} / {payoutsTotalPages}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={payoutsPage === payoutsTotalPages}
-                        onClick={() =>
-                          setPayoutsPage((p) =>
-                            Math.min(payoutsTotalPages, p + 1)
-                          )
-                        }
-                        className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
+          <DashboardPayoutsSection
+            payoutsOpen={payoutsOpen}
+            setPayoutsOpen={setPayoutsOpen}
+            payoutSearch={payoutSearch}
+            setPayoutSearch={setPayoutSearch}
+            payoutFilter={payoutFilter}
+            setPayoutFilter={setPayoutFilter}
+            payoutsLoading={payoutsLoading}
+            payoutsError={payoutsError}
+            pagedPayouts={pagedPayouts}
+            filteredPayoutsCount={filteredPayouts.length}
+            payoutsPage={payoutsPage}
+            payoutsTotalPages={payoutsTotalPages}
+            setPayoutsPage={setPayoutsPage}
+            PAYOUTS_PER_PAGE={PAYOUTS_PER_PAGE}
+            selectedPayoutIds={selectedPayoutIds}
+            selectedEmployeeIds={selectedEmployeeIds}
+            canCreateStub={canCreateStub}
+            togglePayoutSelected={togglePayoutSelected}
+            clearSelectedPayouts={clearSelectedPayouts}
+            setStubOpen={setStubOpen}
+            onViewJob={(jobId) => navigate(`/job/${jobId}`)}
+          />
         </motion.div>
 
         {/* 🔁 Reschedule punch modal */}
