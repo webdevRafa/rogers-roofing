@@ -23,6 +23,8 @@ import {
   ChevronRight,
   Camera,
   Image as ImageIcon,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 
 import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -269,6 +271,12 @@ export default function JobDetailPage() {
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Toast for photo upload status
+  const [photoUploadStatus, setPhotoUploadStatus] = useState<
+    "success" | "error" | null
+  >(null);
+  const [photoUploadMessage, setPhotoUploadMessage] = useState("");
+
   useEffect(() => {
     if (!photoFile) {
       setPreviewUrl(null);
@@ -281,6 +289,16 @@ export default function JobDetailPage() {
     // Clean up object URL when file changes or component unmounts
     return () => URL.revokeObjectURL(url);
   }, [photoFile]);
+
+  // Auto-hide photo upload toast
+  useEffect(() => {
+    if (!photoUploadStatus) return;
+    const id = setTimeout(() => {
+      setPhotoUploadStatus(null);
+      setPhotoUploadMessage("");
+    }, 3500);
+    return () => clearTimeout(id);
+  }, [photoUploadStatus]);
 
   // Tabs for payouts
   type PayoutTab = "shingles" | "felt" | "technician";
@@ -680,10 +698,19 @@ export default function JobDetailPage() {
       // CF will: create webp90, add jobPhotos doc, delete original.
       setPhotoFile(null);
       setPhotoCaption("");
-      alert("Upload received — processing. The photo will appear shortly.");
+
+      // ✅ Show nice success toast instead of alert
+      setPhotoUploadStatus("success");
+      setPhotoUploadMessage(
+        "Upload received — processing. The photo will appear shortly."
+      );
     } catch (e) {
       console.error(e);
-      alert("Upload failed. See console for details.");
+      // ❌ Show error toast instead of alert
+      setPhotoUploadStatus("error");
+      setPhotoUploadMessage(
+        "Upload failed. Please try again or check the console for details."
+      );
     } finally {
       setUploading(false);
     }
@@ -751,6 +778,11 @@ export default function JobDetailPage() {
       setDeletingJob(false);
     }
   }
+  // Use the most recent photo (if any) as a soft page background
+  const latestPhoto = photos[0] ?? null;
+  const latestPhotoUrl = latestPhoto
+    ? (latestPhoto as any).fullUrl ?? latestPhoto.url
+    : null;
 
   if (loading)
     return <div className="p-8 text-[var(--color-text)]">Loading…</div>;
@@ -805,16 +837,29 @@ export default function JobDetailPage() {
 
   return (
     <motion.div
-      className="mx-auto w-full max-w-[1800px] bg-white pt-20 py-8 px-4 md:px-10"
+      className="mx-auto w-full max-w-[1800px]  pt-20 py-8 px-4 md:px-10"
       variants={staggerParent}
       initial="initial"
       animate="animate"
     >
       {/* Header */}
       <motion.header
-        className="mb-8 flex flex-wrap items-start justify-between gap-4 rounded-2xl bg-[var(--color-card)]/80 px-4 py-4 shadow-sm ring-1 ring-black/5 sm:px-6 sm:py-5"
+        className="mb-8 flex relative overflow-hidden flex-wrap items-start justify-between gap-4 rounded-2xl  px-4 py-4 shadow-sm ring-1 ring-black/5 sm:px-6 sm:py-5"
         {...fadeUp(0)}
       >
+        {/* Soft background using latest photo */}
+        {latestPhotoUrl && (
+          <div className="pointer-events-none absolute inset-0 -z-10">
+            {/* Photo itself */}
+            <div
+              className="absolute inset-0 bg-cover bg-center opacity-20"
+              style={{ backgroundImage: `url(${latestPhotoUrl})` }}
+            />
+            {/* White wash overlay to keep text readable */}
+            <div className="absolute inset-0 bg-white/65" />
+          </div>
+        )}
+
         <div>
           <Link
             to="/dashboard"
@@ -1633,6 +1678,49 @@ export default function JobDetailPage() {
           </div>
         </MotionCard>
       </div>
+      {/* ===== Photo Upload Toast ===== */}
+      {photoUploadStatus && (
+        <div className="fixed right-4 top-20 z-50">
+          <div className="flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-white/95 px-4 py-3 text-sm shadow-lg">
+            <div className="mt-0.5">
+              {photoUploadStatus === "success" ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+              )}
+            </div>
+            <div className="flex-1">
+              <div
+                className={
+                  "font-semibold " +
+                  (photoUploadStatus === "success"
+                    ? "text-emerald-700"
+                    : "text-red-600")
+                }
+              >
+                {photoUploadStatus === "success"
+                  ? "Photo upload received"
+                  : "Photo upload failed"}
+              </div>
+              <div className="mt-0.5 text-xs text-[var(--color-muted)]">
+                {photoUploadMessage}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPhotoUploadStatus(null);
+                setPhotoUploadMessage("");
+              }}
+              className="ml-2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ===== Photo Lightbox ===== */}
       {viewerOpen && photos.length > 0 && (
         <div
@@ -1902,7 +1990,8 @@ export default function JobDetailPage() {
                 onClick={confirmMarkPunched}
                 className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
               >
-                Yes, mark completed
+                Yes, mark job{" "}
+                <strong className="font-semibold">COMPLETE</strong>
               </button>
             </div>
           </div>
@@ -1914,12 +2003,13 @@ export default function JobDetailPage() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Mark felt as completed?
+                Mark <strong className="font-semibold">DRY IN</strong> as
+                completed?
               </h2>
               <button
                 type="button"
                 onClick={() => setConfirmFeltDoneOpen(false)}
-                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -1946,7 +2036,7 @@ export default function JobDetailPage() {
                 }}
                 className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
               >
-                Yes, mark felt done
+                Yes, mark <strong className="font-semibold">DRY IN</strong> done
               </button>
             </div>
           </div>
@@ -1959,7 +2049,8 @@ export default function JobDetailPage() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Mark shingles as completed?
+                Mark <strong className="font-semibold">SHINGLES</strong> as
+                completed?
               </h2>
               <button
                 type="button"
@@ -1991,7 +2082,8 @@ export default function JobDetailPage() {
                 }}
                 className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
               >
-                Yes, mark shingles done
+                Yes, mark <strong className="font-semibold">SHINGLES</strong>{" "}
+                done
               </button>
             </div>
           </div>
