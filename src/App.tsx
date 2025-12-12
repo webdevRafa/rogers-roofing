@@ -1,73 +1,47 @@
 // src/App.tsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import DashboardPage from "./pages/DashboardPage";
-import JobDetailPage from "./pages/JobDetailPage";
 import "./index.css";
-import InvoiceViewer from "./pages/InvoiceViewer";
+
 import LoginPage from "./pages/LoginPage";
-import AdminOnly from "./components/AdminOnly"; // add this import
+import AdminOnly from "./components/AdminOnly";
+import ScrollToTop from "./components/ScrollToTop";
+
+import AdminLayout from "./layouts/AdminLayout";
+
+import DashboardPage from "./pages/DashboardPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import PunchCalendarPage from "./pages/PunchCalendarPage";
 import PunchDayPage from "./pages/PunchDayPage";
-import ScrollToTop from "./components/ScrollToTop"; // ⬅️ ADD THIS
+import JobDetailPage from "./pages/JobDetailPage";
+import InvoiceViewer from "./pages/InvoiceViewer";
 
 export default function App() {
   return (
-    <>
-      <div className="relative z-30 min-h-[1000px] ">
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            <Route
-              path="/dashboard"
-              element={
-                <AdminOnly>
-                  <DashboardPage />
-                </AdminOnly>
-              }
-            />
-            {/* Punch calendar */}
-            <Route
-              path="/schedule"
-              element={
-                <AdminOnly>
-                  <PunchCalendarPage />
-                </AdminOnly>
-              }
-            />
-            <Route
-              path="/schedule/:date"
-              element={
-                <AdminOnly>
-                  <PunchDayPage />
-                </AdminOnly>
-              }
-            />
-            <Route path="/" element={<LoginPage />} />
+    <div className="relative z-30 min-h-[1000px]">
+      <BrowserRouter>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/" element={<LoginPage />} />
+
+          {/* ✅ Everything below gets the global navbar */}
+          <Route
+            element={
+              <AdminOnly>
+                <AdminLayout />
+              </AdminOnly>
+            }
+          >
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/schedule" element={<PunchCalendarPage />} />
+            <Route path="/schedule/:date" element={<PunchDayPage />} />
+            <Route path="/employees" element={<EmployeesPage />} />
+            <Route path="/employees/:id" element={<EmployeeDetailPage />} />
             <Route path="/job/:id" element={<JobDetailPage />} />
             <Route path="/invoices/:id" element={<InvoiceViewer />} />
-
-            {/* NEW: employees */}
-            <Route
-              path="/employees"
-              element={
-                <AdminOnly>
-                  <EmployeesPage />
-                </AdminOnly>
-              }
-            />
-            <Route
-              path="/employees/:id"
-              element={
-                <AdminOnly>
-                  <EmployeeDetailPage />
-                </AdminOnly>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </div>
-    </>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </div>
   );
 }

@@ -214,13 +214,22 @@ export function GlobalPayoutStubModal({
 
         {/* Totals + actions (same as EmployeeDetailPage stub) */}
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-gray-700 print:hidden">
             <div className="print:hidden">
               <span className="font-medium">Number of payouts:</span>{" "}
               {payouts.length}
             </div>
-            <div className="mt-1 text-lg font-semibold">
+            <div className="mt-1 text-lg font-semibold abs">
               Total: {money(totalCents)}
+            </div>
+          </div>
+          {/* PRINT-ONLY totals (right aligned on PDF) */}
+          <div className="hidden print:flex w-full justify-end">
+            <div className="text-right">
+              <div className="text-[11px] text-gray-500">Grand total</div>
+              <div className="mt-1 text-lg font-semibold text-gray-900">
+                {money(totalCents)}
+              </div>
             </div>
           </div>
 

@@ -13,7 +13,6 @@ import {
 import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import type { Job, JobStatus, PayoutDoc, Employee } from "../types/types";
-import { DashboardHeader } from "../features/dashboard/DashboardHeader";
 import { DashboardJobsSection } from "../features/dashboard/DashboardJobsSection";
 import { DashboardProgressSection } from "../features/dashboard/DashboardProgressSection";
 import { DashboardPayoutsSection } from "../features/dashboard/DashboardPayoutsSection";
@@ -22,8 +21,7 @@ import { GlobalPayoutStubModal } from "../components/GlobalPayoutStubModal";
 
 import { jobConverter } from "../types/types";
 import { recomputeJob, makeAddress } from "../utils/calc";
-import { useNavigate } from "react-router-dom"; // ✅ navigate after create
-import { getAuth, signOut } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
 import { motion } from "framer-motion";
 
@@ -139,7 +137,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [signingOut, setSigningOut] = useState(false);
   const [newFeltDate, setNewFeltDate] = useState("");
   const [newShinglesDate, setNewShinglesDate] = useState("");
   const [newPunchDate, setNewPunchDate] = useState("");
@@ -188,20 +185,6 @@ export default function DashboardPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [datePreset, setDatePreset] = useState<DatePreset>("custom");
-
-  async function handleLogout() {
-    try {
-      setSigningOut(true);
-      await signOut(getAuth());
-      // optional: send them to login after sign-out
-      navigate("/");
-    } catch (err) {
-      console.error("Logout failed:", err);
-      // (optional) surface a toast or setError(String(err))
-    } finally {
-      setSigningOut(false);
-    }
-  }
 
   function recomputeDates(p: DatePreset, now = new Date()) {
     if (p === "last7") {
@@ -695,13 +678,6 @@ export default function DashboardPage() {
   return (
     <>
       <div>
-        <DashboardHeader
-          onGoToEmployees={() => navigate("/employees")}
-          onGoToPunchCalendar={() => navigate("/schedule")}
-          onLogout={handleLogout}
-          signingOut={signingOut}
-        />
-
         <motion.div
           className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10 "
           initial="initial"

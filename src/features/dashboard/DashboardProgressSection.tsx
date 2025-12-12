@@ -141,12 +141,8 @@ export function DashboardProgressSection({
         <div className="flex items-center gap-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold text-[var(--color-text)]">
-              Dry in &amp; Shingles progress
+              Active / Scheduled
             </h2>
-            <p className="mt-1 text-xs text-[var(--color-muted)]">
-              Track material progress and see which jobs are ready to be
-              punched.
-            </p>
           </div>
           <button
             type="button"
@@ -185,7 +181,7 @@ export function DashboardProgressSection({
           {/* Progress tracker */}
           <motion.div {...fadeUp(0.05)}>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-              Material progress
+              Active / Scheduled
             </h3>
 
             {materialProgressJobs.length === 0 ? (
