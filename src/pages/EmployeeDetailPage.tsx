@@ -271,7 +271,7 @@ export default function EmployeeDetailPage() {
   if (!employee) return <div className="p-6">Not found.</div>;
 
   return (
-    <div className="mx-auto w-[min(900px,94vw)] py-8 pt-40">
+    <div className="mx-auto w-[min(900px,94vw)] py-8">
       <div
         onClick={() => navigate("/employees")}
         className="flex gap-0 items-center mb-10 cursor-pointer hover:underline group"
