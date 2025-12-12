@@ -876,7 +876,7 @@ export default function JobDetailPage() {
       <div className="py-4 sm:py-5">
         {/* Header */}
         <motion.header
-          className="mb-8 relative overflow-hidden rounded-md ring-1 ring-black/5  w-full"
+          className="mb-8 relative overflow-hidden rounded-sm ring-1 ring-black/5    w-full"
           {...fadeUp(0)}
         >
           {/* Soft background using latest photo */}
@@ -887,16 +887,16 @@ export default function JobDetailPage() {
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover scale-105 blur-[2px] opacity-100"
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/60 to-white/90" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/30 to-white" />
             </div>
           )}
           <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-start">
-            <div className="rounded-2xl bg-white backdrop-blur-md p-4  ring-black/5 ">
+            <div className="rounded-sm bg-white shadow-md backdrop-blur-md p-4   ">
               <Link
                 to="/dashboard"
                 className="text-sm text-[var(--color-muted)] hover:underline"
               >
-                <div className="flex items-center gap-0 rounded-md">
+                <div className="flex items-center gap-0 rounded-sm">
                   <ChevronLeft
                     className="text-[var(--color-muted)]"
                     size="30"
@@ -915,10 +915,10 @@ export default function JobDetailPage() {
             <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
               {/* Status pill */}
               <div className="flex items-center gap-2">
-                <span className="rounded-md  bg-white px-3 py-1.5 text-sm uppercase tracking-wide text-[var(--color-muted)]">
+                <span className="rounded-sm  bg-white px-3 py-1.5 text-sm uppercase tracking-wide text-[var(--color-muted)]">
                   Status:
                   <span
-                    className={`ml-2 rounded-md px-2 py-0.5 ${statusClasses(
+                    className={`ml-2 rounded-sm px-2 py-0.5 ${statusClasses(
                       job.status as JobStatus
                     )}`}
                   >
@@ -931,7 +931,7 @@ export default function JobDetailPage() {
               <div className="flex w-full flex-col gap-2 text-[11px]">
                 <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
                   {/* Felt pill */}
-                  <div className="inline-flex items-center gap-2 rounded-md shadow-md p-3  bg-white">
+                  <div className="inline-flex items-center gap-2 rounded-sm shadow-md p-3  bg-white">
                     <span className="text-[10px] font-semibold uppercase tracking-wide">
                       DRY IN
                     </span>
@@ -959,7 +959,7 @@ export default function JobDetailPage() {
                         setFeltScheduleEditing(true);
                       }}
                       className={
-                        "rounded-md px-2 py-0.5 text-[10px] transition " +
+                        "rounded-sm px-2 py-0.5 text-[10px] transition " +
                         (jobIsLocked
                           ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                           : "bg-neutral-50 text-[var(--color-text)] hover:bg-neutral-100")
@@ -976,7 +976,7 @@ export default function JobDetailPage() {
                           setConfirmFeltDoneOpen(true);
                         }}
                         className={
-                          "rounded-md px-2 py-0.5 text-[10px] " +
+                          "rounded-sm px-2 py-0.5 text-[10px] " +
                           (jobIsLocked
                             ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                             : "bg-emerald-600 text-white hover:bg-emerald-500")
@@ -988,7 +988,7 @@ export default function JobDetailPage() {
                   </div>
 
                   {/* Shingles pill */}
-                  <div className="inline-flex items-center gap-2 rounded-md shadow-md bg-white p-3">
+                  <div className="inline-flex items-center gap-2 rounded-sm shadow-md bg-white p-3">
                     <span className="text-[10px] font-semibold uppercase tracking-wide">
                       Shingles
                     </span>
@@ -1016,7 +1016,7 @@ export default function JobDetailPage() {
                         setShinglesScheduleEditing(true);
                       }}
                       className={
-                        "rounded-md px-2 py-0.5 text-[10px]  " +
+                        "rounded-sm px-2 py-0.5 text-[10px]  " +
                         (jobIsLocked
                           ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                           : "bg-neutral-50 text-[var(--color-text)] hover:bg-neutral-100")
@@ -1038,7 +1038,7 @@ export default function JobDetailPage() {
                           setConfirmShinglesDoneOpen(true);
                         }}
                         className={
-                          "rounded-md px-2 py-0.5 text-[10px] transition shadow-sm " +
+                          "rounded-sm px-2 py-0.5 text-[10px] transition shadow-sm " +
                           (!canMarkShinglesDone
                             ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-70"
                             : "bg-emerald-600 text-white hover:bg-emerald-500")
@@ -1053,13 +1053,13 @@ export default function JobDetailPage() {
               {/* Punch scheduling / completion controls */}
               <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
                 {punchScheduledLabel && (
-                  <span className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-700">
+                  <span className="rounded-sm border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-700">
                     Punch scheduled: {punchScheduledLabel}
                   </span>
                 )}
 
                 {punchedAtLabel && (
-                  <span className="rounded-md border border-emerald-300 bg-emerald-100 p-2 text-xs text-emerald-800">
+                  <span className="rounded-sm border border-emerald-300 bg-emerald-100 p-2 text-xs text-emerald-800">
                     Punched on {punchedAtLabel}
                   </span>
                 )}
@@ -1075,7 +1075,7 @@ export default function JobDetailPage() {
                     setSchedulePunchDate(toYMD(base));
                   }}
                   className={
-                    "rounded-md border cursor-pointer border-[var(--color-border)] transition duration-300 ease-in-out px-3 py-1.5 text-xs " +
+                    "rounded-sm border cursor-pointer border-[var(--color-border)] transition duration-300 ease-in-out px-3 py-1.5 text-xs " +
                     (!canSchedulePunch
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60"
                       : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
@@ -1090,7 +1090,7 @@ export default function JobDetailPage() {
                   <button
                     type="button"
                     onClick={() => setConfirmPunchedOpen(true)}
-                    className="rounded-md bg-emerald-900 border transition duration ease-in-out border-white px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700  cursor-pointer"
+                    className="rounded-sm bg-emerald-900 border transition duration ease-in-out border-white px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700  cursor-pointer"
                   >
                     Mark as punched
                   </button>
@@ -1099,7 +1099,7 @@ export default function JobDetailPage() {
 
               {/* Pricing */}
               {!hasPricing || editingPricing ? (
-                <div className="rounded-md bg-white/70 backdrop-blur-md ring-1 ring-black/5 shadow-sm px-5 py-3 text-right w-full">
+                <div className="rounded-sm bg-white/70 backdrop-blur-md ring-1 ring-black/5 shadow-sm px-5 py-3 text-right w-full">
                   <div className="mb-2 text-xs text-[var(--color-muted)]">
                     Total Job Pay
                   </div>
@@ -1115,14 +1115,14 @@ export default function JobDetailPage() {
                       min={0}
                       step="1"
                       placeholder="Sq. ft"
-                      className="w-24 rounded-md border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                      className="w-24 rounded-sm border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     />
                     <select
                       value={rate}
                       onChange={(e) =>
                         setRate(Number(e.target.value) as 31 | 35)
                       }
-                      className="w-20 rounded-md border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                      className="w-20 rounded-sm border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                       title="Pay rate"
                     >
                       <option value={31}>$31</option>
@@ -1150,7 +1150,7 @@ export default function JobDetailPage() {
                         void saveJob(updated);
                         setEditingPricing(false);
                       }}
-                      className="ml-2 rounded-md bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-1 text-[var(--btn-text)]"
+                      className="ml-2 rounded-sm bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-1 text-[var(--btn-text)]"
                     >
                       Apply
                     </button>
@@ -1161,7 +1161,7 @@ export default function JobDetailPage() {
                           setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
                           setEditingPricing(false);
                         }}
-                        className="rounded-md border border-[var(--color-border)] bg-white px-3 py-1"
+                        className="rounded-sm border border-[var(--color-border)] bg-white px-3 py-1"
                       >
                         Cancel
                       </button>
