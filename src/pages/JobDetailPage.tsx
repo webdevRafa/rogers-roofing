@@ -1203,7 +1203,7 @@ export default function JobDetailPage() {
                         </div>
 
                         <div className="mt-0.5 truncate text-sm font-medium text-[var(--color-text)]">
-                          {Number(displaySqft || 0).toLocaleString()} sq.ft • $
+                          {Number(displaySqft || 0).toLocaleString()} sq @ $
                           {displayRate}
                           /sq.ft <span className="opacity-70">• + $35</span>
                         </div>
@@ -1355,7 +1355,7 @@ export default function JobDetailPage() {
                     type="number"
                     min={0}
                     step="1"
-                    placeholder="Sq. ft"
+                    placeholder="Sq"
                     className={`${UI.input}`}
                   />
                   <input
@@ -1403,7 +1403,7 @@ export default function JobDetailPage() {
                       {typeof p.sqft === "number" &&
                         typeof p.ratePerSqFt === "number" && (
                           <div className="text-[11px] text-[var(--color-muted)]">
-                            {p.sqft.toLocaleString()} sq.ft × ${p.ratePerSqFt}
+                            {p.sqft.toLocaleString()} sq @ ${p.ratePerSqFt}
                             /sq.ft
                           </div>
                         )}
