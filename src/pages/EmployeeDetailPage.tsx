@@ -113,6 +113,8 @@ export default function EmployeeDetailPage() {
   });
   const [isActive, setIsActive] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [payoutsOpen, setPayoutsOpen] = useState(true);
+
   // ---- Payouts state ----
   const [payouts, setPayouts] = useState<PayoutDoc[]>([]);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
@@ -567,11 +569,30 @@ export default function EmployeeDetailPage() {
 
       {/* Payouts section */}
       <section className="mt-8 rounded-2xl bg-white/50 hover:bg-white transition duration-300 ease-in-out p-6 shadow">
+        {/* HEADER */}
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">
-              Payouts for {employee.name}
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold">
+                Payouts for {employee.name}
+              </h2>
+
+              <button
+                type="button"
+                onClick={() => setPayoutsOpen((v) => !v)}
+                className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] transition duration-300 ease-in-out px-3 py-1 text-xs font-medium text-white"
+              >
+                <ChevronDown
+                  className={`mr-1 h-4 w-4 transition-transform ${
+                    payoutsOpen ? "rotate-0" : "-rotate-90"
+                  }`}
+                />
+                <span className="hidden sm:inline">
+                  {payoutsOpen ? "Collapse" : "Expand"}
+                </span>
+              </button>
+            </div>
+
             <p className="text-xs text-gray-500">
               Track all jobs this employee has worked on. Use tabs to view
               pending vs paid payouts.
@@ -592,156 +613,168 @@ export default function EmployeeDetailPage() {
           </div>
         </div>
 
-        {/* Tabs: All / Pending / Paid */}
-        <div className="mb-3 inline-flex rounded-full border border-gray-200 bg-white p-1 text-xs">
-          {(["all", "pending", "paid"] as PayoutFilter[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setPayoutFilter(f)}
-              className={
-                "px-3 py-1 rounded-full capitalize " +
-                (payoutFilter === f
-                  ? "bg-cyan-800 text-white"
-                  : "text-gray-700 hover:bg-gray-100")
-              }
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        {/* Create stub button (pending only, when items selected) */}
-        {/* Pending tab actions (Create stub + Clear all) */}
-        {payoutFilter === "pending" && selectedIds.length > 0 && (
-          <div className="mb-3 flex justify-between items-center">
-            <div />
-
-            <div className="flex items-center gap-2">
-              {/* CREATE STUB — match JobsPage green button */}
-              <button
-                type="button"
-                onClick={() => setStubOpen(true)}
-                className="rounded-lg bg-emerald-800 hover:bg-emerald-700 transition duration-300 ease-in-out px-3 py-1.5 text-xs font-semibold text-white"
-              >
-                Create stub ({selectedIds.length})
-              </button>
-
-              {/* CLEAR ALL — match JobsPage purple/brown button */}
-              <button
-                type="button"
-                onClick={() => setSelectedIds([])}
-                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-primary-600)] hover:bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-white"
-              >
-                Clear all
-              </button>
+        {/* ✅ START: COLLAPSIBLE BODY */}
+        {payoutsOpen && (
+          <>
+            {/* Tabs: All / Pending / Paid */}
+            <div className="mb-3 inline-flex rounded-full border border-gray-200 bg-white p-1 text-xs">
+              {(["all", "pending", "paid"] as PayoutFilter[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setPayoutFilter(f)}
+                  className={
+                    "px-3 py-1 rounded-full capitalize " +
+                    (payoutFilter === f
+                      ? "bg-cyan-800 text-white"
+                      : "text-gray-700 hover:bg-gray-100")
+                  }
+                >
+                  {f}
+                </button>
+              ))}
             </div>
-          </div>
-        )}
 
-        {/* List */}
-        {payoutsLoading && (
-          <p className="text-sm text-gray-500">Loading payouts…</p>
-        )}
-        {payoutsError && <p className="text-sm text-red-600">{payoutsError}</p>}
-        {!payoutsLoading && !payoutsError && filteredPayouts.length === 0 && (
-          <p className="text-sm text-gray-500">
-            No payouts match the current filters.
-          </p>
-        )}
+            {/* Create stub button (pending only, when items selected) */}
+            {/* Pending tab actions (Create stub + Clear all) */}
+            {payoutFilter === "pending" && selectedIds.length > 0 && (
+              <div className="mb-3 flex justify-between items-center">
+                <div />
 
-        {!payoutsLoading && !payoutsError && filteredPayouts.length > 0 && (
-          <div className="mt-2 max-h-[55vh] md:max-h-[420px] overflow-y-auto overscroll-contain rounded-xl bg-white/60 pr-2">
-            <ul className="mt-1 divide-y divide-gray-100 rounded-xl bg-white/60">
-              {filteredPayouts.map((p) => {
-                const addr = normalizeJobAddress(p.jobAddressSnapshot);
-                const isChecked = selectedIds.includes(p.id);
-
-                return (
-                  <li
-                    key={p.id}
-                    className="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                <div className="flex items-center gap-2">
+                  {/* CREATE STUB — match JobsPage green button */}
+                  <button
+                    type="button"
+                    onClick={() => setStubOpen(true)}
+                    className="rounded-lg bg-emerald-800 hover:bg-emerald-700 transition duration-300 ease-in-out px-3 py-1.5 text-xs font-semibold text-white"
                   >
-                    <div className="flex items-start gap-2">
-                      {payoutFilter === "pending" && (
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSelected(p.id)}
-                          className="mt-1 h-4 w-4 rounded border-gray-300 text-cyan-700"
-                        />
-                      )}
+                    Create stub ({selectedIds.length})
+                  </button>
 
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {addr.display || "—"}
-                        </div>
-                        {(addr.city || addr.state || addr.zip) && (
-                          <div className="text-xs text-gray-500">
-                            {[addr.city, addr.state, addr.zip]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </div>
-                        )}
-                        <div className="mt-1 text-xs text-gray-600">
-                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                            {p.category || "payout"}
-                          </span>
-                          {typeof p.sqft === "number" &&
-                            typeof p.ratePerSqFt === "number" && (
-                              <span className="ml-2">
-                                {p.sqft.toLocaleString()} sq.ft @ $
-                                {p.ratePerSqFt.toFixed(2)}/sq.ft
-                              </span>
-                            )}
-                        </div>
-                        <div className="mt-1 text-[11px] text-gray-500">
-                          Created: {fmtDate(p.createdAt as unknown)}
-                          {p.paidAt && (
-                            <> • Paid: {fmtDate(p.paidAt as unknown)}</>
+                  {/* CLEAR ALL — match JobsPage purple/brown button */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds([])}
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-primary-600)] hover:bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-white"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* List */}
+            {payoutsLoading && (
+              <p className="text-sm text-gray-500">Loading payouts…</p>
+            )}
+            {payoutsError && (
+              <p className="text-sm text-red-600">{payoutsError}</p>
+            )}
+            {!payoutsLoading &&
+              !payoutsError &&
+              filteredPayouts.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  No payouts match the current filters.
+                </p>
+              )}
+
+            {!payoutsLoading && !payoutsError && filteredPayouts.length > 0 && (
+              <div className="mt-2 max-h-[55vh] md:max-h-[420px] overflow-y-auto overscroll-contain rounded-xl bg-white/60 pr-2">
+                <ul className="mt-1 divide-y divide-gray-100 rounded-xl bg-white/60">
+                  {filteredPayouts.map((p) => {
+                    const addr = normalizeJobAddress(p.jobAddressSnapshot);
+                    const isChecked = selectedIds.includes(p.id);
+
+                    return (
+                      <li
+                        key={p.id}
+                        className="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex items-start gap-2">
+                          {payoutFilter === "pending" && (
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSelected(p.id)}
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-cyan-700"
+                            />
                           )}
-                          {!p.paidAt && (
-                            <span className="ml-1 inline-flex items-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
+
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {addr.display || "—"}
+                            </div>
+                            {(addr.city || addr.state || addr.zip) && (
+                              <div className="text-xs text-gray-500">
+                                {[addr.city, addr.state, addr.zip]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                              </div>
+                            )}
+                            <div className="mt-1 text-xs text-gray-600">
+                              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                                {p.category || "payout"}
+                              </span>
+                              {typeof p.sqft === "number" &&
+                                typeof p.ratePerSqFt === "number" && (
+                                  <span className="ml-2">
+                                    {p.sqft.toLocaleString()} sq.ft @ $
+                                    {p.ratePerSqFt.toFixed(2)}/sq.ft
+                                  </span>
+                                )}
+                            </div>
+                            <div className="mt-1 text-[11px] text-gray-500">
+                              Created: {fmtDate(p.createdAt as unknown)}
+                              {p.paidAt && (
+                                <> • Paid: {fmtDate(p.paidAt as unknown)}</>
+                              )}
+                              {!p.paidAt && (
+                                <span className="ml-1 inline-flex items-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
+                                  Pending
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+                          <div className="text-right">
+                            <div className="text-[11px] text-gray-500">
+                              Total
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {money(p.amountCents)}
+                            </div>
+                          </div>
+                          {p.jobId && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/job/${p.jobId}`)}
+                              className="rounded-md border border-gray-300 px-3 py-1 text-[11px] text-gray-700 hover:bg-gray-100"
+                            >
+                              View Job
+                            </button>
+                          )}
+                          {p.paidAt && (
+                            <span className="mt-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
+                              Paid
+                            </span>
+                          )}
+                          {!p.paidAt && payoutFilter !== "pending" && (
+                            <span className="mt-1 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
                               Pending
                             </span>
                           )}
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
-                      <div className="text-right">
-                        <div className="text-[11px] text-gray-500">Total</div>
-                        <div className="text-sm font-semibold text-gray-900">
-                          {money(p.amountCents)}
-                        </div>
-                      </div>
-                      {p.jobId && (
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/job/${p.jobId}`)}
-                          className="rounded-md border border-gray-300 px-3 py-1 text-[11px] text-gray-700 hover:bg-gray-100"
-                        >
-                          View Job
-                        </button>
-                      )}
-                      {p.paidAt && (
-                        <span className="mt-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
-                          Paid
-                        </span>
-                      )}
-                      {!p.paidAt && payoutFilter !== "pending" && (
-                        <span className="mt-1 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
-                          Pending
-                        </span>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </>
         )}
+        {/* ✅ END: COLLAPSIBLE BODY */}
       </section>
 
       <section className="mt-8 rounded-2xl bg-white/50 hover:bg-white transition duration-300 ease-in-out p-6 shadow">
