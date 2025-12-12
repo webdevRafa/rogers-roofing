@@ -173,6 +173,26 @@ export default function JobDetailPage() {
     [employees]
   );
 
+  const UI = {
+    input:
+      "h-10 w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none " +
+      "focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm",
+    select:
+      "h-10 w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none " +
+      "focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm",
+    btnPrimary:
+      "h-10 inline-flex items-center justify-center rounded-lg bg-cyan-800 px-4 text-sm font-medium " +
+      "text-[var(--btn-text)] shadow-sm hover:bg-cyan-700 transition disabled:opacity-60 disabled:cursor-not-allowed",
+    btnSoft:
+      "h-10 inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-4 text-sm " +
+      "font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)] transition",
+    btnDangerSm:
+      "rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] " +
+      "hover:bg-[var(--color-card-hover)]",
+  } as const;
+
+  const LIST_MAX_H = "max-h-[340px]"; // tweak to taste
+
   // Lightbox state
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -1300,7 +1320,7 @@ export default function JobDetailPage() {
                     payeeNickname: emp?.name ?? "",
                   });
                 }}
-                className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className={`${UI.select}`}
               >
                 <option value="">
                   {activeEmployees.length
@@ -1324,7 +1344,7 @@ export default function JobDetailPage() {
                   min={0}
                   step="0.01"
                   placeholder="Amount $"
-                  className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className={`${UI.input}`}
                 />
               ) : (
                 <>
@@ -1335,7 +1355,7 @@ export default function JobDetailPage() {
                     min={0}
                     step="1"
                     placeholder="Sq. ft"
-                    className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    className={`${UI.input}`}
                   />
                   <input
                     value={activePayout.rate}
@@ -1344,12 +1364,14 @@ export default function JobDetailPage() {
                     min={0}
                     step="0.01"
                     placeholder="Rate $/sq.ft"
-                    className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    className={`${UI.input}`}
                   />
                 </>
               )}
 
-              <button className="rounded-sm bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)] ">
+              <button
+                className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}
+              >
                 Add
               </button>
             </form>
@@ -1364,55 +1386,57 @@ export default function JobDetailPage() {
             </div>
 
             {/* Existing list */}
-            <ul className="mt-3 rounded-lg bg-white/70">
-              {(job?.expenses?.payouts ?? []).map((p) => (
-                <motion.li
-                  key={p.id}
-                  className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
-                  variants={item}
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="text-sm font-semibold text-[var(--color-text)]">
-                      {p.payeeNickname}
-                    </span>
-                    {typeof p.sqft === "number" &&
-                      typeof p.ratePerSqFt === "number" && (
-                        <div className="text-[11px] text-[var(--color-muted)]">
-                          {p.sqft.toLocaleString()} sq.ft × ${p.ratePerSqFt}
-                          /sq.ft
-                        </div>
-                      )}
-                    {p.category && (
-                      <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-text)]">
-                        {p.category}
+            <div className={`mt-3 ${LIST_MAX_H} overflow-y-auto pr-1`}>
+              <ul className="rounded-lg bg-white/70">
+                {(job?.expenses?.payouts ?? []).map((p) => (
+                  <motion.li
+                    key={p.id}
+                    className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                    variants={item}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="text-sm font-semibold text-[var(--color-text)]">
+                        {p.payeeNickname}
                       </span>
-                    )}
-                    <span className="ml-2 text-xs text-[var(--color-muted)]">
-                      {p.paidAt ? fmtDate(p.paidAt) : ""}
-                    </span>
-                  </div>
+                      {typeof p.sqft === "number" &&
+                        typeof p.ratePerSqFt === "number" && (
+                          <div className="text-[11px] text-[var(--color-muted)]">
+                            {p.sqft.toLocaleString()} sq.ft × ${p.ratePerSqFt}
+                            /sq.ft
+                          </div>
+                        )}
+                      {p.category && (
+                        <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-text)]">
+                          {p.category}
+                        </span>
+                      )}
+                      <span className="ml-2 text-xs text-[var(--color-muted)]">
+                        {p.paidAt ? fmtDate(p.paidAt) : ""}
+                      </span>
+                    </div>
 
-                  <div className="flex items-center gap-3">
-                    <CountMoney
-                      cents={p.amountCents}
-                      className="text-sm text-[var(--color-text)]"
-                    />
-                    <button
-                      onClick={() => removePayout(p.id)}
-                      className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                      title="Delete"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </motion.li>
-              ))}
-              {(job?.expenses?.payouts ?? []).length === 0 && (
-                <li className="p-3 text-sm text-[var(--color-muted)]">
-                  No payouts yet.
-                </li>
-              )}
-            </ul>
+                    <div className="flex items-center gap-3">
+                      <CountMoney
+                        cents={p.amountCents}
+                        className="text-sm text-[var(--color-text)]"
+                      />
+                      <button
+                        onClick={() => removePayout(p.id)}
+                        className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                        title="Delete"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </motion.li>
+                ))}
+                {(job?.expenses?.payouts ?? []).length === 0 && (
+                  <li className="p-3 text-sm text-[var(--color-muted)]">
+                    No payouts yet.
+                  </li>
+                )}
+              </ul>
+            </div>
           </MotionCard>
 
           {/* Materials */}
@@ -1433,7 +1457,7 @@ export default function JobDetailPage() {
                     category: e.target.value as MaterialCategory,
                   }))
                 }
-                className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className={`${UI.select}`}
                 title="Material category"
               >
                 <option value="coilNails">Coil Nails (per box)</option>
@@ -1458,7 +1482,7 @@ export default function JobDetailPage() {
                 min={0}
                 step="0.01"
                 placeholder="Unit price $"
-                className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className={`${UI.input}`}
               />
 
               <input
@@ -1470,71 +1494,75 @@ export default function JobDetailPage() {
                 min={0}
                 step="1"
                 placeholder="Qty"
-                className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className={`${UI.input}`}
               />
 
-              <button className="shrink-0 w-full md:w-auto rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)]  sm:col-span-2 md:col-auto">
+              <button
+                className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0 sm:col-span-2 md:col-auto`}
+              >
                 Add
               </button>
             </form>
-
-            <ul className="mt-3 rounded-lg">
-              {(job?.expenses?.materials ?? []).map((m) => (
-                <motion.li
-                  key={m.id}
-                  className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
-                  variants={item}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-[var(--color-text)]">
-                        {m.category === "coilNails" && "Coil Nails"}
-                        {m.category === "tinCaps" && "Tin Caps"}
-                        {m.category === "plasticJacks" && "Plastic Jacks"}
-                        {m.category === "counterFlashing" && "Counter Flashing"}
-                        {m.category === "jFlashing" && "J/L Flashing"}
-                        {m.category === "rainDiverter" && "Rain Diverter"}
-                        {m.category === "np1Seal" && "NP1 Seal"}
-                      </span>
-                      {m.vendor && (
-                        <span className="ml-2 text-xs text-[var(--color-muted)]">
-                          • {m.vendor}
+            <div className={`mt-3 ${LIST_MAX_H} overflow-y-auto pr-1`}>
+              <ul className="rounded-lg">
+                {(job?.expenses?.materials ?? []).map((m) => (
+                  <motion.li
+                    key={m.id}
+                    className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                    variants={item}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-[var(--color-text)]">
+                          {m.category === "coilNails" && "Coil Nails"}
+                          {m.category === "tinCaps" && "Tin Caps"}
+                          {m.category === "plasticJacks" && "Plastic Jacks"}
+                          {m.category === "counterFlashing" &&
+                            "Counter Flashing"}
+                          {m.category === "jFlashing" && "J/L Flashing"}
+                          {m.category === "rainDiverter" && "Rain Diverter"}
+                          {m.category === "np1Seal" && "NP1 Seal"}
                         </span>
-                      )}
+                        {m.vendor && (
+                          <span className="ml-2 text-xs text-[var(--color-muted)]">
+                            • {m.vendor}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-[var(--color-muted)]">
+                        {m.quantity} × ${(m.unitPriceCents / 100).toFixed(2)}
+                        {m.createdAt ? ` • ${fmtDate(m.createdAt)}` : ""}
+                      </div>
                     </div>
-                    <div className="text-xs text-[var(--color-muted)]">
-                      {m.quantity} × ${(m.unitPriceCents / 100).toFixed(2)}
-                      {m.createdAt ? ` • ${fmtDate(m.createdAt)}` : ""}
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-3">
-                    <CountMoney
-                      cents={m.amountCents}
-                      className="text-sm text-[var(--color-text)]"
-                    />
-                    <button
-                      onClick={() => removeMaterial(m.id)}
-                      className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                      title="Delete"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </motion.li>
-              ))}
-              {(job?.expenses?.materials ?? []).length === 0 && (
-                <li className="p-3 text-sm text-[var(--color-muted)]">
-                  No materials added yet.
-                </li>
-              )}
-            </ul>
+                    <div className="flex items-center gap-3">
+                      <CountMoney
+                        cents={m.amountCents}
+                        className="text-sm text-[var(--color-text)]"
+                      />
+                      <button
+                        onClick={() => removeMaterial(m.id)}
+                        className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                        title="Delete"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </motion.li>
+                ))}
+                {(job?.expenses?.materials ?? []).length === 0 && (
+                  <li className="p-3 text-sm text-[var(--color-muted)]">
+                    No materials added yet.
+                  </li>
+                )}
+              </ul>
+            </div>
           </MotionCard>
 
           {/* Notes */}
           <MotionCard title="Notes" delay={0.2}>
             <form
-              className="grid gap-2 max-w-full sm:grid-cols-[1fr_auto]"
+              className="grid gap-2 max-w-full sm:grid-cols-[minmax(0,1fr)_110px]"
               onSubmit={(e) => {
                 e.preventDefault();
                 addNote();
@@ -1545,46 +1573,50 @@ export default function JobDetailPage() {
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Add a note"
-                className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className={UI.input}
               />
 
-              <button className="rounded-lg  px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out">
+              <button
+                className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}
+              >
                 Add
               </button>
             </form>
-            <ul className="mt-3">
-              {(job?.notes ?? [])
-                .slice()
-                .reverse()
-                .map((n) => (
-                  <motion.li
-                    key={n.id}
-                    className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
-                    variants={item}
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="text-sm text-[var(--color-text)]">
-                        {n.text}
-                      </span>
-                      <span className="ml-2 text-xs text-[var(--color-muted)]">
-                        {n.createdAt ? fmtDate(n.createdAt) : ""}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => removeNote(n.id)}
-                      className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                      title="Delete"
+            <div className={`mt-3 ${LIST_MAX_H} overflow-y-auto pr-1`}>
+              <ul>
+                {(job?.notes ?? [])
+                  .slice()
+                  .reverse()
+                  .map((n) => (
+                    <motion.li
+                      key={n.id}
+                      className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                      variants={item}
                     >
-                      Delete
-                    </button>
-                  </motion.li>
-                ))}
-              {(job?.notes ?? []).length === 0 && (
-                <li className="p-3 text-sm text-[var(--color-muted)]">
-                  No notes yet.
-                </li>
-              )}
-            </ul>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="text-sm text-[var(--color-text)]">
+                          {n.text}
+                        </span>
+                        <span className="ml-2 text-xs text-[var(--color-muted)]">
+                          {n.createdAt ? fmtDate(n.createdAt) : ""}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => removeNote(n.id)}
+                        className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                        title="Delete"
+                      >
+                        Delete
+                      </button>
+                    </motion.li>
+                  ))}
+                {(job?.notes ?? []).length === 0 && (
+                  <li className="p-3 text-sm text-[var(--color-muted)]">
+                    No notes yet.
+                  </li>
+                )}
+              </ul>
+            </div>
           </MotionCard>
 
           {/* Photos — fixed: full-width card inside the parent grid */}
@@ -1672,7 +1704,7 @@ export default function JobDetailPage() {
                   value={photoCaption}
                   onChange={(e) => setPhotoCaption(e.target.value)}
                   placeholder="Optional caption (e.g. 'Front elevation', 'Before', 'After')"
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className={`${UI.input}`}
                 />
               </div>
 
@@ -1681,7 +1713,7 @@ export default function JobDetailPage() {
                 <button
                   type="submit"
                   disabled={uploading || !photoFile}
-                  className="w-full rounded-lg bg-cyan-800 px-4 py-2 text-sm font-semibold text-[var(--btn-text)] shadow-sm transition duration-200 ease-in-out hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`${UI.btnPrimary}`}
                 >
                   {uploading ? "Uploading…" : "Upload"}
                 </button>
@@ -1689,48 +1721,50 @@ export default function JobDetailPage() {
             </form>
 
             {/* Thumbnails grid */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-              {photos.map((p, i) => (
-                <motion.div
-                  key={p.id}
-                  className="group relative"
-                  variants={item}
-                >
-                  <button
-                    type="button"
-                    onClick={() => openViewer(i)}
-                    className="block w-full focus:outline-none"
-                    aria-label="Open photo"
-                    title="Open"
+            <div className={`${LIST_MAX_H} overflow-y-auto pr-1`}>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {photos.map((p, i) => (
+                  <motion.div
+                    key={p.id}
+                    className="group relative"
+                    variants={item}
                   >
-                    <img
-                      src={p.url}
-                      alt={p.caption || ""}
-                      className="h-32 w-full rounded-lg object-cover"
-                      loading="lazy"
-                    />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => openViewer(i)}
+                      className="block w-full focus:outline-none"
+                      aria-label="Open photo"
+                      title="Open"
+                    >
+                      <img
+                        src={p.url}
+                        alt={p.caption || ""}
+                        className="h-32 w-full rounded-lg object-cover"
+                        loading="lazy"
+                      />
+                    </button>
 
-                  <button
-                    onClick={() => deletePhoto(p.id)}
-                    className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
-                    title="Delete"
-                  >
-                    Delete
-                  </button>
+                    <button
+                      onClick={() => deletePhoto(p.id)}
+                      className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
+                      title="Delete"
+                    >
+                      Delete
+                    </button>
 
-                  {p.caption && (
-                    <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
-                      {p.caption}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-              {photos.length === 0 && (
-                <div className="p-3 text-sm text-[var(--color-muted)]">
-                  No photos yet.
-                </div>
-              )}
+                    {p.caption && (
+                      <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
+                        {p.caption}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+                {photos.length === 0 && (
+                  <div className="p-3 text-sm text-[var(--color-muted)]">
+                    No photos yet.
+                  </div>
+                )}
+              </div>
             </div>
           </MotionCard>
         </div>
