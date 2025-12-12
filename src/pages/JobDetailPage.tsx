@@ -66,7 +66,7 @@ function statusClasses(status: JobStatus) {
     case "active":
       return "bg-[var(--color-primary)]/15 text-[var(--color-primary)]";
     case "pending":
-      return "bg-yellow-100 text-yellow-800";
+      return "bg-yellow-50 text-yellow-800";
     case "invoiced":
       return "bg-blue-100 text-blue-700";
     case "paid":
@@ -894,14 +894,15 @@ export default function JobDetailPage() {
             <div className="rounded-2xl bg-white backdrop-blur-md p-4  ring-black/5 ">
               <Link
                 to="/dashboard"
-                className="text-sm text-[var(--color-primary)] hover:underline"
+                className="text-sm text-[var(--color-muted)] hover:underline"
               >
-                <div className="flex items-center gap-1 rounded-md">
-                  <ChevronLeft size="30" />
+                <div className="flex items-center gap-0 rounded-md">
+                  <ChevronLeft
+                    className="text-[var(--color-muted)]"
+                    size="30"
+                  />
 
-                  <p className="text-[var(--color-primary)]">
-                    back to dashboard
-                  </p>
+                  <p className="text-[var(--color-muted)]">back to dashboard</p>
                 </div>
               </Link>
               <h1 className="mt-2 text-2xl font-bold uppercase text-[var(--color-logo)]">
@@ -917,7 +918,7 @@ export default function JobDetailPage() {
                 <span className="rounded-md  bg-white px-3 py-1.5 text-sm uppercase tracking-wide text-[var(--color-muted)]">
                   Status:
                   <span
-                    className={`ml-2 rounded-full px-2 py-0.5 ${statusClasses(
+                    className={`ml-2 rounded-md px-2 py-0.5 ${statusClasses(
                       job.status as JobStatus
                     )}`}
                   >
@@ -1052,13 +1053,13 @@ export default function JobDetailPage() {
               {/* Punch scheduling / completion controls */}
               <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
                 {punchScheduledLabel && (
-                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
+                  <span className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-700">
                     Punch scheduled: {punchScheduledLabel}
                   </span>
                 )}
 
                 {punchedAtLabel && (
-                  <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs text-emerald-800">
+                  <span className="rounded-md border border-emerald-300 bg-emerald-100 p-2 text-xs text-emerald-800">
                     Punched on {punchedAtLabel}
                   </span>
                 )}
@@ -1074,7 +1075,7 @@ export default function JobDetailPage() {
                     setSchedulePunchDate(toYMD(base));
                   }}
                   className={
-                    "rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs " +
+                    "rounded-md border cursor-pointer border-[var(--color-border)] transition duration-300 ease-in-out px-3 py-1.5 text-xs " +
                     (!canSchedulePunch
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60"
                       : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
@@ -1089,7 +1090,7 @@ export default function JobDetailPage() {
                   <button
                     type="button"
                     onClick={() => setConfirmPunchedOpen(true)}
-                    className="rounded-lg bg-emerald-700 border border-white px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600  cursor-pointer"
+                    className="rounded-md bg-emerald-900 border transition duration ease-in-out border-white px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700  cursor-pointer"
                   >
                     Mark as punched
                   </button>
@@ -1098,7 +1099,7 @@ export default function JobDetailPage() {
 
               {/* Pricing */}
               {!hasPricing || editingPricing ? (
-                <div className="rounded-2xl bg-white/70 backdrop-blur-md ring-1 ring-black/5 shadow-sm px-5 py-3 text-right w-full">
+                <div className="rounded-md bg-white/70 backdrop-blur-md ring-1 ring-black/5 shadow-sm px-5 py-3 text-right w-full">
                   <div className="mb-2 text-xs text-[var(--color-muted)]">
                     Total Job Pay
                   </div>
@@ -1168,43 +1169,46 @@ export default function JobDetailPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
-                  <div className="rounded-xl shadow-md bg-white px-4 py-2 text-right flex items-center justify-center">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
-                        Sq. ft @ Rate
-                      </div>
-                      <div className="text-sm font-medium text-[var(--color-text)]">
-                        {Number(displaySqft || 0).toLocaleString()} sq.ft @ $
-                        {displayRate}
-                        /sq.ft <span className="opacity-70">+ $35</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl shadow-md px-5 py-3 text-right bg-white">
+                <div className="w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSqft(String(job.pricing?.sqft ?? ""));
+                      setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
+                      setEditingPricing(true);
+                    }}
+                    className="group w-full sm:min-w-[360px] rounded-md bg-white shadow-md ring-1 ring-black/5 px-4 py-3 text-left transition hover:bg-[var(--color-card-hover)]"
+                    title="Edit pricing"
+                  >
                     <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-xs text-[var(--color-muted)]">
-                          Total Job Pay
+                      <div className="min-w-0">
+                        <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
+                          Pricing
                         </div>
-                        <div className="text-2xl font-semibold text-[var(--color-text)]">
-                          <CountMoney cents={displayTotal} />
+
+                        <div className="mt-0.5 truncate text-sm font-medium text-[var(--color-text)]">
+                          {Number(displaySqft || 0).toLocaleString()} sq.ft • $
+                          {displayRate}
+                          /sq.ft <span className="opacity-70">• + $35</span>
                         </div>
                       </div>
-                      <button
-                        onClick={() => {
-                          setSqft(String(job.pricing?.sqft ?? ""));
-                          setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
-                          setEditingPricing(true);
-                        }}
-                        title="Edit pricing"
-                        className="shrink-0 rounded-full shadow-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/1 p-2 hover:bg-[var(--color-card-hover)]"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
+                            Total
+                          </div>
+                          <div className="text-2xl font-semibold text-[var(--color-text)] leading-none">
+                            <CountMoney cents={displayTotal} />
+                          </div>
+                        </div>
+
+                        <span className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/70 text-[var(--color-muted)] shadow-sm transition group-hover:bg-white">
+                          <Pencil className="h-4 w-4" />
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 </div>
               )}
             </div>
@@ -2053,7 +2057,7 @@ export default function JobDetailPage() {
       {/* ===== Confirm Felt Completed Modal ===== */}
       {confirmFeltDoneOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--color-text)]">
                 Mark <strong className="font-semibold">DRY IN</strong> as
@@ -2077,7 +2081,7 @@ export default function JobDetailPage() {
               <button
                 type="button"
                 onClick={() => setConfirmFeltDoneOpen(false)}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
               >
                 Cancel
               </button>
@@ -2093,7 +2097,7 @@ export default function JobDetailPage() {
                       "DRY IN has been marked as completed for this job.",
                   });
                 }}
-                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+                className="rounded-sm bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 cursor-pointer"
               >
                 Yes, mark <strong className="font-semibold">DRY IN</strong> done
               </button>
@@ -2105,7 +2109,7 @@ export default function JobDetailPage() {
       {/* ===== Confirm Shingles Completed Modal ===== */}
       {confirmShinglesDoneOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--color-text)]">
                 Mark <strong className="font-semibold">SHINGLES</strong> as
@@ -2114,7 +2118,7 @@ export default function JobDetailPage() {
               <button
                 type="button"
                 onClick={() => setConfirmShinglesDoneOpen(false)}
-                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -2129,7 +2133,7 @@ export default function JobDetailPage() {
               <button
                 type="button"
                 onClick={() => setConfirmShinglesDoneOpen(false)}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
               >
                 Cancel
               </button>
@@ -2145,7 +2149,7 @@ export default function JobDetailPage() {
                       "Shingles have been marked as completed for this job.",
                   });
                 }}
-                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+                className="rounded-sm cursor-pointer bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
               >
                 Yes, mark <strong className="font-semibold">SHINGLES</strong>{" "}
                 done
