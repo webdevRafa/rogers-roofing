@@ -55,10 +55,7 @@ const fadeUp = (delay = 0): Partial<MotionProps> => ({
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.35, ease: EASE, delay },
 });
-const staggerParent: MotionProps["variants"] = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { staggerChildren: 0.08 } },
-};
+
 const item: MotionProps["variants"] = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
@@ -852,10 +849,9 @@ export default function JobDetailPage() {
 
   return (
     <motion.div
-      className="mx-auto w-full max-w-[1800px]  pt-20 py-8 px-4 md:px-10"
-      variants={staggerParent}
-      initial="initial"
-      animate="animate"
+      key={id}
+      className="mx-auto w-full max-w-full md:max-w-[1800px] overflow-x-hidden pt-20 py-8 px-4 md:px-10"
+      {...fadeUp(0)}
     >
       {/* Header */}
       <motion.header
