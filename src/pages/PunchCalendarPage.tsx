@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Home,
   RotateCcw,
 } from "lucide-react";
 
