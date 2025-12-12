@@ -890,7 +890,7 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <div className="flex w-full flex-col items-end gap-2 sm:w-auto ">
+        <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
           {/* Status pill */}
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
@@ -907,7 +907,7 @@ export default function JobDetailPage() {
 
           {/* Felt / shingles progress controls */}
           <div className="flex w-full flex-col items-end gap-1 text-[11px]">
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
               {/* Felt pill */}
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wide">
@@ -1024,7 +1024,7 @@ export default function JobDetailPage() {
             </div>
           </div>
           {/* Punch scheduling / completion controls */}
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
             {punchScheduledLabel && (
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
                 Punch scheduled: {punchScheduledLabel}
