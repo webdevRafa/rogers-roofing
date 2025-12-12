@@ -1582,7 +1582,9 @@ export default function JobDetailPage() {
                 Add
               </button>
             </form>
-            <div className={`mt-3 ${LIST_MAX_H} overflow-y-auto pr-1`}>
+            <div
+              className={`mt-3 ${LIST_MAX_H} overflow-y-auto overflow-x-hidden pr-1`}
+            >
               <ul>
                 {(job?.notes ?? [])
                   .slice()
@@ -1590,20 +1592,20 @@ export default function JobDetailPage() {
                   .map((n) => (
                     <motion.li
                       key={n.id}
-                      className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                      className="mb-2 flex items-start gap-3 rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
                       variants={item}
                     >
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="text-sm text-[var(--color-text)]">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words break-all mr-3">
                           {n.text}
-                        </span>
-                        <span className="ml-2 text-xs text-[var(--color-muted)]">
+                        </p>
+                        <div className="mt-1 text-xs text-[var(--color-muted)]">
                           {n.createdAt ? fmtDate(n.createdAt) : ""}
-                        </span>
+                        </div>
                       </div>
                       <button
                         onClick={() => removeNote(n.id)}
-                        className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                        className="shrink-0 rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
                         title="Delete"
                       >
                         Delete
