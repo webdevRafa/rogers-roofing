@@ -120,32 +120,23 @@ export default function PunchCalendarPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero / header */}
-      <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
-        <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 py-10 md:flex-row md:items-center md:justify-between md:px-0">
+      <div className="">
+        <div className="mx-auto flex max-w-[1100px] flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between md:px-0">
           <div>
-            <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white/70">
+            <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--color-text)]">
               <CalendarDays className="h-4 w-4" />
               <span>my schedule</span>
             </p>
-            <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">
+            <h1 className="mt-2 text-2xl font-semibold text-[var(--color-text)] md:text-3xl">
               Calendar
             </h1>
-            <p className="mt-1 text-sm text-white/80">
+            <p className="mt-1 text-sm text-[var(--color-text)]">
               See how many Dry in, Shingles, and Punches are scheduled each day,
               then jump into a specific date.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard")}
-              className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
-            >
-              <Home className="h-4 w-4" />
-              Dashboard
-            </button>
-
             <button
               type="button"
               onClick={() => setMonth(new Date())}
@@ -161,16 +152,16 @@ export default function PunchCalendarPage() {
       {/* Page content */}
       <div className="mx-auto w-[min(1100px,94vw)] space-y-4 py-8">
         {/* Month controls */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--color-muted)]">
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/80">
                 Month
               </p>
-              <h2 className="mt-1 text-lg font-semibold text-[var(--color-text)]">
+              <h2 className="mt-1 text-lg font-semibold text-white">
                 {monthLabel}
               </h2>
-              <p className="text-xs text-[var(--color-muted)]">
+              <p className="text-xs text-white/60">
                 Use the arrows to move between months or jump back to today.
               </p>
             </div>
