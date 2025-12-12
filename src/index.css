@@ -83,3 +83,30 @@ h1, h2, h3, p, button {
 .poppins {
   font-family: "poppins", sans-serif;
 }
+/* ---- Fix Chrome autofill blue/yellow tint ---- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  /* match your Tailwind bg-neutral-100/60 vibe */
+  -webkit-box-shadow: 0 0 0px 1000px rgba(245, 245, 245, 0.6) inset;
+  box-shadow: 0 0 0px 1000px rgba(245, 245, 245, 0.6) inset;
+
+  /* keep text color consistent */
+  -webkit-text-fill-color: var(--color-text);
+
+  /* prevents the browser from animating back to its tint */
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* Standard-ish selector (supported in some browsers) */
+input:autofill,
+textarea:autofill,
+select:autofill {
+  box-shadow: 0 0 0px 1000px rgba(245, 245, 245, 0.6) inset;
+}
