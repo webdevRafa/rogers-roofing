@@ -481,6 +481,8 @@ export default function JobDetailPage() {
   async function saveFeltSchedule() {
     if (!job || !feltScheduleDate) return;
 
+    const wasScheduledBefore = !!(job as any).feltScheduledFor;
+
     const [year, month, day] = feltScheduleDate.split("-").map(Number);
     const scheduledDate = new Date(year, month - 1, day);
 
@@ -488,11 +490,20 @@ export default function JobDetailPage() {
       ...job,
       feltScheduledFor: Timestamp.fromDate(scheduledDate),
     });
+
     setFeltScheduleEditing(false);
+
+    setToast({
+      status: "success",
+      title: wasScheduledBefore ? "DRY IN rescheduled" : "DRY IN scheduled",
+      message: `DRY IN is now set for ${scheduledDate.toLocaleDateString()}.`,
+    });
   }
 
   async function saveShinglesSchedule() {
     if (!job || !shinglesScheduleDate) return;
+
+    const wasScheduledBefore = !!(job as any).shinglesScheduledFor;
 
     const [year, month, day] = shinglesScheduleDate.split("-").map(Number);
     const scheduledDate = new Date(year, month - 1, day);
@@ -501,7 +512,14 @@ export default function JobDetailPage() {
       ...job,
       shinglesScheduledFor: Timestamp.fromDate(scheduledDate),
     });
+
     setShinglesScheduleEditing(false);
+
+    setToast({
+      status: "success",
+      title: wasScheduledBefore ? "Shingles rescheduled" : "Shingles scheduled",
+      message: `Shingles are now set for ${scheduledDate.toLocaleDateString()}.`,
+    });
   }
 
   async function markFeltCompleted() {
@@ -850,339 +868,346 @@ export default function JobDetailPage() {
   return (
     <motion.div
       key={id}
-      className="mx-auto w-full max-w-full md:max-w-[1800px] overflow-x-hidden pt-20 py-8 px-4 md:px-10"
+      className="mx-auto w-full max-w-full md:max-w-[1400px] overflow-x-hidden pt-20 py-8  md:px-10"
       {...fadeUp(0)}
     >
-      {/* Header */}
-      <motion.header
-        className="mb-8 flex relative overflow-hidden flex-wrap items-start justify-between gap-4 rounded-2xl  px-4 py-4 shadow-sm ring-1 ring-black/5 sm:px-6 sm:py-5"
-        {...fadeUp(0)}
-      >
-        {/* Soft background using latest photo */}
-        {latestPhotoUrl && (
-          <div className="pointer-events-none absolute inset-0 -z-10">
-            {/* Photo itself */}
-            <div
-              className="absolute inset-0 bg-cover bg-center opacity-80"
-              style={{ backgroundImage: `url(${latestPhotoUrl})` }}
-            />
-            {/* White wash overlay to keep text readable */}
-            <div className="absolute inset-0 " />
-          </div>
-        )}
-
-        <div className="bg-white rounded-md p-2">
-          <Link
-            to="/dashboard"
-            className="text-sm text-[var(--color-primary)] hover:underline"
-          >
-            <div className="flex items-center gap-1 rounded-md">
-              <ChevronLeft size="30" />
-
-              <p className="text-[var(--color-primary)] e">back to dashboard</p>
-            </div>
-          </Link>
-          <h1 className="mt-2 text-4xl font-bold uppercase text-[var(--color-logo)]">
-            {job.address?.fullLine}
-          </h1>
-          <div className="text-sm text-[var(--color-muted)]">
-            Last updated: {lastStr}
-          </div>
-        </div>
-
-        <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
-          {/* Status pill */}
-          <div className="flex items-center gap-2">
-            <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
-              Status:
-              <span
-                className={`ml-2 rounded-full px-2 py-0.5 ${statusClasses(
-                  job.status as JobStatus
-                )}`}
-              >
-                {job.status}
-              </span>
-            </span>
-          </div>
-
-          {/* Felt / shingles progress controls */}
-          <div className="flex w-full flex-col items-end gap-1 text-[11px]">
-            <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
-              {/* Felt pill */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wide">
-                  DRY IN
-                </span>
-                <span className="text-[11px] text-[var(--color-muted)]">
-                  {feltCompletedMs
-                    ? `Completed ${new Date(
-                        feltCompletedMs
-                      ).toLocaleDateString()}`
-                    : feltScheduledMs
-                    ? `Scheduled ${new Date(
-                        feltScheduledMs
-                      ).toLocaleDateString()}`
-                    : "Not scheduled"}
-                </span>
-                <button
-                  type="button"
-                  disabled={jobIsLocked}
-                  onClick={() => {
-                    if (jobIsLocked) return;
-                    setFeltScheduleDate(
-                      feltScheduledMs
-                        ? toYMD(new Date(feltScheduledMs))
-                        : toYMD(new Date())
-                    );
-                    setFeltScheduleEditing(true);
-                  }}
-                  className={
-                    "rounded-md px-2 py-0.5 text-[10px] transition " +
-                    (jobIsLocked
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-cyan-50 text-[var(--color-text)] hover:bg-cyan-100")
-                  }
-                >
-                  {feltScheduledMs ? "Reschedule" : "Schedule"}
-                </button>
-                {!feltCompletedMs && (
-                  <button
-                    type="button"
-                    disabled={jobIsLocked}
-                    onClick={() => {
-                      if (jobIsLocked) return;
-                      setConfirmFeltDoneOpen(true);
-                    }}
-                    className={
-                      "rounded-md px-2 py-0.5 text-[10px] " +
-                      (jobIsLocked
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "bg-emerald-600 text-white hover:bg-emerald-500")
-                    }
-                  >
-                    Mark done
-                  </button>
-                )}
-              </div>
-
-              {/* Shingles pill */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wide">
-                  Shingles
-                </span>
-                <span className="text-[11px] text-[var(--color-muted)]">
-                  {shinglesCompletedMs
-                    ? `Completed ${new Date(
-                        shinglesCompletedMs
-                      ).toLocaleDateString()}`
-                    : shinglesScheduledMs
-                    ? `Scheduled ${new Date(
-                        shinglesScheduledMs
-                      ).toLocaleDateString()}`
-                    : "Not scheduled"}
-                </span>
-                <button
-                  type="button"
-                  disabled={jobIsLocked}
-                  onClick={() => {
-                    if (jobIsLocked) return;
-                    setShinglesScheduleDate(
-                      shinglesScheduledMs
-                        ? toYMD(new Date(shinglesScheduledMs))
-                        : toYMD(new Date())
-                    );
-                    setShinglesScheduleEditing(true);
-                  }}
-                  className={
-                    "rounded-md px-2 py-0.5 text-[10px]  " +
-                    (jobIsLocked
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-amber-50 text-[var(--color-text)] hover:bg-amber-100")
-                  }
-                >
-                  {shinglesScheduledMs ? "Reschedule" : "Schedule"}
-                </button>
-                {!shinglesCompletedMs && (
-                  <button
-                    type="button"
-                    disabled={jobIsLocked}
-                    onClick={() => {
-                      if (jobIsLocked) return;
-                      setConfirmShinglesDoneOpen(true);
-                    }}
-                    className={
-                      "rounded-md px-2 py-0.5 text-[10px] transition shadow-sm " +
-                      (jobIsLocked
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        : "bg-emerald-600 text-white hover:bg-emerald-500")
-                    }
-                  >
-                    Mark done
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-          {/* Punch scheduling / completion controls */}
-          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-            {punchScheduledLabel && (
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
-                Punch scheduled: {punchScheduledLabel}
-              </span>
-            )}
-
-            {punchedAtLabel && (
-              <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs text-emerald-800">
-                Punched on {punchedAtLabel}
-              </span>
-            )}
-
-            <button
-              type="button"
-              disabled={!canSchedulePunch}
-              onClick={() => {
-                if (!canSchedulePunch) return;
-                setSchedulePunchOpen(true);
-
-                const base = job.punchScheduledFor ?? new Date();
-                setSchedulePunchDate(toYMD(base));
-              }}
-              className={
-                "rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs " +
-                (!canSchedulePunch
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60"
-                  : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
-              }
-            >
-              {job.punchScheduledFor ? "Reschedule punch" : "Schedule punch"}
-            </button>
-
-            {canSchedulePunch && (
-              <button
-                type="button"
-                onClick={() => setConfirmPunchedOpen(true)}
-                className="rounded-lg bg-emerald-700 border border-white px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600  cursor-pointer"
-              >
-                Mark as punched
-              </button>
-            )}
-          </div>
-
-          {/* Pricing */}
-          {!hasPricing || editingPricing ? (
-            <div className="rounded-2xl shadow-md px-5 py-3 text-right w-full sm:w-auto ">
-              <div className="mb-2 text-xs text-[var(--color-muted)]">
-                Total Job Pay
-              </div>
-              <div className="text-2xl font-semibold text-[var(--color-text)]">
-                <CountMoney cents={totalJobPayCentsPreview} />
-              </div>
-
-              <div className="mt-3 flex items-center gap-2 text-xs">
-                <input
-                  value={sqft}
-                  onChange={(e) => setSqft(e.target.value)}
-                  type="number"
-                  min={0}
-                  step="1"
-                  placeholder="Sq. ft"
-                  className="w-24 rounded-md border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                />
-                <select
-                  value={rate}
-                  onChange={(e) => setRate(Number(e.target.value) as 31 | 35)}
-                  className="w-20 rounded-md border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                  title="Pay rate"
-                >
-                  <option value={31}>$31</option>
-                  <option value={35}>$35</option>
-                </select>
-                <span className="text-[var(--color-muted)]">+ $35 fee</span>
-                <button
-                  onClick={() => {
-                    if (!job) return;
-                    const nSqft = Math.max(0, Number(sqft) || 0);
-                    const updated: Job = {
-                      ...job,
-                      pricing: {
-                        sqft: nSqft,
-                        ratePerSqFt: rate,
-                        feeCents: 3500,
-                      },
-                      earnings: {
-                        ...job.earnings,
-                        totalEarningsCents: Math.round(
-                          (nSqft * rate + 35) * 100
-                        ),
-                      },
-                    };
-                    void saveJob(updated);
-                    setEditingPricing(false);
-                  }}
-                  className="ml-2 rounded-md bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-1 text-[var(--btn-text)]"
-                >
-                  Apply
-                </button>
-                {hasPricing && (
-                  <button
-                    onClick={() => {
-                      setSqft(String(job.pricing?.sqft ?? ""));
-                      setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
-                      setEditingPricing(false);
-                    }}
-                    className="rounded-md border border-[var(--color-border)] bg-white px-3 py-1"
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
-              <div className="rounded-xl shadow-md bg-white px-4 py-2 text-right flex items-center justify-center">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
-                    Sq. ft @ Rate
-                  </div>
-                  <div className="text-sm font-medium text-[var(--color-text)]">
-                    {Number(displaySqft || 0).toLocaleString()} sq.ft @ $
-                    {displayRate}
-                    /sq.ft <span className="opacity-70">+ $35</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl shadow-md px-5 py-3 text-right bg-white">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs text-[var(--color-muted)]">
-                      Total Job Pay
-                    </div>
-                    <div className="text-2xl font-semibold text-[var(--color-text)]">
-                      <CountMoney cents={displayTotal} />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSqft(String(job.pricing?.sqft ?? ""));
-                      setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
-                      setEditingPricing(true);
-                    }}
-                    title="Edit pricing"
-                    className="shrink-0 rounded-full shadow-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/1 p-2 hover:bg-[var(--color-card-hover)]"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+      <div className="py-4 sm:py-5">
+        {/* Header */}
+        <motion.header
+          className="mb-8 relative overflow-hidden rounded-2xl ring-1 ring-black/5 shadow-sm w-full"
+          {...fadeUp(0)}
+        >
+          {/* Soft background using latest photo */}
+          {latestPhotoUrl && (
+            <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+              <img
+                src={latestPhotoUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover scale-105 blur-[2px] opacity-100"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/60 to-white/90" />
             </div>
           )}
-        </div>
-      </motion.header>
+          <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div className="rounded-2xl bg-white backdrop-blur-md p-4 ring-1 ring-black/5 shadow-sm">
+              <Link
+                to="/dashboard"
+                className="text-sm text-[var(--color-primary)] hover:underline"
+              >
+                <div className="flex items-center gap-1 rounded-md">
+                  <ChevronLeft size="30" />
+
+                  <p className="text-[var(--color-primary)]">
+                    back to dashboard
+                  </p>
+                </div>
+              </Link>
+              <h1 className="mt-2 text-4xl font-bold uppercase text-[var(--color-logo)]">
+                {job.address?.fullLine}
+              </h1>
+              <div className="text-sm text-[var(--color-muted)]">
+                Last updated: {lastStr}
+              </div>
+            </div>
+            <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
+              {/* Status pill */}
+              <div className="flex items-center gap-2">
+                <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                  Status:
+                  <span
+                    className={`ml-2 rounded-full px-2 py-0.5 ${statusClasses(
+                      job.status as JobStatus
+                    )}`}
+                  >
+                    {job.status}
+                  </span>
+                </span>
+              </div>
+
+              {/* Felt / shingles progress controls */}
+              <div className="flex w-full flex-col gap-2 text-[11px]">
+                <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
+                  {/* Felt pill */}
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide">
+                      DRY IN
+                    </span>
+                    <span className="text-[11px] text-[var(--color-muted)]">
+                      {feltCompletedMs
+                        ? `Completed ${new Date(
+                            feltCompletedMs
+                          ).toLocaleDateString()}`
+                        : feltScheduledMs
+                        ? `Scheduled ${new Date(
+                            feltScheduledMs
+                          ).toLocaleDateString()}`
+                        : "Not scheduled"}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={jobIsLocked}
+                      onClick={() => {
+                        if (jobIsLocked) return;
+                        setFeltScheduleDate(
+                          feltScheduledMs
+                            ? toYMD(new Date(feltScheduledMs))
+                            : toYMD(new Date())
+                        );
+                        setFeltScheduleEditing(true);
+                      }}
+                      className={
+                        "rounded-md px-2 py-0.5 text-[10px] transition " +
+                        (jobIsLocked
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-cyan-50 text-[var(--color-text)] hover:bg-cyan-100")
+                      }
+                    >
+                      {feltScheduledMs ? "Reschedule" : "Schedule"}
+                    </button>
+                    {!feltCompletedMs && (
+                      <button
+                        type="button"
+                        disabled={jobIsLocked}
+                        onClick={() => {
+                          if (jobIsLocked) return;
+                          setConfirmFeltDoneOpen(true);
+                        }}
+                        className={
+                          "rounded-md px-2 py-0.5 text-[10px] " +
+                          (jobIsLocked
+                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            : "bg-emerald-600 text-white hover:bg-emerald-500")
+                        }
+                      >
+                        Mark done
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Shingles pill */}
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide">
+                      Shingles
+                    </span>
+                    <span className="text-[11px] text-[var(--color-muted)]">
+                      {shinglesCompletedMs
+                        ? `Completed ${new Date(
+                            shinglesCompletedMs
+                          ).toLocaleDateString()}`
+                        : shinglesScheduledMs
+                        ? `Scheduled ${new Date(
+                            shinglesScheduledMs
+                          ).toLocaleDateString()}`
+                        : "Not scheduled"}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={jobIsLocked}
+                      onClick={() => {
+                        if (jobIsLocked) return;
+                        setShinglesScheduleDate(
+                          shinglesScheduledMs
+                            ? toYMD(new Date(shinglesScheduledMs))
+                            : toYMD(new Date())
+                        );
+                        setShinglesScheduleEditing(true);
+                      }}
+                      className={
+                        "rounded-md px-2 py-0.5 text-[10px]  " +
+                        (jobIsLocked
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-amber-50 text-[var(--color-text)] hover:bg-amber-100")
+                      }
+                    >
+                      {shinglesScheduledMs ? "Reschedule" : "Schedule"}
+                    </button>
+                    {!shinglesCompletedMs && (
+                      <button
+                        type="button"
+                        disabled={jobIsLocked}
+                        onClick={() => {
+                          if (jobIsLocked) return;
+                          setConfirmShinglesDoneOpen(true);
+                        }}
+                        className={
+                          "rounded-md px-2 py-0.5 text-[10px] transition shadow-sm " +
+                          (jobIsLocked
+                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            : "bg-emerald-600 text-white hover:bg-emerald-500")
+                        }
+                      >
+                        Mark done
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* Punch scheduling / completion controls */}
+              <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+                {punchScheduledLabel && (
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
+                    Punch scheduled: {punchScheduledLabel}
+                  </span>
+                )}
+
+                {punchedAtLabel && (
+                  <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs text-emerald-800">
+                    Punched on {punchedAtLabel}
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  disabled={!canSchedulePunch}
+                  onClick={() => {
+                    if (!canSchedulePunch) return;
+                    setSchedulePunchOpen(true);
+
+                    const base = job.punchScheduledFor ?? new Date();
+                    setSchedulePunchDate(toYMD(base));
+                  }}
+                  className={
+                    "rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs " +
+                    (!canSchedulePunch
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60"
+                      : "bg-white text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+                  }
+                >
+                  {job.punchScheduledFor
+                    ? "Reschedule punch"
+                    : "Schedule punch"}
+                </button>
+
+                {canSchedulePunch && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmPunchedOpen(true)}
+                    className="rounded-lg bg-emerald-700 border border-white px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600  cursor-pointer"
+                  >
+                    Mark as punched
+                  </button>
+                )}
+              </div>
+
+              {/* Pricing */}
+              {!hasPricing || editingPricing ? (
+                <div className="rounded-2xl bg-white/70 backdrop-blur-md ring-1 ring-black/5 shadow-sm px-5 py-3 text-right w-full">
+                  <div className="mb-2 text-xs text-[var(--color-muted)]">
+                    Total Job Pay
+                  </div>
+                  <div className="text-2xl font-semibold text-[var(--color-text)]">
+                    <CountMoney cents={totalJobPayCentsPreview} />
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2 text-xs">
+                    <input
+                      value={sqft}
+                      onChange={(e) => setSqft(e.target.value)}
+                      type="number"
+                      min={0}
+                      step="1"
+                      placeholder="Sq. ft"
+                      className="w-24 rounded-md border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    />
+                    <select
+                      value={rate}
+                      onChange={(e) =>
+                        setRate(Number(e.target.value) as 31 | 35)
+                      }
+                      className="w-20 rounded-md border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                      title="Pay rate"
+                    >
+                      <option value={31}>$31</option>
+                      <option value={35}>$35</option>
+                    </select>
+                    <span className="text-[var(--color-muted)]">+ $35 fee</span>
+                    <button
+                      onClick={() => {
+                        if (!job) return;
+                        const nSqft = Math.max(0, Number(sqft) || 0);
+                        const updated: Job = {
+                          ...job,
+                          pricing: {
+                            sqft: nSqft,
+                            ratePerSqFt: rate,
+                            feeCents: 3500,
+                          },
+                          earnings: {
+                            ...job.earnings,
+                            totalEarningsCents: Math.round(
+                              (nSqft * rate + 35) * 100
+                            ),
+                          },
+                        };
+                        void saveJob(updated);
+                        setEditingPricing(false);
+                      }}
+                      className="ml-2 rounded-md bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-1 text-[var(--btn-text)]"
+                    >
+                      Apply
+                    </button>
+                    {hasPricing && (
+                      <button
+                        onClick={() => {
+                          setSqft(String(job.pricing?.sqft ?? ""));
+                          setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
+                          setEditingPricing(false);
+                        }}
+                        className="rounded-md border border-[var(--color-border)] bg-white px-3 py-1"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
+                  <div className="rounded-xl shadow-md bg-white px-4 py-2 text-right flex items-center justify-center">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
+                        Sq. ft @ Rate
+                      </div>
+                      <div className="text-sm font-medium text-[var(--color-text)]">
+                        {Number(displaySqft || 0).toLocaleString()} sq.ft @ $
+                        {displayRate}
+                        /sq.ft <span className="opacity-70">+ $35</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl shadow-md px-5 py-3 text-right bg-white">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs text-[var(--color-muted)]">
+                          Total Job Pay
+                        </div>
+                        <div className="text-2xl font-semibold text-[var(--color-text)]">
+                          <CountMoney cents={displayTotal} />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSqft(String(job.pricing?.sqft ?? ""));
+                          setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
+                          setEditingPricing(true);
+                        }}
+                        title="Edit pricing"
+                        className="shrink-0 rounded-full shadow-md px-3 text-xs py-2 text-[var(--color-logo)] bg-[var(--color-accent)]/1 p-2 hover:bg-[var(--color-card-hover)]"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.header>
+      </div>
 
       {/* Stat row + profit bar */}
       <motion.div
-        className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+        className="rounded-2xl bg-white/80 backdrop-blur-md p-4 shadow-sm ring-1 ring-black/5"
         {...fadeUp(0.05)}
       >
         <div className="grid gap-4 sm:grid-cols-4 ">
@@ -1190,9 +1215,10 @@ export default function JobDetailPage() {
           <Stat label="Materials" cents={totals.materials} />
           <Stat label="All Expenses" cents={totals.expenses} />
           <div
-            className={` rounded-xl ${
-              totals.net > 0 ? "bg-emerald-400/3" : "bg-red-400/3"
-            }`}
+            className={
+              "rounded-xl ring-1 ring-black/5 " +
+              (totals.net >= 0 ? "bg-emerald-50" : "bg-red-50")
+            }
           >
             <Stat label="Profit" cents={totals.net} />
           </div>
@@ -1331,7 +1357,7 @@ export default function JobDetailPage() {
             {(job?.expenses?.payouts ?? []).map((p) => (
               <motion.li
                 key={p.id}
-                className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/1 p-3 shadow-md"
+                className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
                 variants={item}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -1444,7 +1470,7 @@ export default function JobDetailPage() {
             {(job?.expenses?.materials ?? []).map((m) => (
               <motion.li
                 key={m.id}
-                className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/1 p-3 shadow-md"
+                className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
                 variants={item}
               >
                 <div className="min-w-0">
@@ -1521,7 +1547,7 @@ export default function JobDetailPage() {
               .map((n) => (
                 <motion.li
                   key={n.id}
-                  className="mb-2 flex items-center justify-between rounded-lg bg-[var(--color-accent)]/1 p-3 shadow-md"
+                  className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
                   variants={item}
                 >
                   <div className="flex min-w-0 items-center gap-2">
@@ -1624,7 +1650,7 @@ export default function JobDetailPage() {
                   <img
                     src={previewUrl}
                     alt="Selected preview"
-                    className="h-32 w-full rounded-lg border border-[var(--color-border)] object-cover"
+                    className="h-32 w-full rounded-xl object-cover ring-1 ring-black/5 transition duration-300 group-hover:scale-[1.02]"
                   />
                 </div>
               )}
@@ -1671,7 +1697,7 @@ export default function JobDetailPage() {
 
                 <button
                   onClick={() => deletePhoto(p.id)}
-                  className="absolute right-2 top-2 hidden rounded-full bg-black/60 px-2 py-1 text-xs text-white group-hover:block"
+                  className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
                   title="Delete"
                 >
                   Delete
@@ -2216,13 +2242,16 @@ function MotionCard({
 }) {
   return (
     <motion.section
-      className="w-full max-w-full justify-self-stretch rounded-2xl bg-white/60 hover:bg-white hover:shadow-lg transition durataion-300 ease-out py-5 px-4 sm:px-5 shadow-sm ring-1 ring-black/5"
+      className="w-full max-w-full justify-self-stretch rounded-2xl bg-white/80 backdrop-blur-md shadow-sm ring-1 ring-black/5 hover:shadow-md transition duration-300 ease-out"
       {...fadeUp(delay)}
     >
-      <h2 className="mb-4 text-lg font-semibold tracking-tight text-[var(--color-text)]">
-        {title}
-      </h2>
-      {children}
+      <div className="flex items-center justify-between px-4 sm:px-5 pt-4">
+        <h2 className="text-lg font-semibold tracking-tight text-[var(--color-text)]">
+          {title}
+        </h2>
+      </div>
+      <div className="mt-3 h-px w-full bg-black/5" />
+      <div className="px-4 sm:px-5 pb-5 pt-4">{children}</div>
     </motion.section>
   );
 }
