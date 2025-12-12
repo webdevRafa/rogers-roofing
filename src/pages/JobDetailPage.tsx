@@ -886,8 +886,8 @@ export default function JobDetailPage() {
           className="mb-8 relative overflow-hidden rounded-sm  w-full max-w-[1200px] mx-auto md:mt-10"
           {...fadeUp(0)}
         >
-          <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-start">
-            <div className="rounded-sm bg-white shadow-md backdrop-blur-md p-4   ">
+          <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto]  lg:items-start">
+            <div className="rounded-sm bg-white shadow-md backdrop-blur-md p-4 max-w-[400px]  ">
               <Link
                 to="/dashboard"
                 className="text-sm text-[var(--color-muted)] hover:underline"
@@ -1349,7 +1349,7 @@ export default function JobDetailPage() {
                 </>
               )}
 
-              <button className="rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)] ">
+              <button className="rounded-sm bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)] ">
                 Add
               </button>
             </form>
