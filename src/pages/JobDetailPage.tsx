@@ -885,7 +885,7 @@ export default function JobDetailPage() {
               <img
                 src={latestPhotoUrl}
                 alt=""
-                className="absolute inset-0 h-full w-full object-cover scale-105 blur-[2px] opacity-100"
+                className="absolute inset-0 h-full w-full object-cover scale-105 blur-[2px] opacity-80"
               />
               <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/30 to-white" />
             </div>
@@ -959,7 +959,7 @@ export default function JobDetailPage() {
                         setFeltScheduleEditing(true);
                       }}
                       className={
-                        "rounded-sm px-2 py-0.5 text-[10px] transition " +
+                        "rounded-xs px-2 py-0.5 text-[10px] transition " +
                         (jobIsLocked
                           ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                           : "bg-neutral-50 text-[var(--color-text)] hover:bg-neutral-100")
@@ -1016,7 +1016,7 @@ export default function JobDetailPage() {
                         setShinglesScheduleEditing(true);
                       }}
                       className={
-                        "rounded-sm px-2 py-0.5 text-[10px]  " +
+                        "rounded-xs px-2 py-0.5 text-[10px]  " +
                         (jobIsLocked
                           ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                           : "bg-neutral-50 text-[var(--color-text)] hover:bg-neutral-100")
@@ -1090,7 +1090,7 @@ export default function JobDetailPage() {
                   <button
                     type="button"
                     onClick={() => setConfirmPunchedOpen(true)}
-                    className="rounded-sm bg-emerald-900 border transition duration ease-in-out border-white px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700  cursor-pointer"
+                    className="rounded-sm bg-emerald-900  transition duration ease-in-out px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700  cursor-pointer"
                   >
                     Mark as punched
                   </button>
@@ -1845,7 +1845,7 @@ export default function JobDetailPage() {
       {/* ===== Schedule Felt Modal ===== */}
       {feltScheduleEditing && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--color-text)]">
                 Schedule DRY IN
@@ -1867,23 +1867,23 @@ export default function JobDetailPage() {
               type="date"
               value={feltScheduleDate}
               onChange={(e) => setFeltScheduleDate(e.target.value)}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
 
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setFeltScheduleEditing(false)}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                className="rounded-sm border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => void saveFeltSchedule()}
-                className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                className="rounded-sm bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
               >
-                Save
+                Apply
               </button>
             </div>
           </div>
@@ -1893,7 +1893,7 @@ export default function JobDetailPage() {
       {/* ===== Schedule Shingles Modal ===== */}
       {shinglesScheduleEditing && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--color-text)]">
                 Schedule shingles
@@ -1901,7 +1901,7 @@ export default function JobDetailPage() {
               <button
                 type="button"
                 onClick={() => setShinglesScheduleEditing(false)}
-                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -1915,23 +1915,23 @@ export default function JobDetailPage() {
               type="date"
               value={shinglesScheduleDate}
               onChange={(e) => setShinglesScheduleDate(e.target.value)}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
 
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShinglesScheduleEditing(false)}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                className="rounded-sm border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => void saveShinglesSchedule()}
-                className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                className="rounded-sm bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
               >
-                Save
+                Apply
               </button>
             </div>
           </div>
@@ -1941,7 +1941,7 @@ export default function JobDetailPage() {
       {/* ===== Schedule Punch Modal ===== */}
       {schedulePunchOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--color-text)]">
                 Schedule punch
@@ -1949,7 +1949,7 @@ export default function JobDetailPage() {
               <button
                 type="button"
                 onClick={() => setSchedulePunchOpen(false)}
-                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -1963,14 +1963,14 @@ export default function JobDetailPage() {
               type="date"
               value={schedulePunchDate}
               onChange={(e) => setSchedulePunchDate(e.target.value)}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
 
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setSchedulePunchOpen(false)}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
               >
                 Cancel
               </button>
@@ -2002,7 +2002,7 @@ export default function JobDetailPage() {
                     message: `Punch is now set for ${label}.`,
                   });
                 }}
-                className="rounded-lg bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                className="rounded-sm cursor-pointer bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
               >
                 Save
               </button>
