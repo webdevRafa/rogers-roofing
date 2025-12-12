@@ -42,9 +42,9 @@ const LoginPage = () => {
     <>
       <div className="w-full h-[100vh] flex items-center justify-center relative px-4 ">
         {/* login box */}
-        <div className="bg-[var(--color-card)]/60 py-10 shadow-md w-full max-w-[380px] pb-6  border-2 border-white/60">
+        <div className="bg-[var(--color-card)]/90 py-10 shadow-md w-full max-w-[380px] pb-6  border-2 border-white/60">
           <img
-            className="max-w-[200px] mx-auto opacity-70 mb-4 shadow-md"
+            className="max-w-[200px] mx-auto  mb-4 shadow-md"
             src={logo}
             alt="Rogers Roofing"
           />
@@ -61,7 +61,7 @@ const LoginPage = () => {
             <div className="space-y-1.5">
               <label
                 htmlFor="email"
-                className="text-xs uppercase tracking-wide opacity-70"
+                className="text-xs uppercase tracking-wide "
               >
                 Email
               </label>
@@ -80,7 +80,7 @@ const LoginPage = () => {
             <div className="space-y-1.5">
               <label
                 htmlFor="password"
-                className="text-xs uppercase tracking-wide opacity-70"
+                className="text-xs uppercase tracking-wide "
               >
                 Password
               </label>
@@ -117,7 +117,7 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full mt-2 rounded-lg px-4 py-2.5 text-xs bg-[var(--color-logo)]/60 text-white hover:bg-[var(--color-primary)]/60 transition disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-2 mx-auto cursor-pointer hover:scale-105 hover:drop-shadow-lg  rounded-xs block px-4 py-2.5 text-xs bg-[var(--color-logo)] text-white hover:bg-[var(--color-brown)] transition duration-300 ease-in-out disabled:opacity-80 disabled:cursor-not-allowed"
             >
               {submitting ? "Signing in…" : "Sign in"}
             </button>
