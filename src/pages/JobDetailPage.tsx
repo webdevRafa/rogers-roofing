@@ -868,28 +868,24 @@ export default function JobDetailPage() {
       Math.round((displaySqft * displayRate + 35) * 100);
 
   return (
-    <motion.div
-      key={id}
-      className="mx-auto w-full max-w-full md:max-w-[1400px] overflow-x-hidden pt-20 py-8  md:px-10"
-      {...fadeUp(0)}
-    >
-      <div className="py-4 sm:py-5">
+    <>
+      <div className="w-full relative py-3">
+        {/* Soft background using latest photo */}
+        {latestPhotoUrl && (
+          <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+            <img
+              src={latestPhotoUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover scale-105  opacity-80"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/30 to-white" />
+          </div>
+        )}
         {/* Header */}
         <motion.header
-          className="mb-8 relative overflow-hidden rounded-sm ring-1 ring-black/5    w-full"
+          className="mb-8 relative overflow-hidden rounded-sm  w-full max-w-[1200px] mx-auto md:mt-10"
           {...fadeUp(0)}
         >
-          {/* Soft background using latest photo */}
-          {latestPhotoUrl && (
-            <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-              <img
-                src={latestPhotoUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover scale-105 blur-[2px] opacity-80"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-white/30 to-white" />
-            </div>
-          )}
           <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-start">
             <div className="rounded-sm bg-white shadow-md backdrop-blur-md p-4   ">
               <Link
@@ -1215,1019 +1211,1030 @@ export default function JobDetailPage() {
           </div>
         </motion.header>
       </div>
-
-      {/* Stat row + profit bar */}
       <motion.div
-        className="rounded-2xl bg-white/80 backdrop-blur-md p-4 shadow-sm ring-1 ring-black/5"
-        {...fadeUp(0.05)}
+        key={id}
+        className="mx-auto w-full max-w-full md:max-w-[1400px] overflow-x-hidden  py-8  md:px-10"
+        {...fadeUp(0)}
       >
-        <div className="grid gap-4 sm:grid-cols-4 ">
-          <Stat label="Payouts" cents={totals.payouts} />
-          <Stat label="Materials" cents={totals.materials} />
-          <Stat label="All Expenses" cents={totals.expenses} />
-          <div
-            className={
-              "rounded-xl ring-1 ring-black/5 " +
-              (totals.net >= 0 ? "bg-emerald-50" : "bg-red-50")
-            }
-          >
-            <Stat label="Profit" cents={totals.net} />
-          </div>
-        </div>
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-xs text-[var(--color-muted)]">
-            <span>Expenses</span>
-            <span>
-              <CountMoney cents={totals.expenses} /> /{" "}
-              <CountMoney cents={totals.earnings} />
-            </span>
-          </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/10">
-            <motion.div
-              className="h-full bg-[var(--color-primary)]/40"
-              initial={{ width: 0 }}
-              animate={{ width: `${totals.expensePortion * 100}%` }}
-              transition={{ duration: 0.6, ease: EASE }}
-              aria-label="Expense portion of earnings"
-            />
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Quick edit / add panel */}
-      <div className="mt-8 grid grid-cols-1 max-w-full gap-6 lg:grid-cols-2">
-        {/* Payouts */}
-        <MotionCard title="Payouts" delay={0.1}>
-          {/* Tabs */}
-          <div className="mb-3 inline-flex max-w-full flex-wrap rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
-            {(["shingles", "felt", "technician"] as PayoutTab[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setPayoutTab(t)}
-                className={
-                  "px-3 py-1 rounded-md capitalize " +
-                  (payoutTab === t
-                    ? "bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)]"
-                    : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
-                }
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* Form for ACTIVE tab only */}
-          <form
-            className={
-              payoutTab === "technician"
-                ? "grid gap-2 sm:grid-cols-[1fr_160px_auto]"
-                : "grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]"
-            }
-            onSubmit={(e) => {
-              e.preventDefault();
-              addPayout();
-            }}
-          >
-            <select
-              ref={payeeRef as any}
-              value={activePayout.employeeId ?? ""}
-              onChange={(e) => {
-                const id = e.target.value || undefined;
-                const emp = employees.find((x) => x.id === id);
-                setActivePayout({
-                  employeeId: id,
-                  payeeNickname: emp?.name ?? "",
-                });
-              }}
-              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+        {/* Stat row + profit bar */}
+        <motion.div
+          className="rounded-2xl bg-white/80 backdrop-blur-md p-4 shadow-sm ring-1 ring-black/5"
+          {...fadeUp(0.05)}
+        >
+          <div className="grid gap-4 sm:grid-cols-4 ">
+            <Stat label="Payouts" cents={totals.payouts} />
+            <Stat label="Materials" cents={totals.materials} />
+            <Stat label="All Expenses" cents={totals.expenses} />
+            <div
+              className={
+                "rounded-xl ring-1 ring-black/5 " +
+                (totals.net >= 0 ? "bg-emerald-50" : "bg-red-50")
+              }
             >
-              <option value="">
-                {activeEmployees.length
-                  ? "Select active employee…"
-                  : employees.length
-                  ? "No active employees (toggle status on Employees page)."
-                  : "No employees yet (add on Employees page)."}
-              </option>
-              {activeEmployees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
-
-            {payoutTab === "technician" ? (
-              <input
-                value={activePayout.amount}
-                onChange={(e) => setActivePayout({ amount: e.target.value })}
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="Amount $"
-                className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              <Stat label="Profit" cents={totals.net} />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-xs text-[var(--color-muted)]">
+              <span>Expenses</span>
+              <span>
+                <CountMoney cents={totals.expenses} /> /{" "}
+                <CountMoney cents={totals.earnings} />
+              </span>
+            </div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/10">
+              <motion.div
+                className="h-full bg-[var(--color-primary)]/40"
+                initial={{ width: 0 }}
+                animate={{ width: `${totals.expensePortion * 100}%` }}
+                transition={{ duration: 0.6, ease: EASE }}
+                aria-label="Expense portion of earnings"
               />
-            ) : (
-              <>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Quick edit / add panel */}
+        <div className="mt-8 grid grid-cols-1 max-w-full gap-6 lg:grid-cols-2">
+          {/* Payouts */}
+          <MotionCard title="Payouts" delay={0.1}>
+            {/* Tabs */}
+            <div className="mb-3 inline-flex max-w-full flex-wrap rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
+              {(["shingles", "felt", "technician"] as PayoutTab[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setPayoutTab(t)}
+                  className={
+                    "px-3 py-1 rounded-md capitalize " +
+                    (payoutTab === t
+                      ? "bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)]"
+                      : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+                  }
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {/* Form for ACTIVE tab only */}
+            <form
+              className={
+                payoutTab === "technician"
+                  ? "grid gap-2 sm:grid-cols-[1fr_160px_auto]"
+                  : "grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]"
+              }
+              onSubmit={(e) => {
+                e.preventDefault();
+                addPayout();
+              }}
+            >
+              <select
+                ref={payeeRef as any}
+                value={activePayout.employeeId ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value || undefined;
+                  const emp = employees.find((x) => x.id === id);
+                  setActivePayout({
+                    employeeId: id,
+                    payeeNickname: emp?.name ?? "",
+                  });
+                }}
+                className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              >
+                <option value="">
+                  {activeEmployees.length
+                    ? "Select active employee…"
+                    : employees.length
+                    ? "No active employees (toggle status on Employees page)."
+                    : "No employees yet (add on Employees page)."}
+                </option>
+                {activeEmployees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+
+              {payoutTab === "technician" ? (
                 <input
-                  value={activePayout.sqft}
-                  onChange={(e) => setActivePayout({ sqft: e.target.value })}
-                  type="number"
-                  min={0}
-                  step="1"
-                  placeholder="Sq. ft"
-                  className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                />
-                <input
-                  value={activePayout.rate}
-                  onChange={(e) => setActivePayout({ rate: e.target.value })}
+                  value={activePayout.amount}
+                  onChange={(e) => setActivePayout({ amount: e.target.value })}
                   type="number"
                   min={0}
                   step="0.01"
-                  placeholder="Rate $/sq.ft"
+                  placeholder="Amount $"
                   className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
-              </>
-            )}
-
-            <button className="rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)] ">
-              Add
-            </button>
-          </form>
-
-          {/* Live preview */}
-          <div className="mt-2 text-xs text-[var(--color-muted)]">
-            Computed payout ({payoutTab}):{" "}
-            <span className="font-medium text-[var(--color-text)]">
-              ${(payoutAmountCents / 100).toFixed(2)}
-            </span>{" "}
-            ({activePayout.sqft || 0} sq.ft × ${activePayout.rate || 0}/sq.ft)
-          </div>
-
-          {/* Existing list */}
-          <ul className="mt-3 rounded-lg bg-white/70">
-            {(job?.expenses?.payouts ?? []).map((p) => (
-              <motion.li
-                key={p.id}
-                className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
-                variants={item}
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="text-sm font-semibold text-[var(--color-text)]">
-                    {p.payeeNickname}
-                  </span>
-                  {typeof p.sqft === "number" &&
-                    typeof p.ratePerSqFt === "number" && (
-                      <div className="text-[11px] text-[var(--color-muted)]">
-                        {p.sqft.toLocaleString()} sq.ft × ${p.ratePerSqFt}/sq.ft
-                      </div>
-                    )}
-                  {p.category && (
-                    <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-text)]">
-                      {p.category}
-                    </span>
-                  )}
-                  <span className="ml-2 text-xs text-[var(--color-muted)]">
-                    {p.paidAt ? fmtDate(p.paidAt) : ""}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <CountMoney
-                    cents={p.amountCents}
-                    className="text-sm text-[var(--color-text)]"
+              ) : (
+                <>
+                  <input
+                    value={activePayout.sqft}
+                    onChange={(e) => setActivePayout({ sqft: e.target.value })}
+                    type="number"
+                    min={0}
+                    step="1"
+                    placeholder="Sq. ft"
+                    className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
-                  <button
-                    onClick={() => removePayout(p.id)}
-                    className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                    title="Delete"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </motion.li>
-            ))}
-            {(job?.expenses?.payouts ?? []).length === 0 && (
-              <li className="p-3 text-sm text-[var(--color-muted)]">
-                No payouts yet.
-              </li>
-            )}
-          </ul>
-        </MotionCard>
-
-        {/* Materials */}
-        <MotionCard title="Materials" delay={0.15}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              addMaterial();
-            }}
-            className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto]  sm:grid-cols-2"
-          >
-            <select
-              ref={materialRef}
-              value={material.category}
-              onChange={(e) =>
-                setMaterial((s) => ({
-                  ...s,
-                  category: e.target.value as MaterialCategory,
-                }))
-              }
-              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              title="Material category"
-            >
-              <option value="coilNails">Coil Nails (per box)</option>
-              <option value="tinCaps">Tin Caps (per box)</option>
-              <option value="plasticJacks">Plastic Jacks (per unit)</option>
-              <option value="np1Seal">NP1 Seal (per unit)</option>
-              <option value="counterFlashing">
-                Flashing — Counter (per unit)
-              </option>
-              <option value="jFlashing">Flashing — J/L (per unit)</option>
-              <option value="rainDiverter">
-                Flashing — Rain Diverter (per unit)
-              </option>
-            </select>
-
-            <input
-              value={material.unitPrice}
-              onChange={(e) =>
-                setMaterial((s) => ({ ...s, unitPrice: e.target.value }))
-              }
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Unit price $"
-              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-
-            <input
-              value={material.quantity}
-              onChange={(e) =>
-                setMaterial((s) => ({ ...s, quantity: e.target.value }))
-              }
-              type="number"
-              min={0}
-              step="1"
-              placeholder="Qty"
-              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-
-            <button className="shrink-0 w-full md:w-auto rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)]  sm:col-span-2 md:col-auto">
-              Add
-            </button>
-          </form>
-
-          <ul className="mt-3 rounded-lg">
-            {(job?.expenses?.materials ?? []).map((m) => (
-              <motion.li
-                key={m.id}
-                className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
-                variants={item}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-[var(--color-text)]">
-                      {m.category === "coilNails" && "Coil Nails"}
-                      {m.category === "tinCaps" && "Tin Caps"}
-                      {m.category === "plasticJacks" && "Plastic Jacks"}
-                      {m.category === "counterFlashing" && "Counter Flashing"}
-                      {m.category === "jFlashing" && "J/L Flashing"}
-                      {m.category === "rainDiverter" && "Rain Diverter"}
-                      {m.category === "np1Seal" && "NP1 Seal"}
-                    </span>
-                    {m.vendor && (
-                      <span className="ml-2 text-xs text-[var(--color-muted)]">
-                        • {m.vendor}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-[var(--color-muted)]">
-                    {m.quantity} × ${(m.unitPriceCents / 100).toFixed(2)}
-                    {m.createdAt ? ` • ${fmtDate(m.createdAt)}` : ""}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <CountMoney
-                    cents={m.amountCents}
-                    className="text-sm text-[var(--color-text)]"
+                  <input
+                    value={activePayout.rate}
+                    onChange={(e) => setActivePayout({ rate: e.target.value })}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="Rate $/sq.ft"
+                    className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
-                  <button
-                    onClick={() => removeMaterial(m.id)}
-                    className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                    title="Delete"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </motion.li>
-            ))}
-            {(job?.expenses?.materials ?? []).length === 0 && (
-              <li className="p-3 text-sm text-[var(--color-muted)]">
-                No materials added yet.
-              </li>
-            )}
-          </ul>
-        </MotionCard>
+                </>
+              )}
 
-        {/* Notes */}
-        <MotionCard title="Notes" delay={0.2}>
-          <form
-            className="grid gap-2 max-w-full sm:grid-cols-[1fr_auto]"
-            onSubmit={(e) => {
-              e.preventDefault();
-              addNote();
-            }}
-          >
-            <input
-              ref={noteRef}
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Add a note"
-              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
+              <button className="rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)] ">
+                Add
+              </button>
+            </form>
 
-            <button className="rounded-lg  px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out">
-              Add
-            </button>
-          </form>
-          <ul className="mt-3">
-            {(job?.notes ?? [])
-              .slice()
-              .reverse()
-              .map((n) => (
+            {/* Live preview */}
+            <div className="mt-2 text-xs text-[var(--color-muted)]">
+              Computed payout ({payoutTab}):{" "}
+              <span className="font-medium text-[var(--color-text)]">
+                ${(payoutAmountCents / 100).toFixed(2)}
+              </span>{" "}
+              ({activePayout.sqft || 0} sq.ft × ${activePayout.rate || 0}/sq.ft)
+            </div>
+
+            {/* Existing list */}
+            <ul className="mt-3 rounded-lg bg-white/70">
+              {(job?.expenses?.payouts ?? []).map((p) => (
                 <motion.li
-                  key={n.id}
+                  key={p.id}
                   className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
                   variants={item}
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="text-sm text-[var(--color-text)]">
-                      {n.text}
+                    <span className="text-sm font-semibold text-[var(--color-text)]">
+                      {p.payeeNickname}
                     </span>
+                    {typeof p.sqft === "number" &&
+                      typeof p.ratePerSqFt === "number" && (
+                        <div className="text-[11px] text-[var(--color-muted)]">
+                          {p.sqft.toLocaleString()} sq.ft × ${p.ratePerSqFt}
+                          /sq.ft
+                        </div>
+                      )}
+                    {p.category && (
+                      <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-text)]">
+                        {p.category}
+                      </span>
+                    )}
                     <span className="ml-2 text-xs text-[var(--color-muted)]">
-                      {n.createdAt ? fmtDate(n.createdAt) : ""}
+                      {p.paidAt ? fmtDate(p.paidAt) : ""}
                     </span>
                   </div>
+
+                  <div className="flex items-center gap-3">
+                    <CountMoney
+                      cents={p.amountCents}
+                      className="text-sm text-[var(--color-text)]"
+                    />
+                    <button
+                      onClick={() => removePayout(p.id)}
+                      className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                      title="Delete"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </motion.li>
+              ))}
+              {(job?.expenses?.payouts ?? []).length === 0 && (
+                <li className="p-3 text-sm text-[var(--color-muted)]">
+                  No payouts yet.
+                </li>
+              )}
+            </ul>
+          </MotionCard>
+
+          {/* Materials */}
+          <MotionCard title="Materials" delay={0.15}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                addMaterial();
+              }}
+              className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto]  sm:grid-cols-2"
+            >
+              <select
+                ref={materialRef}
+                value={material.category}
+                onChange={(e) =>
+                  setMaterial((s) => ({
+                    ...s,
+                    category: e.target.value as MaterialCategory,
+                  }))
+                }
+                className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                title="Material category"
+              >
+                <option value="coilNails">Coil Nails (per box)</option>
+                <option value="tinCaps">Tin Caps (per box)</option>
+                <option value="plasticJacks">Plastic Jacks (per unit)</option>
+                <option value="np1Seal">NP1 Seal (per unit)</option>
+                <option value="counterFlashing">
+                  Flashing — Counter (per unit)
+                </option>
+                <option value="jFlashing">Flashing — J/L (per unit)</option>
+                <option value="rainDiverter">
+                  Flashing — Rain Diverter (per unit)
+                </option>
+              </select>
+
+              <input
+                value={material.unitPrice}
+                onChange={(e) =>
+                  setMaterial((s) => ({ ...s, unitPrice: e.target.value }))
+                }
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Unit price $"
+                className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+
+              <input
+                value={material.quantity}
+                onChange={(e) =>
+                  setMaterial((s) => ({ ...s, quantity: e.target.value }))
+                }
+                type="number"
+                min={0}
+                step="1"
+                placeholder="Qty"
+                className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+
+              <button className="shrink-0 w-full md:w-auto rounded-lg bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-sm text-[var(--btn-text)]  sm:col-span-2 md:col-auto">
+                Add
+              </button>
+            </form>
+
+            <ul className="mt-3 rounded-lg">
+              {(job?.expenses?.materials ?? []).map((m) => (
+                <motion.li
+                  key={m.id}
+                  className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                  variants={item}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-[var(--color-text)]">
+                        {m.category === "coilNails" && "Coil Nails"}
+                        {m.category === "tinCaps" && "Tin Caps"}
+                        {m.category === "plasticJacks" && "Plastic Jacks"}
+                        {m.category === "counterFlashing" && "Counter Flashing"}
+                        {m.category === "jFlashing" && "J/L Flashing"}
+                        {m.category === "rainDiverter" && "Rain Diverter"}
+                        {m.category === "np1Seal" && "NP1 Seal"}
+                      </span>
+                      {m.vendor && (
+                        <span className="ml-2 text-xs text-[var(--color-muted)]">
+                          • {m.vendor}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-[var(--color-muted)]">
+                      {m.quantity} × ${(m.unitPriceCents / 100).toFixed(2)}
+                      {m.createdAt ? ` • ${fmtDate(m.createdAt)}` : ""}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <CountMoney
+                      cents={m.amountCents}
+                      className="text-sm text-[var(--color-text)]"
+                    />
+                    <button
+                      onClick={() => removeMaterial(m.id)}
+                      className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                      title="Delete"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </motion.li>
+              ))}
+              {(job?.expenses?.materials ?? []).length === 0 && (
+                <li className="p-3 text-sm text-[var(--color-muted)]">
+                  No materials added yet.
+                </li>
+              )}
+            </ul>
+          </MotionCard>
+
+          {/* Notes */}
+          <MotionCard title="Notes" delay={0.2}>
+            <form
+              className="grid gap-2 max-w-full sm:grid-cols-[1fr_auto]"
+              onSubmit={(e) => {
+                e.preventDefault();
+                addNote();
+              }}
+            >
+              <input
+                ref={noteRef}
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Add a note"
+                className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+
+              <button className="rounded-lg  px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out">
+                Add
+              </button>
+            </form>
+            <ul className="mt-3">
+              {(job?.notes ?? [])
+                .slice()
+                .reverse()
+                .map((n) => (
+                  <motion.li
+                    key={n.id}
+                    className="mb-2 flex items-center justify-between rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                    variants={item}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="text-sm text-[var(--color-text)]">
+                        {n.text}
+                      </span>
+                      <span className="ml-2 text-xs text-[var(--color-muted)]">
+                        {n.createdAt ? fmtDate(n.createdAt) : ""}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => removeNote(n.id)}
+                      className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                      title="Delete"
+                    >
+                      Delete
+                    </button>
+                  </motion.li>
+                ))}
+              {(job?.notes ?? []).length === 0 && (
+                <li className="p-3 text-sm text-[var(--color-muted)]">
+                  No notes yet.
+                </li>
+              )}
+            </ul>
+          </MotionCard>
+
+          {/* Photos — fixed: full-width card inside the parent grid */}
+          <MotionCard title="Photos" delay={0.25}>
+            {/* Upload panel */}
+            <form
+              className="mb-4 flex w-full max-w-full flex-col gap-3 sm:flex-row sm:items-stretch"
+              onSubmit={(e) => {
+                e.preventDefault();
+                uploadPhoto();
+              }}
+            >
+              {/* CAMERA ONLY input */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment" // forces back camera
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setPhotoFile(file);
+                }}
+                className="sr-only"
+              />
+
+              {/* GALLERY ONLY input */}
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setPhotoFile(file);
+                }}
+                className="sr-only"
+              />
+
+              {/* Left side: pick photo + filename + caption */}
+              <div className="flex-1 space-y-2">
+                {/* Main CTA button – opens camera / gallery */}
+                <div className="flex flex-wrap gap-2">
+                  {/* Take Photo Button */}
                   <button
-                    onClick={() => removeNote(n.id)}
-                    className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
+                  >
+                    <Camera className="h-4 w-4 text-[var(--color-primary)]" />
+                    <span>Camera</span>
+                  </button>
+
+                  {/* Choose from Gallery Button */}
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
+                  >
+                    <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
+                    <span>Gallery</span>
+                  </button>
+                </div>
+
+                {/* File name / helper text */}
+                <div className="text-xs text-[var(--color-muted)] truncate max-w-full">
+                  {photoFile
+                    ? `Selected: ${photoFile.name}`
+                    : "You can snap a picture on your phone or select one from your gallery."}
+                </div>
+                {/* 🔍 Preview of selected image */}
+                {previewUrl && (
+                  <div>
+                    <div className="mb-1 text-xs text-[var(--color-muted)]">
+                      Preview
+                    </div>
+                    <img
+                      src={previewUrl}
+                      alt="Selected preview"
+                      className="h-32 w-full rounded-xl object-cover ring-1 ring-black/5 transition duration-300 group-hover:scale-[1.02]"
+                    />
+                  </div>
+                )}
+
+                {/* Caption input */}
+                <input
+                  value={photoCaption}
+                  onChange={(e) => setPhotoCaption(e.target.value)}
+                  placeholder="Optional caption (e.g. 'Front elevation', 'Before', 'After')"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+              </div>
+
+              {/* Right side: Upload button */}
+              <div className="sm:w-32 flex items-end">
+                <button
+                  type="submit"
+                  disabled={uploading || !photoFile}
+                  className="w-full rounded-lg bg-cyan-800 px-4 py-2 text-sm font-semibold text-[var(--btn-text)] shadow-sm transition duration-200 ease-in-out hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {uploading ? "Uploading…" : "Upload"}
+                </button>
+              </div>
+            </form>
+
+            {/* Thumbnails grid */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              {photos.map((p, i) => (
+                <motion.div
+                  key={p.id}
+                  className="group relative"
+                  variants={item}
+                >
+                  <button
+                    type="button"
+                    onClick={() => openViewer(i)}
+                    className="block w-full focus:outline-none"
+                    aria-label="Open photo"
+                    title="Open"
+                  >
+                    <img
+                      src={p.url}
+                      alt={p.caption || ""}
+                      className="h-32 w-full rounded-lg object-cover"
+                      loading="lazy"
+                    />
+                  </button>
+
+                  <button
+                    onClick={() => deletePhoto(p.id)}
+                    className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
                     title="Delete"
                   >
                     Delete
                   </button>
-                </motion.li>
+
+                  {p.caption && (
+                    <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
+                      {p.caption}
+                    </div>
+                  )}
+                </motion.div>
               ))}
-            {(job?.notes ?? []).length === 0 && (
-              <li className="p-3 text-sm text-[var(--color-muted)]">
-                No notes yet.
-              </li>
-            )}
-          </ul>
-        </MotionCard>
-
-        {/* Photos — fixed: full-width card inside the parent grid */}
-        <MotionCard title="Photos" delay={0.25}>
-          {/* Upload panel */}
-          <form
-            className="mb-4 flex w-full max-w-full flex-col gap-3 sm:flex-row sm:items-stretch"
-            onSubmit={(e) => {
-              e.preventDefault();
-              uploadPhoto();
-            }}
-          >
-            {/* CAMERA ONLY input */}
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment" // forces back camera
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null;
-                setPhotoFile(file);
-              }}
-              className="sr-only"
-            />
-
-            {/* GALLERY ONLY input */}
-            <input
-              ref={galleryInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null;
-                setPhotoFile(file);
-              }}
-              className="sr-only"
-            />
-
-            {/* Left side: pick photo + filename + caption */}
-            <div className="flex-1 space-y-2">
-              {/* Main CTA button – opens camera / gallery */}
-              <div className="flex flex-wrap gap-2">
-                {/* Take Photo Button */}
-                <button
-                  type="button"
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
-                >
-                  <Camera className="h-4 w-4 text-[var(--color-primary)]" />
-                  <span>Camera</span>
-                </button>
-
-                {/* Choose from Gallery Button */}
-                <button
-                  type="button"
-                  onClick={() => galleryInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
-                >
-                  <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
-                  <span>Gallery</span>
-                </button>
-              </div>
-
-              {/* File name / helper text */}
-              <div className="text-xs text-[var(--color-muted)] truncate max-w-full">
-                {photoFile
-                  ? `Selected: ${photoFile.name}`
-                  : "You can snap a picture on your phone or select one from your gallery."}
-              </div>
-              {/* 🔍 Preview of selected image */}
-              {previewUrl && (
-                <div>
-                  <div className="mb-1 text-xs text-[var(--color-muted)]">
-                    Preview
-                  </div>
-                  <img
-                    src={previewUrl}
-                    alt="Selected preview"
-                    className="h-32 w-full rounded-xl object-cover ring-1 ring-black/5 transition duration-300 group-hover:scale-[1.02]"
-                  />
+              {photos.length === 0 && (
+                <div className="p-3 text-sm text-[var(--color-muted)]">
+                  No photos yet.
                 </div>
               )}
-
-              {/* Caption input */}
-              <input
-                value={photoCaption}
-                onChange={(e) => setPhotoCaption(e.target.value)}
-                placeholder="Optional caption (e.g. 'Front elevation', 'Before', 'After')"
-                className="w-full rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              />
             </div>
-
-            {/* Right side: Upload button */}
-            <div className="sm:w-32 flex items-end">
+          </MotionCard>
+        </div>
+        {/* ===== Global Toast ===== */}
+        {toast && (
+          <div className="fixed right-4 top-20 z-50">
+            <div className="flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-white/95 px-4 py-3 text-sm shadow-lg">
+              <div className="mt-0.5">
+                {toast.status === "success" ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div
+                  className={
+                    "font-semibold " +
+                    (toast.status === "success"
+                      ? "text-emerald-700"
+                      : "text-red-600")
+                  }
+                >
+                  {toast.title}
+                </div>
+                <div className="mt-0.5 text-xs text-[var(--color-muted)]">
+                  {toast.message}
+                </div>
+              </div>
               <button
-                type="submit"
-                disabled={uploading || !photoFile}
-                className="w-full rounded-lg bg-cyan-800 px-4 py-2 text-sm font-semibold text-[var(--btn-text)] shadow-sm transition duration-200 ease-in-out hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                onClick={() => setToast(null)}
+                className="ml-2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Dismiss"
               >
-                {uploading ? "Uploading…" : "Upload"}
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </form>
+          </div>
+        )}
 
-          {/* Thumbnails grid */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {photos.map((p, i) => (
-              <motion.div key={p.id} className="group relative" variants={item}>
+        {/* ===== Photo Lightbox ===== */}
+        {viewerOpen && photos.length > 0 && (
+          <div
+            className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm flex items-center justify-center"
+            aria-modal="true"
+            role="dialog"
+            onClick={(e) => {
+              // close on backdrop click only (not when clicking the image or buttons)
+              if (e.target === e.currentTarget) closeViewer();
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={closeViewer}
+              className="absolute right-4 top-4 rounded-full p-2 bg-white/10 hover:bg-white/20 text-white"
+              aria-label="Close viewer"
+              title="Close"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            {/* Prev / Next controls */}
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevPhoto();
+                  }}
+                  className="absolute left-4 md:left-6 rounded-full p-3 bg-white/10 hover:bg-white/20 text-white"
+                  aria-label="Previous photo"
+                  title="Previous"
+                >
+                  <ChevronLeft className="h-7 w-7" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextPhoto();
+                  }}
+                  className="absolute right-4 md:right-6 rounded-full p-3 bg-white/10 hover:bg-white/20 text-white"
+                  aria-label="Next photo"
+                  title="Next"
+                >
+                  <ChevronRight className="h-7 w-7" />
+                </button>
+              </>
+            )}
+
+            {/* Image + caption */}
+            <div className="mx-4 md:mx-12 max-w-[min(96vw,1200px)]">
+              {(() => {
+                const p = photos[viewerIndex];
+                const src = (p as any)?.fullUrl ?? p.url; // graceful if you later add fullUrl in CF
+                return (
+                  <figure className="flex flex-col items-center">
+                    <img
+                      src={src}
+                      alt={p.caption || ""}
+                      className="max-h-[80vh] w-auto rounded-xl shadow-2xl object-contain"
+                    />
+                    {p.caption && (
+                      <figcaption className="mt-3 text-sm text-white/90 text-center">
+                        {p.caption}
+                      </figcaption>
+                    )}
+                    <div className="mt-1 text-xs text-white/60">
+                      {viewerIndex + 1} / {photos.length}
+                    </div>
+                  </figure>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+        {/* ===== Schedule Felt Modal ===== */}
+        {feltScheduleEditing && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                  Schedule DRY IN
+                </h2>
                 <button
                   type="button"
-                  onClick={() => openViewer(i)}
-                  className="block w-full focus:outline-none"
-                  aria-label="Open photo"
-                  title="Open"
+                  onClick={() => setFeltScheduleEditing(false)}
+                  className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
                 >
-                  <img
-                    src={p.url}
-                    alt={p.caption || ""}
-                    className="h-32 w-full rounded-lg object-cover"
-                    loading="lazy"
-                  />
+                  <X className="h-4 w-4" />
                 </button>
+              </div>
 
+              <label className="mb-2 block text-xs text-[var(--color-muted)]">
+                DRY IN date
+              </label>
+              <input
+                type="date"
+                value={feltScheduleDate}
+                onChange={(e) => setFeltScheduleDate(e.target.value)}
+                className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+
+              <div className="mt-4 flex justify-end gap-2">
                 <button
-                  onClick={() => deletePhoto(p.id)}
-                  className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
-                  title="Delete"
+                  type="button"
+                  onClick={() => setFeltScheduleEditing(false)}
+                  className="rounded-sm border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
                 >
-                  Delete
+                  Cancel
                 </button>
-
-                {p.caption && (
-                  <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
-                    {p.caption}
-                  </div>
-                )}
-              </motion.div>
-            ))}
-            {photos.length === 0 && (
-              <div className="p-3 text-sm text-[var(--color-muted)]">
-                No photos yet.
+                <button
+                  type="button"
+                  onClick={() => void saveFeltSchedule()}
+                  className="rounded-sm bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                >
+                  Apply
+                </button>
               </div>
-            )}
+            </div>
           </div>
-        </MotionCard>
-      </div>
-      {/* ===== Global Toast ===== */}
-      {toast && (
-        <div className="fixed right-4 top-20 z-50">
-          <div className="flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-white/95 px-4 py-3 text-sm shadow-lg">
-            <div className="mt-0.5">
-              {toast.status === "success" ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              )}
-            </div>
-            <div className="flex-1">
-              <div
-                className={
-                  "font-semibold " +
-                  (toast.status === "success"
-                    ? "text-emerald-700"
-                    : "text-red-600")
-                }
-              >
-                {toast.title}
+        )}
+
+        {/* ===== Schedule Shingles Modal ===== */}
+        {shinglesScheduleEditing && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                  Schedule shingles
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShinglesScheduleEditing(false)}
+                  className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <div className="mt-0.5 text-xs text-[var(--color-muted)]">
-                {toast.message}
+
+              <label className="mb-2 block text-xs text-[var(--color-muted)]">
+                Shingles date
+              </label>
+              <input
+                type="date"
+                value={shinglesScheduleDate}
+                onChange={(e) => setShinglesScheduleDate(e.target.value)}
+                className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShinglesScheduleEditing(false)}
+                  className="rounded-sm border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveShinglesSchedule()}
+                  className="rounded-sm bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                >
+                  Apply
+                </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ===== Schedule Punch Modal ===== */}
+        {schedulePunchOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                  Schedule punch
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setSchedulePunchOpen(false)}
+                  className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <label className="mb-2 block text-xs text-[var(--color-muted)]">
+                Punch date
+              </label>
+              <input
+                type="date"
+                value={schedulePunchDate}
+                onChange={(e) => setSchedulePunchDate(e.target.value)}
+                className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSchedulePunchOpen(false)}
+                  className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!job || !schedulePunchDate) return;
+
+                    const [year, month, day] = schedulePunchDate
+                      .split("-")
+                      .map((x) => Number(x));
+                    const scheduledDate = new Date(year, month - 1, day);
+
+                    const wasScheduledBefore = !!job.punchScheduledFor;
+
+                    await saveJob({
+                      ...job,
+                      punchScheduledFor: Timestamp.fromDate(scheduledDate),
+                    });
+
+                    setSchedulePunchOpen(false);
+
+                    const label = scheduledDate.toLocaleDateString();
+                    setToast({
+                      status: "success",
+                      title: wasScheduledBefore
+                        ? "Punch rescheduled"
+                        : "Punch scheduled",
+                      message: `Punch is now set for ${label}.`,
+                    });
+                  }}
+                  className="rounded-sm cursor-pointer bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* ===== Confirm Mark as Punched Modal ===== */}
+        {confirmPunchedOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                  Confirm job completion
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setConfirmPunchedOpen(false)}
+                  className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <p className="text-sm text-[var(--color-muted)]">
+                Are you sure this house has been fully punched and the job is
+                complete? This will mark the job as{" "}
+                <span className="font-semibold">completed</span>.
+              </p>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmPunchedOpen(false)}
+                  className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmMarkPunched}
+                  className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+                >
+                  Yes, mark job{" "}
+                  <strong className="font-semibold">COMPLETE</strong>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* ===== Confirm Felt Completed Modal ===== */}
+        {confirmFeltDoneOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                  Mark <strong className="font-semibold">DRY IN</strong> as
+                  completed?
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setConfirmFeltDoneOpen(false)}
+                  className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <p className="text-sm text-[var(--color-muted)]">
+                Are you sure the felt work for this job is fully completed?
+              </p>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmFeltDoneOpen(false)}
+                  className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await markFeltCompleted();
+                    setConfirmFeltDoneOpen(false);
+                    setToast({
+                      status: "success",
+                      title: "DRY IN marked complete",
+                      message:
+                        "DRY IN has been marked as completed for this job.",
+                    });
+                  }}
+                  className="rounded-sm bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 cursor-pointer"
+                >
+                  Yes, mark <strong className="font-semibold">DRY IN</strong>{" "}
+                  done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Confirm Shingles Completed Modal ===== */}
+        {confirmShinglesDoneOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                  Mark <strong className="font-semibold">SHINGLES</strong> as
+                  completed?
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setConfirmShinglesDoneOpen(false)}
+                  className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <p className="text-sm text-[var(--color-muted)]">
+                Are you sure the shingles work for this job is fully completed?
+              </p>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmShinglesDoneOpen(false)}
+                  className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await markShinglesCompleted();
+                    setConfirmShinglesDoneOpen(false);
+                    setToast({
+                      status: "success",
+                      title: "Shingles marked complete",
+                      message:
+                        "Shingles have been marked as completed for this job.",
+                    });
+                  }}
+                  className="rounded-sm cursor-pointer bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+                >
+                  Yes, mark <strong className="font-semibold">SHINGLES</strong>{" "}
+                  done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Danger zone ===== */}
+        <motion.section className="mt-10 rounded-2xl p-4" {...fadeUp(0.27)}>
+          <div className="flex flex-col gap-2 sm:flex-row">
             <button
-              type="button"
-              onClick={() => setToast(null)}
-              className="ml-2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              aria-label="Dismiss"
+              onClick={() => setConfirmDeleteOpen(true)}
+              className="rounded-md bg-red-700 px-3 py-2 text-sm text-white hover:bg-red-600"
+              title="Permanently delete this job"
             >
-              <X className="h-4 w-4" />
+              Permanently delete job…
             </button>
           </div>
-        </div>
-      )}
+        </motion.section>
+        {/* ===== Confirm Permanently Delete Job Modal ===== */}
+        {confirmDeleteOpen && job && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                  Permanently delete this job?
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteOpen(false)}
+                  className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
-      {/* ===== Photo Lightbox ===== */}
-      {viewerOpen && photos.length > 0 && (
-        <div
-          className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm flex items-center justify-center"
-          aria-modal="true"
-          role="dialog"
-          onClick={(e) => {
-            // close on backdrop click only (not when clicking the image or buttons)
-            if (e.target === e.currentTarget) closeViewer();
-          }}
-        >
-          {/* Close button */}
-          <button
-            onClick={closeViewer}
-            className="absolute right-4 top-4 rounded-full p-2 bg-white/10 hover:bg-white/20 text-white"
-            aria-label="Close viewer"
-            title="Close"
-          >
-            <X className="h-6 w-6" />
-          </button>
+              <p className="text-sm text-[var(--color-muted)]">
+                This will permanently remove{" "}
+                <span className="font-semibold">
+                  {job.address?.fullLine || job.id}
+                </span>{" "}
+                and all of its materials, notes, and photos.{" "}
+                <span className="font-semibold">This cannot be undone.</span>
+              </p>
 
-          {/* Prev / Next controls */}
-          {photos.length > 1 && (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  prevPhoto();
-                }}
-                className="absolute left-4 md:left-6 rounded-full p-3 bg-white/10 hover:bg-white/20 text-white"
-                aria-label="Previous photo"
-                title="Previous"
-              >
-                <ChevronLeft className="h-7 w-7" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  nextPhoto();
-                }}
-                className="absolute right-4 md:right-6 rounded-full p-3 bg-white/10 hover:bg-white/20 text-white"
-                aria-label="Next photo"
-                title="Next"
-              >
-                <ChevronRight className="h-7 w-7" />
-              </button>
-            </>
-          )}
-
-          {/* Image + caption */}
-          <div className="mx-4 md:mx-12 max-w-[min(96vw,1200px)]">
-            {(() => {
-              const p = photos[viewerIndex];
-              const src = (p as any)?.fullUrl ?? p.url; // graceful if you later add fullUrl in CF
-              return (
-                <figure className="flex flex-col items-center">
-                  <img
-                    src={src}
-                    alt={p.caption || ""}
-                    className="max-h-[80vh] w-auto rounded-xl shadow-2xl object-contain"
-                  />
-                  {p.caption && (
-                    <figcaption className="mt-3 text-sm text-white/90 text-center">
-                      {p.caption}
-                    </figcaption>
-                  )}
-                  <div className="mt-1 text-xs text-white/60">
-                    {viewerIndex + 1} / {photos.length}
-                  </div>
-                </figure>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-      {/* ===== Schedule Felt Modal ===== */}
-      {feltScheduleEditing && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Schedule DRY IN
-              </h2>
-              <button
-                type="button"
-                onClick={() => setFeltScheduleEditing(false)}
-                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <label className="mb-2 block text-xs text-[var(--color-muted)]">
-              DRY IN date
-            </label>
-            <input
-              type="date"
-              value={feltScheduleDate}
-              onChange={(e) => setFeltScheduleDate(e.target.value)}
-              className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setFeltScheduleEditing(false)}
-                className="rounded-sm border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void saveFeltSchedule()}
-                className="rounded-sm bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
-              >
-                Apply
-              </button>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteOpen(false)}
+                  className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void permanentlyDeleteJob()}
+                  disabled={deletingJob}
+                  className="rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {deletingJob ? "Deleting…" : "Yes, delete job"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ===== Schedule Shingles Modal ===== */}
-      {shinglesScheduleEditing && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Schedule shingles
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShinglesScheduleEditing(false)}
-                className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <label className="mb-2 block text-xs text-[var(--color-muted)]">
-              Shingles date
-            </label>
-            <input
-              type="date"
-              value={shinglesScheduleDate}
-              onChange={(e) => setShinglesScheduleDate(e.target.value)}
-              className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShinglesScheduleEditing(false)}
-                className="rounded-sm border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void saveShinglesSchedule()}
-                className="rounded-sm bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== Schedule Punch Modal ===== */}
-      {schedulePunchOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Schedule punch
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSchedulePunchOpen(false)}
-                className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <label className="mb-2 block text-xs text-[var(--color-muted)]">
-              Punch date
-            </label>
-            <input
-              type="date"
-              value={schedulePunchDate}
-              onChange={(e) => setSchedulePunchDate(e.target.value)}
-              className="w-full rounded-sm border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSchedulePunchOpen(false)}
-                className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!job || !schedulePunchDate) return;
-
-                  const [year, month, day] = schedulePunchDate
-                    .split("-")
-                    .map((x) => Number(x));
-                  const scheduledDate = new Date(year, month - 1, day);
-
-                  const wasScheduledBefore = !!job.punchScheduledFor;
-
-                  await saveJob({
-                    ...job,
-                    punchScheduledFor: Timestamp.fromDate(scheduledDate),
-                  });
-
-                  setSchedulePunchOpen(false);
-
-                  const label = scheduledDate.toLocaleDateString();
-                  setToast({
-                    status: "success",
-                    title: wasScheduledBefore
-                      ? "Punch rescheduled"
-                      : "Punch scheduled",
-                    message: `Punch is now set for ${label}.`,
-                  });
-                }}
-                className="rounded-sm cursor-pointer bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ===== Confirm Mark as Punched Modal ===== */}
-      {confirmPunchedOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Confirm job completion
-              </h2>
-              <button
-                type="button"
-                onClick={() => setConfirmPunchedOpen(false)}
-                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <p className="text-sm text-[var(--color-muted)]">
-              Are you sure this house has been fully punched and the job is
-              complete? This will mark the job as{" "}
-              <span className="font-semibold">completed</span>.
-            </p>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmPunchedOpen(false)}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmMarkPunched}
-                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
-              >
-                Yes, mark job{" "}
-                <strong className="font-semibold">COMPLETE</strong>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ===== Confirm Felt Completed Modal ===== */}
-      {confirmFeltDoneOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Mark <strong className="font-semibold">DRY IN</strong> as
-                completed?
-              </h2>
-              <button
-                type="button"
-                onClick={() => setConfirmFeltDoneOpen(false)}
-                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <p className="text-sm text-[var(--color-muted)]">
-              Are you sure the felt work for this job is fully completed?
-            </p>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmFeltDoneOpen(false)}
-                className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await markFeltCompleted();
-                  setConfirmFeltDoneOpen(false);
-                  setToast({
-                    status: "success",
-                    title: "DRY IN marked complete",
-                    message:
-                      "DRY IN has been marked as completed for this job.",
-                  });
-                }}
-                className="rounded-sm bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 cursor-pointer"
-              >
-                Yes, mark <strong className="font-semibold">DRY IN</strong> done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== Confirm Shingles Completed Modal ===== */}
-      {confirmShinglesDoneOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Mark <strong className="font-semibold">SHINGLES</strong> as
-                completed?
-              </h2>
-              <button
-                type="button"
-                onClick={() => setConfirmShinglesDoneOpen(false)}
-                className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <p className="text-sm text-[var(--color-muted)]">
-              Are you sure the shingles work for this job is fully completed?
-            </p>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmShinglesDoneOpen(false)}
-                className="rounded-sm cursor-pointer border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await markShinglesCompleted();
-                  setConfirmShinglesDoneOpen(false);
-                  setToast({
-                    status: "success",
-                    title: "Shingles marked complete",
-                    message:
-                      "Shingles have been marked as completed for this job.",
-                  });
-                }}
-                className="rounded-sm cursor-pointer bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
-              >
-                Yes, mark <strong className="font-semibold">SHINGLES</strong>{" "}
-                done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== Danger zone ===== */}
-      <motion.section className="mt-10 rounded-2xl p-4" {...fadeUp(0.27)}>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            onClick={() => setConfirmDeleteOpen(true)}
-            className="rounded-md bg-red-700 px-3 py-2 text-sm text-white hover:bg-red-600"
-            title="Permanently delete this job"
-          >
-            Permanently delete job…
-          </button>
-        </div>
-      </motion.section>
-      {/* ===== Confirm Permanently Delete Job Modal ===== */}
-      {confirmDeleteOpen && job && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[var(--color-text)]">
-                Permanently delete this job?
-              </h2>
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteOpen(false)}
-                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <p className="text-sm text-[var(--color-muted)]">
-              This will permanently remove{" "}
-              <span className="font-semibold">
-                {job.address?.fullLine || job.id}
-              </span>{" "}
-              and all of its materials, notes, and photos.{" "}
-              <span className="font-semibold">This cannot be undone.</span>
-            </p>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteOpen(false)}
-                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void permanentlyDeleteJob()}
-                disabled={deletingJob}
-                className="rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {deletingJob ? "Deleting…" : "Yes, delete job"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invoice Modal */}
-      {invoiceModalOpen && job && (
-        <InvoiceCreateModal
-          job={job}
-          open={invoiceModalOpen}
-          onClose={() => setInvoiceModalOpen(false)}
-        />
-      )}
-    </motion.div>
+        {/* Invoice Modal */}
+        {invoiceModalOpen && job && (
+          <InvoiceCreateModal
+            job={job}
+            open={invoiceModalOpen}
+            onClose={() => setInvoiceModalOpen(false)}
+          />
+        )}
+      </motion.div>
+    </>
   );
 }
 
