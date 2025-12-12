@@ -1222,11 +1222,11 @@ export default function JobDetailPage() {
       </motion.div>
 
       {/* Quick edit / add panel */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-8 grid max-w-full gap-6 lg:grid-cols-2">
         {/* Payouts */}
         <MotionCard title="Payouts" delay={0.1}>
           {/* Tabs */}
-          <div className="mb-3 inline-flex rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
+          <div className="mb-3 inline-flex max-w-full flex-wrap rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
             {(["shingles", "felt", "technician"] as PayoutTab[]).map((t) => (
               <button
                 key={t}
@@ -1500,7 +1500,7 @@ export default function JobDetailPage() {
         {/* Notes */}
         <MotionCard title="Notes" delay={0.2}>
           <form
-            className="grid grid-cols-[1fr_auto] gap-2"
+            className="grid gap-2 max-w-full sm:grid-cols-[1fr_auto]"
             onSubmit={(e) => {
               e.preventDefault();
               addNote();
@@ -1511,8 +1511,9 @@ export default function JobDetailPage() {
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="Add a note"
-              className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
+
             <button className="rounded-lg  px-4 py-2 text-sm text-[var(--btn-text)] bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out">
               Add
             </button>
@@ -1556,7 +1557,7 @@ export default function JobDetailPage() {
         <MotionCard title="Photos" delay={0.25}>
           {/* Upload panel */}
           <form
-            className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-stretch"
+            className="mb-4 flex w-full max-w-full flex-col gap-3 sm:flex-row sm:items-stretch"
             onSubmit={(e) => {
               e.preventDefault();
               uploadPhoto();
@@ -1590,7 +1591,7 @@ export default function JobDetailPage() {
             {/* Left side: pick photo + filename + caption */}
             <div className="flex-1 space-y-2">
               {/* Main CTA button – opens camera / gallery */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {/* Take Photo Button */}
                 <button
                   type="button"
