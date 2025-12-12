@@ -191,7 +191,7 @@ export default function JobDetailPage() {
       "hover:bg-[var(--color-card-hover)]",
   } as const;
 
-  const LIST_MAX_H = "max-h-[340px]"; // tweak to taste
+  const LIST_MAX_H = "max-h-[300px]"; // tweak to taste
 
   // Lightbox state
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -2303,7 +2303,9 @@ function MotionCard({
         </h2>
       </div>
       <div className="mt-3 h-px w-full bg-black/5" />
-      <div className="px-4 sm:px-5 pb-5 pt-4">{children}</div>
+      <div className="px-4 sm:px-5 pb-5 pt-4 flex flex-col gap-3">
+        {children}
+      </div>
     </motion.section>
   );
 }
