@@ -849,6 +849,8 @@ export default function JobDetailPage() {
     feltCompletedMs != null &&
     shinglesCompletedMs != null;
 
+  const canMarkShinglesDone = !jobIsLocked && feltCompletedMs != null;
+
   const hasPricing =
     job.pricing &&
     Number.isFinite(job.pricing.sqft) &&
@@ -874,7 +876,7 @@ export default function JobDetailPage() {
       <div className="py-4 sm:py-5">
         {/* Header */}
         <motion.header
-          className="mb-8 relative overflow-hidden rounded-2xl ring-1 ring-black/5 shadow-sm w-full"
+          className="mb-8 relative overflow-hidden rounded-md ring-1 ring-black/5  w-full"
           {...fadeUp(0)}
         >
           {/* Soft background using latest photo */}
@@ -889,7 +891,7 @@ export default function JobDetailPage() {
             </div>
           )}
           <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-start">
-            <div className="rounded-2xl bg-white backdrop-blur-md p-4 ring-1 ring-black/5 shadow-sm">
+            <div className="rounded-2xl bg-white backdrop-blur-md p-4  ring-black/5 ">
               <Link
                 to="/dashboard"
                 className="text-sm text-[var(--color-primary)] hover:underline"
@@ -902,7 +904,7 @@ export default function JobDetailPage() {
                   </p>
                 </div>
               </Link>
-              <h1 className="mt-2 text-4xl font-bold uppercase text-[var(--color-logo)]">
+              <h1 className="mt-2 text-2xl font-bold uppercase text-[var(--color-logo)]">
                 {job.address?.fullLine}
               </h1>
               <div className="text-sm text-[var(--color-muted)]">
@@ -912,7 +914,7 @@ export default function JobDetailPage() {
             <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
               {/* Status pill */}
               <div className="flex items-center gap-2">
-                <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                <span className="rounded-md  bg-white px-3 py-1.5 text-sm uppercase tracking-wide text-[var(--color-muted)]">
                   Status:
                   <span
                     className={`ml-2 rounded-full px-2 py-0.5 ${statusClasses(
@@ -928,7 +930,7 @@ export default function JobDetailPage() {
               <div className="flex w-full flex-col gap-2 text-[11px]">
                 <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
                   {/* Felt pill */}
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
+                  <div className="inline-flex items-center gap-2 rounded-md shadow-md p-3  bg-white">
                     <span className="text-[10px] font-semibold uppercase tracking-wide">
                       DRY IN
                     </span>
@@ -959,7 +961,7 @@ export default function JobDetailPage() {
                         "rounded-md px-2 py-0.5 text-[10px] transition " +
                         (jobIsLocked
                           ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : "bg-cyan-50 text-[var(--color-text)] hover:bg-cyan-100")
+                          : "bg-neutral-50 text-[var(--color-text)] hover:bg-neutral-100")
                       }
                     >
                       {feltScheduledMs ? "Reschedule" : "Schedule"}
@@ -985,7 +987,7 @@ export default function JobDetailPage() {
                   </div>
 
                   {/* Shingles pill */}
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
+                  <div className="inline-flex items-center gap-2 rounded-md shadow-md bg-white p-3">
                     <span className="text-[10px] font-semibold uppercase tracking-wide">
                       Shingles
                     </span>
@@ -1016,7 +1018,7 @@ export default function JobDetailPage() {
                         "rounded-md px-2 py-0.5 text-[10px]  " +
                         (jobIsLocked
                           ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : "bg-amber-50 text-[var(--color-text)] hover:bg-amber-100")
+                          : "bg-neutral-50 text-[var(--color-text)] hover:bg-neutral-100")
                       }
                     >
                       {shinglesScheduledMs ? "Reschedule" : "Schedule"}
@@ -1024,15 +1026,20 @@ export default function JobDetailPage() {
                     {!shinglesCompletedMs && (
                       <button
                         type="button"
-                        disabled={jobIsLocked}
+                        disabled={!canMarkShinglesDone}
+                        title={
+                          !feltCompletedMs
+                            ? "Complete DRY IN first to mark shingles done."
+                            : undefined
+                        }
                         onClick={() => {
-                          if (jobIsLocked) return;
+                          if (!canMarkShinglesDone) return;
                           setConfirmShinglesDoneOpen(true);
                         }}
                         className={
                           "rounded-md px-2 py-0.5 text-[10px] transition shadow-sm " +
-                          (jobIsLocked
-                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          (!canMarkShinglesDone
+                            ? "bg-gray-200 text-gray-400 cursor-not-allowed opacity-70"
                             : "bg-emerald-600 text-white hover:bg-emerald-500")
                         }
                       >
