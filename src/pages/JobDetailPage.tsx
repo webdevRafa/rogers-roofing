@@ -1279,6 +1279,7 @@ export default function JobDetailPage() {
           {/* Payouts */}
           <MotionCard title="Payouts" delay={0.1}>
             {/* Tabs */}
+
             <div className="mb-3 inline-flex max-w-full flex-wrap rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
               {(["shingles", "felt", "technician"] as PayoutTab[]).map((t) => (
                 <button
@@ -1504,7 +1505,7 @@ export default function JobDetailPage() {
               </button>
             </form>
             <div className={`mt-3 ${LIST_MAX_H} overflow-y-auto pr-1`}>
-              <ul className="rounded-lg">
+              <ul className="rounded-lg mt-0">
                 {(job?.expenses?.materials ?? []).map((m) => (
                   <motion.li
                     key={m.id}

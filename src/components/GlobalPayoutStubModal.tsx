@@ -88,7 +88,7 @@ export function GlobalPayoutStubModal({
   }
   return createPortal(
     <div className="paystub-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="paystub-print-inner w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
+      <div className="paystub-print-inner w-full max-w-3xl rounded-md bg-white p-6 shadow-xl">
         {/* Header */}
         <div className="mb-4 flex  items-start justify-between gap-4">
           <div>
