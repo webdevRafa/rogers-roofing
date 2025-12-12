@@ -1383,7 +1383,7 @@ export default function JobDetailPage() {
               <span className="font-medium text-[var(--color-text)]">
                 ${(payoutAmountCents / 100).toFixed(2)}
               </span>{" "}
-              ({activePayout.sqft || 0} sq × ${activePayout.rate || 0}
+              ({activePayout.sqft || 0} sq @ ${activePayout.rate || 0}
               /sq.ft)
             </div>
 
