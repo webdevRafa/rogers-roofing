@@ -62,6 +62,10 @@ export type PayoutDoc = {
 
   createdAt: Timestamp | FieldValue;
   paidAt?: Timestamp | Date | FieldValue | null;
+
+  stubId?: string;
+  paidStubNumber?: string;
+  payoutStubId?: string;
 };
 
 // ---------- Earnings ----------
@@ -167,6 +171,51 @@ export interface InvoiceMoney {
   subtotalCents: number;
   taxCents: number;        // if you later add tax rules; for now 0
   totalCents: number;
+}
+export type PayoutStubStatus = "draft" | "paid" | "void";
+
+export interface PayoutStubLine {
+  payoutId: string;
+  jobId?: string;
+  category?: string; // felt | shingles | technician
+  sqft?: number;
+  ratePerSqFt?: number;
+  amountCents: number;
+  jobAddressSnapshot?: {
+    fullLine?: string;
+    line1?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
+}
+
+export interface PayoutStubDoc {
+  id: string;
+  number: string;          // e.g. STUB-2025-000123
+  employeeId: string;
+  employeeNameSnapshot: string;
+  employeeAddressSnapshot?: {
+    fullLine?: string;
+    line1?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
+
+  payoutIds: string[];
+  jobIds: string[];        // unique list from lines
+
+  lines: PayoutStubLine[];
+
+  totalCents: number;
+  createdAt: Timestamp | Date | FieldValue;
+  paidAt?: Timestamp | Date | FieldValue;
+  status: PayoutStubStatus;
+
+  // optional, later:
+  pdfUrl?: string;
+  notes?: string;
 }
 
 export interface InvoiceLine {

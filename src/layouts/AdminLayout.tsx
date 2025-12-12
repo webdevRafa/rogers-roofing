@@ -55,7 +55,7 @@ export default function AdminLayout() {
       {/* Global Navbar */}
       <header className="sticky top-0 z-40">
         <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
-          <div className="mx-auto w-[min(1200px,94vw)] py-4">
+          <div className="mx-auto w-[min(1200px,94vw)] py-8">
             <div className="flex items-center justify-between gap-3">
               {/* Brand */}
               <button

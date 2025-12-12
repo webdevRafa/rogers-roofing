@@ -14,9 +14,16 @@ import {
 } from "firebase/firestore";
 import type { FieldValue } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
-import type { Employee, EmployeeAddress, PayoutDoc } from "../types/types";
+import type {
+  Employee,
+  EmployeeAddress,
+  PayoutDoc,
+  PayoutStubDoc,
+  PayoutStubLine,
+} from "../types/types";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { GlobalPayoutStubModal } from "../components/GlobalPayoutStubModal";
+import { PayoutStubViewerModal } from "../components/PayoutStubViewerModal";
 
 // ---------- Small helpers ----------
 
@@ -118,6 +125,12 @@ export default function EmployeeDetailPage() {
   const [stubOpen, setStubOpen] = useState(false);
   const [stubSaving, setStubSaving] = useState(false);
 
+  const [stubs, setStubs] = useState<PayoutStubDoc[]>([]);
+  const [stubsLoading, setStubsLoading] = useState(true);
+  const [stubsError, setStubsError] = useState<string | null>(null);
+  const [stubSearch, setStubSearch] = useState("");
+  const [viewStubId, setViewStubId] = useState<string | null>(null);
+
   // ---------- Load employee ----------
   useEffect(() => {
     if (!id) return;
@@ -159,7 +172,11 @@ export default function EmployeeDetailPage() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const list: PayoutDoc[] = snap.docs.map((d) => d.data() as PayoutDoc);
+        const list: PayoutDoc[] = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<PayoutDoc, "id">),
+        }));
+
         setPayouts(list);
         setPayoutsLoading(false);
         setPayoutsError(null);
@@ -208,6 +225,38 @@ export default function EmployeeDetailPage() {
       setSaving(false);
     }
   }
+  // subscribe to payoutStubs for this employee
+  useEffect(() => {
+    if (!id) return;
+
+    const ref = collection(db, "payoutStubs");
+    const q = query(
+      ref,
+      where("employeeId", "==", id),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: PayoutStubDoc[] = snap.docs.map((d) => ({
+          ...(d.data() as PayoutStubDoc),
+          id: d.id, // ensure id is correct even if not stored in data
+        }));
+
+        setStubs(list);
+        setStubsLoading(false);
+        setStubsError(null);
+      },
+      (err) => {
+        console.error(err);
+        setStubsError(err.message || String(err));
+        setStubsLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, [id]);
 
   // ---- Filtered payouts (by tab + search) ----
   const filteredPayouts = useMemo(() => {
@@ -231,31 +280,125 @@ export default function EmployeeDetailPage() {
     });
   }, [payouts, payoutFilter, searchTerm]);
 
+  // filtered list for stub seaarch (address + stub number)
+  const filteredStubs = useMemo(() => {
+    const term = stubSearch.trim().toLowerCase();
+    if (!term) return stubs;
+
+    return stubs.filter((s) => {
+      const number = s.number?.toLowerCase() ?? "";
+      const employeeName = s.employeeNameSnapshot?.toLowerCase() ?? "";
+      const addrHaystack = (s.lines ?? [])
+        .map((l) => {
+          const a = l.jobAddressSnapshot;
+          return [a?.fullLine, a?.line1, a?.city, a?.state, a?.zip]
+            .filter(Boolean)
+            .join(" ");
+        })
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        number.includes(term) ||
+        employeeName.includes(term) ||
+        addrHaystack.includes(term)
+      );
+    });
+  }, [stubs, stubSearch]);
+
+  const stubToView = useMemo(() => {
+    if (!viewStubId) return null;
+    return stubs.find((s) => s.id === viewStubId) ?? null;
+  }, [stubs, viewStubId]);
+
   const selectedPayouts = useMemo(
     () => payouts.filter((p) => selectedIds.includes(p.id)),
     [payouts, selectedIds]
   );
 
   async function markSelectedAsPaid() {
-    if (selectedIds.length === 0) return;
+    if (!employee) return;
+
+    const payoutsToMark = selectedPayouts.filter((p) => !p.paidAt);
+    if (payoutsToMark.length === 0) {
+      setStubOpen(false);
+      return;
+    }
+
     setStubSaving(true);
+
     try {
-      await Promise.all(
-        selectedPayouts
-          .filter((p) => !p.paidAt)
-          .map((p) =>
-            setDoc(
-              doc(collection(db, "payouts"), p.id),
-              { paidAt: serverTimestamp() as FieldValue },
-              { merge: true }
-            )
-          )
+      // 1) Create stub doc
+      const stubRef = doc(collection(db, "payoutStubs"));
+      const now = new Date();
+
+      // Simple, stable stub number (no extra counters needed)
+      const y = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const shortId = stubRef.id.slice(0, 6).toUpperCase();
+      const number = `STUB-${y}${mm}${dd}-${shortId}`;
+
+      const lines: PayoutStubLine[] = payoutsToMark.map((p) => ({
+        payoutId: p.id,
+        jobId: p.jobId,
+        category: p.category,
+        sqft: p.sqft,
+        ratePerSqFt: p.ratePerSqFt,
+        amountCents: typeof p.amountCents === "number" ? p.amountCents : 0,
+        jobAddressSnapshot: p.jobAddressSnapshot,
+      }));
+
+      const totalCents = lines.reduce(
+        (sum, l) => sum + (l.amountCents || 0),
+        0
       );
+
+      const jobIds = Array.from(
+        new Set(lines.map((l) => l.jobId).filter(Boolean) as string[])
+      );
+
+      const employeeAddr =
+        normalizeEmployeeAddress(employee.address) ?? undefined;
+
+      const stubDoc: PayoutStubDoc = {
+        id: stubRef.id,
+        number,
+        employeeId: employee.id,
+        employeeNameSnapshot: employee.name,
+        employeeAddressSnapshot: employeeAddr,
+        payoutIds: lines.map((l) => l.payoutId),
+        jobIds,
+        lines,
+        totalCents,
+        createdAt: serverTimestamp() as unknown as FieldValue,
+        paidAt: serverTimestamp() as unknown as FieldValue,
+        status: "paid",
+      };
+
+      await setDoc(stubRef, stubDoc);
+      setViewStubId(stubRef.id);
+
+      // 2) Mark payouts paid + backref stub id
+      await Promise.all(
+        payoutsToMark.map((p) =>
+          setDoc(
+            doc(collection(db, "payouts"), p.id),
+            {
+              paidAt: serverTimestamp(),
+              payoutStubId: stubRef.id,
+            },
+            { merge: true }
+          )
+        )
+      );
+
+      // 3) UI cleanup
       setSelectedIds([]);
       setStubOpen(false);
-    } catch (e) {
-      console.error("Failed to mark payouts as paid", e);
-      alert("Failed to mark some payouts as paid. Check console for details.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to mark payouts as paid + create stub. See console.");
     } finally {
       setStubSaving(false);
     }
@@ -508,94 +651,161 @@ export default function EmployeeDetailPage() {
         )}
 
         {!payoutsLoading && !payoutsError && filteredPayouts.length > 0 && (
-          <ul className="mt-1 divide-y divide-gray-100 rounded-xl bg-white/60">
-            {filteredPayouts.map((p) => {
-              const addr = normalizeJobAddress(p.jobAddressSnapshot);
-              const isChecked = selectedIds.includes(p.id);
+          <div className="mt-2 max-h-[55vh] md:max-h-[420px] overflow-y-auto overscroll-contain rounded-xl bg-white/60 pr-2">
+            <ul className="mt-1 divide-y divide-gray-100 rounded-xl bg-white/60">
+              {filteredPayouts.map((p) => {
+                const addr = normalizeJobAddress(p.jobAddressSnapshot);
+                const isChecked = selectedIds.includes(p.id);
 
-              return (
-                <li
-                  key={p.id}
-                  className="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="flex items-start gap-2">
-                    {payoutFilter === "pending" && (
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleSelected(p.id)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-cyan-700"
-                      />
-                    )}
-
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {addr.display || "—"}
-                      </div>
-                      {(addr.city || addr.state || addr.zip) && (
-                        <div className="text-xs text-gray-500">
-                          {[addr.city, addr.state, addr.zip]
-                            .filter(Boolean)
-                            .join(", ")}
-                        </div>
+                return (
+                  <li
+                    key={p.id}
+                    className="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex items-start gap-2">
+                      {payoutFilter === "pending" && (
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSelected(p.id)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-cyan-700"
+                        />
                       )}
-                      <div className="mt-1 text-xs text-gray-600">
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                          {p.category || "payout"}
-                        </span>
-                        {typeof p.sqft === "number" &&
-                          typeof p.ratePerSqFt === "number" && (
-                            <span className="ml-2">
-                              {p.sqft.toLocaleString()} sq.ft @ $
-                              {p.ratePerSqFt.toFixed(2)}/sq.ft
+
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {addr.display || "—"}
+                        </div>
+                        {(addr.city || addr.state || addr.zip) && (
+                          <div className="text-xs text-gray-500">
+                            {[addr.city, addr.state, addr.zip]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </div>
+                        )}
+                        <div className="mt-1 text-xs text-gray-600">
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                            {p.category || "payout"}
+                          </span>
+                          {typeof p.sqft === "number" &&
+                            typeof p.ratePerSqFt === "number" && (
+                              <span className="ml-2">
+                                {p.sqft.toLocaleString()} sq.ft @ $
+                                {p.ratePerSqFt.toFixed(2)}/sq.ft
+                              </span>
+                            )}
+                        </div>
+                        <div className="mt-1 text-[11px] text-gray-500">
+                          Created: {fmtDate(p.createdAt as unknown)}
+                          {p.paidAt && (
+                            <> • Paid: {fmtDate(p.paidAt as unknown)}</>
+                          )}
+                          {!p.paidAt && (
+                            <span className="ml-1 inline-flex items-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
+                              Pending
                             </span>
                           )}
-                      </div>
-                      <div className="mt-1 text-[11px] text-gray-500">
-                        Created: {fmtDate(p.createdAt as unknown)}
-                        {p.paidAt && (
-                          <> • Paid: {fmtDate(p.paidAt as unknown)}</>
-                        )}
-                        {!p.paidAt && (
-                          <span className="ml-1 inline-flex items-center rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
-                            Pending
-                          </span>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
-                    <div className="text-right">
-                      <div className="text-[11px] text-gray-500">Total</div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {money(p.amountCents)}
+                    <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+                      <div className="text-right">
+                        <div className="text-[11px] text-gray-500">Total</div>
+                        <div className="text-sm font-semibold text-gray-900">
+                          {money(p.amountCents)}
+                        </div>
                       </div>
+                      {p.jobId && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/job/${p.jobId}`)}
+                          className="rounded-md border border-gray-300 px-3 py-1 text-[11px] text-gray-700 hover:bg-gray-100"
+                        >
+                          View Job
+                        </button>
+                      )}
+                      {p.paidAt && (
+                        <span className="mt-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
+                          Paid
+                        </span>
+                      )}
+                      {!p.paidAt && payoutFilter !== "pending" && (
+                        <span className="mt-1 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
+                          Pending
+                        </span>
+                      )}
                     </div>
-                    {p.jobId && (
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/job/${p.jobId}`)}
-                        className="rounded-md border border-gray-300 px-3 py-1 text-[11px] text-gray-700 hover:bg-gray-100"
-                      >
-                        View Job
-                      </button>
-                    )}
-                    {p.paidAt && (
-                      <span className="mt-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
-                        Paid
-                      </span>
-                    )}
-                    {!p.paidAt && payoutFilter !== "pending" && (
-                      <span className="mt-1 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
-                        Pending
-                      </span>
-                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8 rounded-2xl bg-white/50 hover:bg-white transition duration-300 ease-in-out p-6 shadow">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Pay Stubs History</h2>
+            <p className="text-xs text-gray-500">
+              Saved pay stubs created when you mark payouts as paid.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-end gap-1">
+            <label className="text-[10px] uppercase tracking-wide text-gray-500">
+              Search stubs
+            </label>
+            <input
+              value={stubSearch}
+              onChange={(e) => setStubSearch(e.target.value)}
+              placeholder="Stub #, address, city, state, ZIP…"
+              className="w-full max-w-xs rounded-lg border border-gray-300 px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+          </div>
+        </div>
+
+        {stubsLoading && (
+          <div className="text-sm text-gray-600">Loading stubs…</div>
+        )}
+        {stubsError && <div className="text-sm text-red-600">{stubsError}</div>}
+
+        {!stubsLoading && !stubsError && filteredStubs.length === 0 && (
+          <div className="text-sm text-gray-600">No stubs yet.</div>
+        )}
+
+        {!stubsLoading && !stubsError && filteredStubs.length > 0 && (
+          <div className="space-y-2">
+            {filteredStubs.map((s) => (
+              <div
+                key={s.id}
+                className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {s.number}
                   </div>
-                </li>
-              );
-            })}
-          </ul>
+                  <div className="text-[11px] text-gray-500">
+                    {s.lines.length} payouts • Created {fmtDate(s.createdAt)}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {money(s.totalCents)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewStubId(s.id)}
+                    className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                  >
+                    View
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
@@ -607,6 +817,13 @@ export default function EmployeeDetailPage() {
           onClose={() => setStubOpen(false)}
           onConfirmPaid={markSelectedAsPaid}
           saving={stubSaving}
+        />
+      )}
+
+      {stubToView && (
+        <PayoutStubViewerModal
+          stub={stubToView}
+          onClose={() => setViewStubId(null)}
         />
       )}
     </div>
