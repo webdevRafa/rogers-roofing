@@ -1214,7 +1214,7 @@ export default function JobDetailPage() {
                           <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
                             Total
                           </div>
-                          <div className="text-2xl font-semibold text-[var(--color-text)] leading-none">
+                          <div className="text-xl font-semibold text-[var(--color-text)] leading-none">
                             <CountMoney cents={displayTotal} />
                           </div>
                         </div>
