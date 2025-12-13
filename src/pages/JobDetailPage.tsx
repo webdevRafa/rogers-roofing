@@ -1395,7 +1395,7 @@ export default function JobDetailPage() {
                           {hasFlashingPay && (
                             <div className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
                               + <CountMoney cents={flashingSavedCents} /> &nbsp;
-                              flashing
+                              flashing included
                             </div>
                           )}
                         </div>
