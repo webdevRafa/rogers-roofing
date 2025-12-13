@@ -60,10 +60,10 @@ export default function WarrantyReportModal({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50">
+    <div className="paystub-print fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 print:bg-transparent print:p-0">
       {/* Backdrop (hidden on print) */}
       <div
-        className="absolute inset-0 bg-black/40 print:hidden"
+        className="paystub-print-inner w-full max-w-4xl rounded-2xl bg-white shadow-xl ring-1 ring-black/10 print:max-w-none print:rounded-none print:shadow-none print:ring-0"
         onClick={onClose}
       />
 
