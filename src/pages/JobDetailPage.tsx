@@ -34,6 +34,7 @@ import CountUp from "react-countup";
 import { Pencil } from "lucide-react";
 import InvoiceCreateModal from "../components/InvoiceCreateModal";
 import WarrantyReportModal from "../components/WarrantyReportModal";
+import WarrantyEditModal from "../components/WarrantyEditModal";
 
 import { db } from "../firebase/firebaseConfig";
 import type {
@@ -151,6 +152,7 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [warrantyModalOpen, setWarrantyModalOpen] = useState(false);
+  const [warrantyEditOpen, setWarrantyEditOpen] = useState(false);
 
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -286,6 +288,25 @@ export default function JobDetailPage() {
       },
     });
   }
+  async function saveWarranty(nextWarranty: any) {
+    if (!job) return;
+
+    const ref = doc(db, "jobs", job.id);
+    await setDoc(
+      ref,
+      {
+        warranty: nextWarranty,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    setToast({
+      status: "success",
+      title: "Warranty saved",
+      message: "Warranty details and notes have been saved.",
+    });
+  }
 
   async function clearFlashingPay() {
     if (!job) return;
@@ -391,6 +412,32 @@ export default function JobDetailPage() {
   const [photoCaption, setPhotoCaption] = useState("");
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  type WarrantyDraft = {
+    kind: string;
+    manufacturer: string;
+    programName: string;
+    status: string;
+    coverageYears: string; // keep as string for inputs
+    portalUrl: string;
+    registrationId: string;
+    claimId: string;
+    installDate: string; // YYYY-MM-DD
+    expiresAt: string; // YYYY-MM-DD
+  };
+
+  const [warrantyDraft, setWarrantyDraft] = useState<WarrantyDraft>({
+    kind: "",
+    manufacturer: "",
+    programName: "",
+    status: "",
+    coverageYears: "",
+    portalUrl: "",
+    registrationId: "",
+    claimId: "",
+    installDate: "",
+    expiresAt: "",
+  });
 
   // Generic toast (photo uploads, scheduling, etc.)
   type ToastStatus = "success" | "error";
@@ -510,6 +557,39 @@ export default function JobDetailPage() {
         }
         const data = snap.data();
         setJob(data);
+        const w = (data as any).warranty ?? {};
+
+        const toYmd = (v: any) => {
+          if (!v) return "";
+          const d =
+            typeof v?.toDate === "function"
+              ? v.toDate()
+              : v instanceof Date
+              ? v
+              : typeof v === "string" || typeof v === "number"
+              ? new Date(v)
+              : null;
+          if (!d || Number.isNaN(d.getTime())) return "";
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          return `${yyyy}-${mm}-${dd}`;
+        };
+
+        setWarrantyDraft({
+          kind: w.kind ?? "",
+          manufacturer: w.manufacturer ?? "",
+          programName: w.programName ?? "",
+          status: w.status ?? "",
+          coverageYears:
+            typeof w.coverageYears === "number" ? String(w.coverageYears) : "",
+          portalUrl: w.portalUrl ?? "",
+          registrationId: w.registrationId ?? "",
+          claimId: w.claimId ?? "",
+          installDate: toYmd(w.installDate),
+          expiresAt: toYmd(w.expiresAt),
+        });
+
         setWarrantyNotesDraft((data as any)?.warranty?.notes ?? "");
 
         if (data.pricing) {
@@ -887,6 +967,47 @@ export default function JobDetailPage() {
       setSavingWarrantyNotes(false);
     }
   }
+  async function saveWarrantyDetails() {
+    if (!job) return;
+
+    const coverageYearsNum =
+      warrantyDraft.coverageYears.trim() === ""
+        ? undefined
+        : Math.max(0, Number(warrantyDraft.coverageYears) || 0);
+
+    const parseYmdToDate = (s: string) => {
+      if (!s) return undefined;
+      const d = new Date(`${s}T00:00:00`);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    };
+
+    const nextWarranty = {
+      ...(job as any).warranty,
+      kind: warrantyDraft.kind || undefined,
+      manufacturer: warrantyDraft.manufacturer.trim() || undefined,
+      programName: warrantyDraft.programName.trim() || undefined,
+      status: warrantyDraft.status || undefined,
+      coverageYears: coverageYearsNum,
+      portalUrl: warrantyDraft.portalUrl.trim() || undefined,
+      registrationId: warrantyDraft.registrationId.trim() || undefined,
+      claimId: warrantyDraft.claimId.trim() || undefined,
+      installDate: parseYmdToDate(warrantyDraft.installDate),
+      expiresAt: parseYmdToDate(warrantyDraft.expiresAt),
+    };
+
+    await saveJob({
+      ...job,
+      warranty: nextWarranty,
+    } as any);
+
+    setToast({
+      status: "success",
+      title: "Warranty details saved",
+      message:
+        "Warranty metadata was saved and is ready for the warranty packet.",
+    });
+    setNotesTab("job");
+  }
 
   // ------- NEW: Photo upload (Storage -> CF sharp -> Firestore) -------
   async function uploadPhoto() {
@@ -1105,13 +1226,24 @@ export default function JobDetailPage() {
             <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
               {/* Status pill */}
               <div className="flex items-center gap-2">
+                {/* Warranty editor */}
+                <button
+                  type="button"
+                  onClick={() => setWarrantyEditOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-sm bg-white/90 hover:bg-white transition px-3 py-2 text-xs font-semibold text-[var(--color-text)] shadow-sm ring-1 ring-black/10"
+                  title="Edit warranty details and notes"
+                >
+                  Warranty
+                </button>
+
+                {/* Report */}
                 <button
                   type="button"
                   onClick={() => setWarrantyModalOpen(true)}
                   className="inline-flex items-center gap-2 rounded-sm bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-xs font-semibold text-[var(--btn-text)] shadow-sm"
-                  title="Print warranty / 3rd party packet"
+                  title="Create printable report"
                 >
-                  Warranty / 3rd party
+                  Create report
                 </button>
 
                 <span className="rounded-sm  bg-white px-3 py-1.5 text-sm uppercase tracking-wide text-[var(--color-muted)]">
@@ -1806,36 +1938,7 @@ export default function JobDetailPage() {
           </MotionCard>
 
           {/* Notes */}
-          <MotionCard
-            title="Notes"
-            delay={0.2}
-            right={
-              <div className="inline-flex rounded-full border border-[var(--color-border)] bg-white/60 p-1">
-                <button
-                  type="button"
-                  onClick={() => setNotesTab("job")}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                    notesTab === "job"
-                      ? "bg-[var(--color-brown)] text-white"
-                      : "text-[var(--color-text)] hover:bg-white/60"
-                  }`}
-                >
-                  Job
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNotesTab("warranty")}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                    notesTab === "warranty"
-                      ? "bg-[var(--color-brown)] text-white"
-                      : "text-[var(--color-text)] hover:bg-white/60"
-                  }`}
-                >
-                  Warranty
-                </button>
-              </div>
-            }
-          >
+          <MotionCard title="Notes" delay={0.2}>
             {/* TAB CONTENT */}
             {notesTab === "job" ? (
               <>
@@ -1935,6 +2038,242 @@ export default function JobDetailPage() {
                     >
                       {savingWarrantyNotes ? "Saving…" : "Save warranty notes"}
                     </button>
+                  </div>
+                  {/* Warranty details */}
+                  <div className="mt-4 rounded-2xl border border-[var(--color-border)] bg-white/60 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-[var(--color-text)]">
+                          Warranty details
+                        </div>
+                        <div className="text-xs text-[var(--color-muted)]">
+                          These fields power the External Warranty / 3rd party
+                          report.
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const w = (job as any)?.warranty ?? {};
+                            setWarrantyDraft((d) => ({
+                              ...d,
+                              kind: w.kind ?? "",
+                              manufacturer: w.manufacturer ?? "",
+                              programName: w.programName ?? "",
+                              status: w.status ?? "",
+                              coverageYears:
+                                typeof w.coverageYears === "number"
+                                  ? String(w.coverageYears)
+                                  : "",
+                              portalUrl: w.portalUrl ?? "",
+                              registrationId: w.registrationId ?? "",
+                              claimId: w.claimId ?? "",
+                              installDate: "",
+                              expiresAt: "",
+                            }));
+                          }}
+                          className="rounded-md border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                        >
+                          Reset
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={saveWarrantyDetails}
+                          className="rounded-md bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
+                        >
+                          Save warranty details
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Type
+                        </label>
+                        <select
+                          value={warrantyDraft.kind}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              kind: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                        >
+                          <option value="">—</option>
+                          <option value="manufacturer">Manufacturer</option>
+                          <option value="workmanship">Workmanship</option>
+                          <option value="thirdParty">3rd Party</option>
+                          <option value="insurance">Insurance</option>
+                          <option value="none">None</option>
+                        </select>
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Status
+                        </label>
+                        <select
+                          value={warrantyDraft.status}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              status: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                        >
+                          <option value="">—</option>
+                          <option value="notStarted">Not started</option>
+                          <option value="draft">Draft</option>
+                          <option value="submitted">Submitted</option>
+                          <option value="registered">Registered</option>
+                          <option value="active">Active</option>
+                          <option value="claimOpened">Claim opened</option>
+                          <option value="closed">Closed</option>
+                          <option value="expired">Expired</option>
+                        </select>
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Manufacturer
+                        </label>
+                        <input
+                          value={warrantyDraft.manufacturer}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              manufacturer: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                          placeholder="GAF, Owens Corning, CertainTeed…"
+                        />
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Program
+                        </label>
+                        <input
+                          value={warrantyDraft.programName}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              programName: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                          placeholder="Golden Pledge / Platinum / …"
+                        />
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Coverage (years)
+                        </label>
+                        <input
+                          value={warrantyDraft.coverageYears}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              coverageYears: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                          inputMode="numeric"
+                          placeholder="10"
+                        />
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Portal URL
+                        </label>
+                        <input
+                          value={warrantyDraft.portalUrl}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              portalUrl: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                          placeholder="https://…"
+                        />
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Registration ID
+                        </label>
+                        <input
+                          value={warrantyDraft.registrationId}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              registrationId: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                        />
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Claim ID
+                        </label>
+                        <input
+                          value={warrantyDraft.claimId}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              claimId: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                        />
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Install date
+                        </label>
+                        <input
+                          type="date"
+                          value={warrantyDraft.installDate}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              installDate: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                        />
+                      </div>
+
+                      <div className="grid gap-1">
+                        <label className="text-xs text-[var(--color-muted)]">
+                          Expires
+                        </label>
+                        <input
+                          type="date"
+                          value={warrantyDraft.expiresAt}
+                          onChange={(e) =>
+                            setWarrantyDraft((s) => ({
+                              ...s,
+                              expiresAt: e.target.value,
+                            }))
+                          }
+                          className={UI.input}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="text-xs text-[var(--color-muted)]">
@@ -2699,6 +3038,12 @@ export default function JobDetailPage() {
             }}
           />
         )}
+        <WarrantyEditModal
+          open={warrantyEditOpen}
+          onClose={() => setWarrantyEditOpen(false)}
+          job={job}
+          onSave={saveWarranty}
+        />
 
         {/* Invoice Modal */}
         {invoiceModalOpen && job && (
