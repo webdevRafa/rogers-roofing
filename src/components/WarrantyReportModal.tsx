@@ -1,7 +1,18 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Printer, ShieldCheck, X } from "lucide-react";
-import type { Job } from "../types/types";
+import {
+  Printer,
+  ShieldCheck,
+  X,
+  ExternalLink,
+  FileText,
+  User,
+  Phone,
+  Mail,
+  BadgeCheck,
+  AlertCircle,
+} from "lucide-react";
+import type { Job, WarrantyMeta, WarrantyAttachment } from "../types/types";
 
 type JobPhoto = {
   id: string;
@@ -24,15 +35,146 @@ function fmtCents(cents: number) {
   });
 }
 
+type FsTimestampLike = { toDate: () => Date };
+function isFsTimestamp(x: unknown): x is FsTimestampLike {
+  return typeof (x as FsTimestampLike)?.toDate === "function";
+}
+
+function toDateObj(x: unknown): Date | null {
+  if (!x) return null;
+  if (isFsTimestamp(x)) return x.toDate();
+  if (x instanceof Date) return x;
+  if (typeof x === "string" || typeof x === "number") {
+    const d = new Date(x);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+function fmtMaybeDate(v: unknown) {
+  const d = toDateObj(v);
+  return d ? d.toLocaleString() : "—";
+}
+
+function fmtMaybeShortDate(v: unknown) {
+  const d = toDateObj(v);
+  return d ? d.toLocaleDateString() : "—";
+}
+
 function safePhotoUrl(p: JobPhoto) {
   return p.thumbUrl || p.fullUrl || p.url || "";
 }
 
-function fmtMaybeDate(v: any) {
-  if (!v) return "—";
-  if (typeof v?.toDate === "function") return v.toDate().toLocaleString();
-  const d = v instanceof Date ? v : new Date(v);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+function isValidHttpUrl(url: string) {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function pillForWarrantyStatus(status?: WarrantyMeta["status"]) {
+  switch (status) {
+    case "registered":
+    case "active":
+      return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+    case "submitted":
+    case "claimOpened":
+      return "bg-yellow-50 text-yellow-800 ring-1 ring-yellow-200";
+    case "expired":
+    case "closed":
+      return "bg-gray-100 text-gray-700 ring-1 ring-black/10";
+    case "draft":
+    case "notStarted":
+    default:
+      return "bg-neutral-100 text-neutral-700 ring-1 ring-black/10";
+  }
+}
+
+function labelForWarrantyKind(kind?: WarrantyMeta["kind"]) {
+  switch (kind) {
+    case "manufacturer":
+      return "Manufacturer";
+    case "workmanship":
+      return "Workmanship";
+    case "thirdParty":
+      return "3rd Party";
+    case "insurance":
+      return "Insurance";
+    case "none":
+      return "None";
+    default:
+      return "—";
+  }
+}
+
+function kindLabelForAttachmentKind(kind?: WarrantyAttachment["kind"]) {
+  switch (kind) {
+    case "invoice":
+      return "Invoice";
+    case "receipt":
+      return "Receipt";
+    case "warrantyCertificate":
+      return "Warranty certificate";
+    case "registrationConfirmation":
+      return "Registration confirmation";
+    case "claimDocument":
+      return "Claim document";
+    case "beforePhoto":
+      return "Before photo";
+    case "afterPhoto":
+      return "After photo";
+    case "other":
+    default:
+      return "Attachment";
+  }
+}
+
+function ContactBlock({
+  title,
+  name,
+  phone,
+  email,
+}: {
+  title: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+}) {
+  const hasAny = Boolean(name || phone || email);
+  if (!hasAny) return null;
+
+  return (
+    <div className="rounded-xl border border-black/10 bg-white p-3">
+      <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+        {title}
+      </div>
+
+      <div className="mt-2 space-y-1 text-sm text-[var(--color-text)]">
+        {name ? (
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-black/50" />
+            <span className="break-words">{name}</span>
+          </div>
+        ) : null}
+
+        {phone ? (
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-black/50" />
+            <span className="break-words">{phone}</span>
+          </div>
+        ) : null}
+
+        {email ? (
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-black/50" />
+            <span className="break-words">{email}</span>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export default function WarrantyReportModal({
@@ -53,47 +195,50 @@ export default function WarrantyReportModal({
   const address = job.address?.fullLine || job.id;
 
   const createdLabel = useMemo(
-    () => fmtMaybeDate((job as any).createdAt),
-    [job]
+    () => fmtMaybeDate(job.createdAt),
+    [job.createdAt]
   );
   const updatedLabel = useMemo(
-    () => fmtMaybeDate((job as any).updatedAt),
-    [job]
+    () => fmtMaybeDate(job.updatedAt),
+    [job.updatedAt]
   );
 
-  // Future-proof: if you add job.warranty later, we’ll show it automatically.
-  const warranty = (job as any).warranty as
-    | {
-        kind?: string;
-        manufacturer?: string;
-        programName?: string;
-        coverageYears?: number;
-        registeredAt?: any;
-        registrationId?: string;
-        claimId?: string;
-        portalUrl?: string;
-        notes?: string;
-      }
-    | undefined;
+  const warranty = job.warranty; // ✅ now uses your real type
 
-  // Nice defaults for external view, even before you store warranty meta.
-  const externalSummary = useMemo(() => {
-    const parts: string[] = [];
+  const hasWarrantyData = useMemo(() => {
+    if (!warranty) return false;
+    // Treat kind "none" as effectively empty unless other fields exist
+    const hasMeaningful =
+      (warranty.kind && warranty.kind !== "none") ||
+      Boolean(
+        warranty.manufacturer ||
+          warranty.programName ||
+          warranty.coverageYears ||
+          warranty.status ||
+          warranty.portalUrl ||
+          warranty.registrationId ||
+          warranty.claimId ||
+          warranty.claimNumber ||
+          warranty.claimStatus ||
+          warranty.insuranceCarrier ||
+          warranty.policyNumber ||
+          warranty.notes ||
+          warranty.installDate ||
+          warranty.repairDate ||
+          warranty.expiresAt ||
+          (warranty.attachments && warranty.attachments.length > 0) ||
+          warranty.homeowner?.name ||
+          warranty.homeowner?.phone ||
+          warranty.homeowner?.email ||
+          warranty.adjuster?.name ||
+          warranty.adjuster?.phone ||
+          warranty.adjuster?.email ||
+          warranty.thirdPartyAdmin?.name ||
+          warranty.thirdPartyAdmin?.phone ||
+          warranty.thirdPartyAdmin?.email
+      );
 
-    if (warranty?.kind) parts.push(`Type: ${warranty.kind}`);
-    if (warranty?.manufacturer)
-      parts.push(`Manufacturer: ${warranty.manufacturer}`);
-    if (warranty?.programName) parts.push(`Program: ${warranty.programName}`);
-    if (typeof warranty?.coverageYears === "number")
-      parts.push(`Coverage: ${warranty.coverageYears} yrs`);
-    if (warranty?.registrationId)
-      parts.push(`Registration ID: ${warranty.registrationId}`);
-    if (warranty?.claimId) parts.push(`Claim ID: ${warranty.claimId}`);
-    if (warranty?.registeredAt)
-      parts.push(`Registered: ${fmtMaybeDate(warranty.registeredAt)}`);
-    if (warranty?.portalUrl) parts.push(`Portal: ${warranty.portalUrl}`);
-
-    return parts;
+    return Boolean(hasMeaningful);
   }, [warranty]);
 
   if (!open) return null;
@@ -216,7 +361,7 @@ export default function WarrantyReportModal({
               <div className="mt-1">
                 Status:{" "}
                 <span className="font-medium text-[var(--color-text)]">
-                  {(job as any).status || "—"}
+                  {job.status || "—"}
                 </span>
               </div>
             </div>
@@ -224,85 +369,467 @@ export default function WarrantyReportModal({
 
           <div className="my-5 h-px w-full bg-black/10" />
 
-          {/* Internal: Profit summary  |  External: Warranty details */}
+          {/* MODE HEADER SECTION */}
           {mode === "internal" ? (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-black/10 bg-white p-3">
-                <div className="text-xs text-[var(--color-muted)]">
-                  Earnings
+            <>
+              {/* Internal: Financial snapshot */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-black/10 bg-white p-3">
+                  <div className="text-xs text-[var(--color-muted)]">
+                    Earnings
+                  </div>
+                  <div className="mt-1 text-lg font-semibold text-[var(--color-text)]">
+                    {fmtCents(totals.earnings)}
+                  </div>
                 </div>
-                <div className="mt-1 text-lg font-semibold text-[var(--color-text)]">
-                  {fmtCents(totals.earnings)}
+
+                <div className="rounded-xl border border-black/10 bg-white p-3">
+                  <div className="text-xs text-[var(--color-muted)]">
+                    Expenses
+                  </div>
+                  <div className="mt-1 text-lg font-semibold text-[var(--color-text)]">
+                    {fmtCents(totals.expenses)}
+                  </div>
+                </div>
+
+                <div
+                  className={
+                    "rounded-xl border border-black/10 p-3 " +
+                    (totals.net >= 0 ? "bg-emerald-50" : "bg-red-50")
+                  }
+                >
+                  <div className="text-xs text-[var(--color-muted)]">
+                    Profit
+                  </div>
+                  <div className="mt-1 text-lg font-semibold text-[var(--color-text)]">
+                    {fmtCents(totals.net)}
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-black/10 bg-white p-3">
-                <div className="text-xs text-[var(--color-muted)]">
-                  Expenses
-                </div>
-                <div className="mt-1 text-lg font-semibold text-[var(--color-text)]">
-                  {fmtCents(totals.expenses)}
-                </div>
-              </div>
+              {/* Internal: Warranty snapshot (nice to have, stays clean) */}
+              <div className="mt-4">
+                <div className="rounded-xl border border-black/10 bg-white p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-[var(--color-text)]">
+                      Warranty snapshot
+                    </div>
+                    {warranty?.status ? (
+                      <span
+                        className={
+                          "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold " +
+                          pillForWarrantyStatus(warranty.status)
+                        }
+                      >
+                        <BadgeCheck className="h-3.5 w-3.5" />
+                        {warranty.status}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[var(--color-muted)]">
+                        {hasWarrantyData ? "—" : "No warranty data"}
+                      </span>
+                    )}
+                  </div>
 
-              <div
-                className={
-                  "rounded-xl border border-black/10 p-3 " +
-                  (totals.net >= 0 ? "bg-emerald-50" : "bg-red-50")
-                }
-              >
-                <div className="text-xs text-[var(--color-muted)]">Profit</div>
-                <div className="mt-1 text-lg font-semibold text-[var(--color-text)]">
-                  {fmtCents(totals.net)}
+                  {hasWarrantyData ? (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div className="text-sm text-[var(--color-text)]">
+                        <div className="text-xs text-[var(--color-muted)]">
+                          Type
+                        </div>
+                        <div className="mt-0.5 font-medium">
+                          {labelForWarrantyKind(warranty?.kind)}
+                        </div>
+                      </div>
+
+                      <div className="text-sm text-[var(--color-text)]">
+                        <div className="text-xs text-[var(--color-muted)]">
+                          Manufacturer / Program
+                        </div>
+                        <div className="mt-0.5 font-medium break-words">
+                          {[warranty?.manufacturer, warranty?.programName]
+                            .filter(Boolean)
+                            .join(" — ") || "—"}
+                        </div>
+                      </div>
+
+                      <div className="text-sm text-[var(--color-text)]">
+                        <div className="text-xs text-[var(--color-muted)]">
+                          Install date
+                        </div>
+                        <div className="mt-0.5 font-medium">
+                          {fmtMaybeShortDate(warranty?.installDate)}
+                        </div>
+                      </div>
+
+                      <div className="text-sm text-[var(--color-text)]">
+                        <div className="text-xs text-[var(--color-muted)]">
+                          Expires
+                        </div>
+                        <div className="mt-0.5 font-medium">
+                          {fmtMaybeShortDate(warranty?.expiresAt)}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex items-center gap-2 text-sm text-[var(--color-muted)]">
+                      <AlertCircle className="h-4 w-4" />
+                      No warranty metadata saved yet.
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            </>
           ) : (
-            <div className="rounded-xl border border-black/10 bg-white p-4">
-              <div className="text-sm font-semibold text-[var(--color-text)]">
-                Warranty / 3rd-party details
+            <>
+              {/* External: Warranty / 3rd-party details (no financials) */}
+              <div className="rounded-xl border border-black/10 bg-white p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm font-semibold text-[var(--color-text)]">
+                    Warranty / 3rd-party details
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {warranty?.status ? (
+                      <span
+                        className={
+                          "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold " +
+                          pillForWarrantyStatus(warranty.status)
+                        }
+                      >
+                        <BadgeCheck className="h-3.5 w-3.5" />
+                        {warranty.status}
+                      </span>
+                    ) : null}
+
+                    {warranty?.kind ? (
+                      <span className="inline-flex rounded-full bg-neutral-100 px-2 py-1 text-xs font-semibold text-neutral-700 ring-1 ring-black/10">
+                        {labelForWarrantyKind(warranty.kind)}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {hasWarrantyData ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {/* Program */}
+                    <div className="rounded-xl border border-black/10 bg-white p-3">
+                      <div className="text-xs text-[var(--color-muted)]">
+                        Manufacturer / Program
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--color-text)] break-words">
+                        {[warranty?.manufacturer, warranty?.programName]
+                          .filter(Boolean)
+                          .join(" — ") || "—"}
+                      </div>
+                      {typeof warranty?.coverageYears === "number" ? (
+                        <div className="mt-1 text-xs text-[var(--color-muted)]">
+                          Coverage:{" "}
+                          <span className="font-medium text-[var(--color-text)]">
+                            {warranty.coverageYears} yrs
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Dates */}
+                    <div className="rounded-xl border border-black/10 bg-white p-3">
+                      <div className="text-xs text-[var(--color-muted)]">
+                        Dates
+                      </div>
+                      <div className="mt-1 space-y-1 text-sm text-[var(--color-text)]">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Install
+                          </span>
+                          <span className="font-medium">
+                            {fmtMaybeShortDate(warranty?.installDate)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Repair
+                          </span>
+                          <span className="font-medium">
+                            {fmtMaybeShortDate(warranty?.repairDate)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Expires
+                          </span>
+                          <span className="font-medium">
+                            {fmtMaybeShortDate(warranty?.expiresAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Registration */}
+                    <div className="rounded-xl border border-black/10 bg-white p-3">
+                      <div className="text-xs text-[var(--color-muted)]">
+                        Registration
+                      </div>
+                      <div className="mt-1 space-y-1 text-sm text-[var(--color-text)]">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Submitted
+                          </span>
+                          <span className="font-medium">
+                            {fmtMaybeShortDate(warranty?.submittedAt)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Registered
+                          </span>
+                          <span className="font-medium">
+                            {fmtMaybeShortDate(warranty?.registeredAt)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">ID</span>
+                          <span className="font-medium break-words">
+                            {warranty?.registrationId || "—"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Claim */}
+                    <div className="rounded-xl border border-black/10 bg-white p-3">
+                      <div className="text-xs text-[var(--color-muted)]">
+                        Claim
+                      </div>
+                      <div className="mt-1 space-y-1 text-sm text-[var(--color-text)]">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Claim ID
+                          </span>
+                          <span className="font-medium break-words">
+                            {warranty?.claimId || "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Claim #
+                          </span>
+                          <span className="font-medium break-words">
+                            {warranty?.claimNumber || "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Status
+                          </span>
+                          <span className="font-medium">
+                            {warranty?.claimStatus || "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Opened
+                          </span>
+                          <span className="font-medium">
+                            {fmtMaybeShortDate(warranty?.claimOpenedAt)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[var(--color-muted)]">
+                            Closed
+                          </span>
+                          <span className="font-medium">
+                            {fmtMaybeShortDate(warranty?.claimClosedAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Portal */}
+                    <div className="rounded-xl border border-black/10 bg-white p-3 sm:col-span-2">
+                      <div className="text-xs text-[var(--color-muted)]">
+                        Portal / submission link
+                      </div>
+
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-medium text-[var(--color-text)] break-words">
+                          {warranty?.portalUrl || "—"}
+                        </div>
+
+                        {warranty?.portalUrl &&
+                        isValidHttpUrl(warranty.portalUrl) ? (
+                          <a
+                            href={warranty.portalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="print:hidden inline-flex items-center gap-1 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs font-semibold text-[var(--color-text)] hover:bg-black/5"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Open
+                          </a>
+                        ) : null}
+                      </div>
+
+                      {warranty?.submittedBy?.name ? (
+                        <div className="mt-1 text-xs text-[var(--color-muted)]">
+                          Submitted by:{" "}
+                          <span className="font-medium text-[var(--color-text)]">
+                            {warranty.submittedBy.name}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* People */}
+                    <div className="grid gap-3 sm:col-span-2 sm:grid-cols-3">
+                      <ContactBlock
+                        title="Homeowner"
+                        name={warranty?.homeowner?.name}
+                        phone={warranty?.homeowner?.phone}
+                        email={warranty?.homeowner?.email}
+                      />
+                      <ContactBlock
+                        title="Adjuster"
+                        name={warranty?.adjuster?.name}
+                        phone={warranty?.adjuster?.phone}
+                        email={warranty?.adjuster?.email}
+                      />
+                      <ContactBlock
+                        title="3rd party admin"
+                        name={warranty?.thirdPartyAdmin?.name}
+                        phone={warranty?.thirdPartyAdmin?.phone}
+                        email={warranty?.thirdPartyAdmin?.email}
+                      />
+                    </div>
+
+                    {/* Insurance metadata */}
+                    {warranty?.insuranceCarrier || warranty?.policyNumber ? (
+                      <div className="rounded-xl border border-black/10 bg-white p-3 sm:col-span-2">
+                        <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                          Insurance
+                        </div>
+
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2 text-sm">
+                          <div>
+                            <div className="text-xs text-[var(--color-muted)]">
+                              Carrier
+                            </div>
+                            <div className="font-medium text-[var(--color-text)] break-words">
+                              {warranty?.insuranceCarrier || "—"}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-xs text-[var(--color-muted)]">
+                              Policy #
+                            </div>
+                            <div className="font-medium text-[var(--color-text)] break-words">
+                              {warranty?.policyNumber || "—"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Warranty notes */}
+                    {warranty?.notes ? (
+                      <div className="rounded-xl border border-black/10 bg-white p-3 sm:col-span-2">
+                        <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                          Warranty notes
+                        </div>
+                        <div className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--color-text)]">
+                          {warranty.notes}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Attachments */}
+                    {warranty?.attachments &&
+                    warranty.attachments.length > 0 ? (
+                      <div className="rounded-xl border border-black/10 bg-white p-3 sm:col-span-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                            Attachments
+                          </div>
+                          <div className="text-xs text-[var(--color-muted)]">
+                            {warranty.attachments.length} file(s)
+                          </div>
+                        </div>
+
+                        <div className="mt-2 space-y-2">
+                          {warranty.attachments.map((a) => {
+                            const label =
+                              a.label ||
+                              kindLabelForAttachmentKind(a.kind) ||
+                              "Attachment";
+
+                            return (
+                              <div
+                                key={a.id}
+                                className="flex items-start justify-between gap-3 rounded-lg border border-black/10 bg-white px-3 py-2"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-black/50" />
+                                    <div className="text-sm font-semibold text-[var(--color-text)] break-words">
+                                      {label}
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-1 text-xs text-[var(--color-muted)] break-words">
+                                    {a.kind
+                                      ? kindLabelForAttachmentKind(a.kind)
+                                      : "Attachment"}
+                                    {a.createdAt
+                                      ? ` • ${fmtMaybeDate(a.createdAt)}`
+                                      : ""}
+                                  </div>
+
+                                  <div className="mt-1 text-xs text-[var(--color-muted)] break-words">
+                                    {a.url}
+                                  </div>
+                                </div>
+
+                                {isValidHttpUrl(a.url) ? (
+                                  <a
+                                    href={a.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="print:hidden inline-flex shrink-0 items-center gap-1 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs font-semibold text-[var(--color-text)] hover:bg-black/5"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                    Open
+                                  </a>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-[var(--color-muted)]">
+                    <AlertCircle className="h-4 w-4" />
+                    No warranty metadata saved yet.
+                  </div>
+                )}
               </div>
-
-              {externalSummary.length > 0 ? (
-                <ul className="mt-2 space-y-1 text-sm text-[var(--color-text)]">
-                  {externalSummary.map((line) => (
-                    <li key={line} className="break-words">
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="mt-2 text-sm text-[var(--color-muted)]">
-                  No warranty metadata saved yet. (Later we can add quick fields
-                  like type, manufacturer, claim ID, registration ID.)
-                </div>
-              )}
-
-              {warranty?.notes ? (
-                <div className="mt-3">
-                  <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                    Warranty notes
-                  </div>
-                  <div className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--color-text)]">
-                    {warranty.notes}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+            </>
           )}
 
-          {/* Notes */}
+          {/* Notes (job notes – still useful in both modes) */}
           <div className="mt-6">
             <div className="text-sm font-semibold text-[var(--color-text)]">
               Notes
             </div>
             <div className="mt-2 space-y-2">
-              {((job as any).notes ?? []).length === 0 ? (
+              {(job.notes ?? []).length === 0 ? (
                 <div className="text-sm text-[var(--color-muted)]">
                   No notes.
                 </div>
               ) : (
-                ((job as any).notes ?? []).map((n: any) => (
+                (job.notes ?? []).map((n) => (
                   <div
                     key={n.id}
                     className="rounded-xl border border-black/10 bg-white p-3"
@@ -310,11 +837,11 @@ export default function WarrantyReportModal({
                     <div className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words">
                       {n.text || ""}
                     </div>
-                    {n.createdAt && (
+                    {n.createdAt ? (
                       <div className="mt-1 text-xs text-[var(--color-muted)]">
                         {fmtMaybeDate(n.createdAt)}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 ))
               )}
@@ -357,7 +884,7 @@ export default function WarrantyReportModal({
 
             {photos.length > 12 ? (
               <div className="mt-2 text-xs text-[var(--color-muted)]">
-                Showing 12 of {photos.length} photos (we can expand this later).
+                Showing 12 of {photos.length} photos.
               </div>
             ) : null}
           </div>

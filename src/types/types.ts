@@ -90,27 +90,91 @@ export type FlashingPay = {
   updatedAt?: FirestoreTime;
 };
 
-export type WarrantyKind = "manufacturer" | "workmanship" | "thirdParty" | "none";
+export type ContactInfo = {
+  name?: string;
+  phone?: string;
+  email?: string;
+};
+
+export type WarrantyAttachment = {
+  id: ID;
+  label?: string; // "Invoice", "Warranty Cert", "Before photo", etc
+  url: string;
+  kind?:
+    | "invoice"
+    | "receipt"
+    | "warrantyCertificate"
+    | "registrationConfirmation"
+    | "claimDocument"
+    | "beforePhoto"
+    | "afterPhoto"
+    | "other";
+  createdAt?: FirestoreTime;
+};
+
+export type WarrantyKind =
+  | "manufacturer"
+  | "workmanship"
+  | "thirdParty"
+  | "insurance"
+  | "none";
+
+export type WarrantyStatus =
+  | "notStarted"
+  | "draft"
+  | "submitted"
+  | "registered"
+  | "active"
+  | "expired"
+  | "claimOpened"
+  | "closed";
 
 export type WarrantyMeta = {
   kind: WarrantyKind;
 
-  // Optional “program” info (GAF/OC/CertainTeed etc)
-  manufacturer?: string;          // "GAF", "Owens Corning", "CertainTeed"
-  programName?: string;           // "Golden Pledge", "Platinum", etc (free text)
+  /** High-level lifecycle status so the UI can show “Draft / Submitted / Registered” etc. */
+  status?: WarrantyStatus;
+
+  /** Program info (Manufacturer / 3rd party) */
+  manufacturer?: string; // "GAF", "Owens Corning", "CertainTeed", etc (free text)
+  programName?: string; // "Golden Pledge", "Platinum", etc (free text)
   coverageYears?: number;
 
-  // Registration / claim tracking
+  /** Dates that matter for warranty packets */
+  installDate?: FirestoreTime; // when roof was installed (often shingles completion)
+  repairDate?: FirestoreTime; // if this job is actually a warranty repair job
+  expiresAt?: FirestoreTime;
+
+  /** Registration tracking */
   registeredAt?: FirestoreTime;
+  submittedAt?: FirestoreTime;
   registrationId?: string;
+
+  /** Claim tracking (manufacturer/3rd party/insurance) */
   claimId?: string;
+  claimNumber?: string; // some systems call it claim # instead of claimId
+  claimStatus?: "open" | "pending" | "approved" | "denied" | "closed";
+  claimOpenedAt?: FirestoreTime;
+  claimClosedAt?: FirestoreTime;
 
-  // Who/where it was submitted through
-  submittedBy?: { userId?: ID; name?: string };
+  /** Where/How you submit */
   portalUrl?: string;
+  submittedBy?: { userId?: ID; name?: string };
 
-  // Extra notes just for warranty packet context
+  /** People involved */
+  homeowner?: ContactInfo; // name/phone/email
+  adjuster?: ContactInfo; // insurance adjuster (optional)
+  thirdPartyAdmin?: ContactInfo; // 3rd-party warranty company (optional)
+
+  /** Insurance-ish metadata (optional, but common with “3rd party” talk) */
+  insuranceCarrier?: string;
+  policyNumber?: string;
+
+  /** Extra notes specifically for warranty/3rd-party context */
   notes?: string;
+
+  /** Supporting documents (invoice, cert, confirmation, etc.) */
+  attachments?: WarrantyAttachment[];
 };
 
 
@@ -353,7 +417,12 @@ export type Job = {
   shinglesScheduledFor?: FSDate;
   shinglesCompletedAt?: FSDate;
   warranty?: WarrantyMeta;
-
+  warrantyPacket?: {
+    lastGeneratedAt?: FirestoreTime;
+    lastGeneratedBy?: ID | null;
+    lastMode?: "internal" | "external";
+  };
+  
   earnings: Earnings;
   expenses: Expenses;
 
