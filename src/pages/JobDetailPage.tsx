@@ -1313,68 +1313,6 @@ export default function JobDetailPage() {
                       </button>
                     )}
                   </div>
-                  {/* Flashing (C/J/L) Pay (optional) */}
-                  {!hasFlashingPay && (
-                    <div className="mt-3 border-t border-black/5 pt-3">
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs font-medium text-[var(--color-text)]">
-                          Flashing (C/J/L) Pay (optional)
-                        </div>
-
-                        <div className="text-xs text-[var(--color-muted)]">
-                          + <CountMoney cents={flashingAmountCentsPreview} />
-                        </div>
-                      </div>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                        <div className="h-10 inline-flex items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm text-[var(--color-text)] shadow-sm">
-                          Flashing (C/J/L)
-                        </div>
-
-                        <input
-                          value={flashingUnits}
-                          onChange={(e) => setFlashingUnits(e.target.value)}
-                          type="number"
-                          min={0}
-                          step="1"
-                          className="h-10 w-20 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm"
-                          placeholder="Units"
-                        />
-
-                        <input
-                          value={flashingUnitPrice}
-                          onChange={(e) => setFlashingUnitPrice(e.target.value)}
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          className="h-10 w-28 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm"
-                          placeholder="$ / unit"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => void saveFlashingPay()}
-                          className={UI.btnPrimary}
-                          disabled={
-                            Number(flashingUnits) <= 0 ||
-                            Number(flashingUnitPrice) <= 0
-                          }
-                        >
-                          Save
-                        </button>
-
-                        {(job.earnings?.flashingPay?.amountCents ?? 0) > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => void clearFlashingPay()}
-                            className={UI.btnSoft}
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="w-full sm:w-auto">
