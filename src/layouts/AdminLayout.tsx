@@ -1,6 +1,6 @@
 // src/layouts/AdminLayout.tsx
-import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import {
   CalendarDays,
@@ -8,8 +8,6 @@ import {
   Users,
   FileText,
   LogOut,
-  Plus,
-  Search,
   Menu,
   X,
 } from "lucide-react";
@@ -27,18 +25,9 @@ function navLinkBase(isActive: boolean) {
 
 export default function AdminLayout() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [signingOut, setSigningOut] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  // Optional: show a contextual primary CTA label based on route
-  const primaryCta = useMemo(() => {
-    if (location.pathname.startsWith("/employees")) {
-      return { label: "New Employee", onClick: () => navigate("/employees") };
-    }
-    return { label: "New Job", onClick: () => navigate("/dashboard") };
-  }, [location.pathname, navigate]);
 
   async function handleLogout() {
     try {

@@ -35,7 +35,8 @@ import { Pencil } from "lucide-react";
 import InvoiceCreateModal from "../components/InvoiceCreateModal";
 import WarrantyReportModal from "../components/WarrantyReportModal";
 import WarrantyEditModal from "../components/WarrantyEditModal";
-
+import type { WarrantyMeta } from "../types/types";
+import type { WarrantyKind, WarrantyStatus } from "../types/types";
 import { db } from "../firebase/firebaseConfig";
 import type {
   Job,
@@ -288,16 +289,43 @@ export default function JobDetailPage() {
       },
     });
   }
-  async function saveWarranty(nextWarranty: any) {
+
+  function cleanOptString(v: unknown): string | undefined {
+    if (typeof v !== "string") return undefined;
+    const t = v.trim();
+    return t.length ? t : undefined;
+  }
+
+  async function saveWarranty(nextWarranty: WarrantyMeta) {
     if (!job) return;
+
+    const cleaned: WarrantyMeta = {
+      ...nextWarranty,
+      // only clean free-text string fields
+      manufacturer:
+        cleanOptString(nextWarranty.manufacturer) ?? nextWarranty.manufacturer,
+      programName:
+        cleanOptString(nextWarranty.programName) ?? nextWarranty.programName,
+      portalUrl:
+        cleanOptString(nextWarranty.portalUrl) ?? nextWarranty.portalUrl,
+      registrationId:
+        cleanOptString(nextWarranty.registrationId) ??
+        nextWarranty.registrationId,
+      claimId: cleanOptString(nextWarranty.claimId) ?? nextWarranty.claimId,
+      claimNumber:
+        cleanOptString(nextWarranty.claimNumber) ?? nextWarranty.claimNumber,
+      insuranceCarrier:
+        cleanOptString(nextWarranty.insuranceCarrier) ??
+        nextWarranty.insuranceCarrier,
+      policyNumber:
+        cleanOptString(nextWarranty.policyNumber) ?? nextWarranty.policyNumber,
+      notes: cleanOptString(nextWarranty.notes) ?? nextWarranty.notes,
+    };
 
     const ref = doc(db, "jobs", job.id);
     await setDoc(
       ref,
-      {
-        warranty: nextWarranty,
-        updatedAt: serverTimestamp(),
-      },
+      { warranty: cleaned, updatedAt: serverTimestamp() },
       { merge: true }
     );
 
@@ -327,9 +355,6 @@ export default function JobDetailPage() {
       },
     });
   }
-  useEffect(() => {
-    setWarrantyNotesDraft((job as any)?.warranty?.notes ?? "");
-  }, [job?.id]);
 
   useEffect(() => {
     const ref = collection(db, "employees");
@@ -413,12 +438,12 @@ export default function JobDetailPage() {
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  type WarrantyDraft = {
-    kind: string;
+  type WarrantyDraftUI = {
+    kind: "" | WarrantyKind;
+    status: "" | WarrantyStatus;
     manufacturer: string;
     programName: string;
-    status: string;
-    coverageYears: string; // keep as string for inputs
+    coverageYears: string; // input field = string
     portalUrl: string;
     registrationId: string;
     claimId: string;
@@ -426,11 +451,11 @@ export default function JobDetailPage() {
     expiresAt: string; // YYYY-MM-DD
   };
 
-  const [warrantyDraft, setWarrantyDraft] = useState<WarrantyDraft>({
+  const [warrantyDraft, setWarrantyDraft] = useState<WarrantyDraftUI>({
     kind: "",
+    status: "",
     manufacturer: "",
     programName: "",
-    status: "",
     coverageYears: "",
     portalUrl: "",
     registrationId: "",
@@ -577,10 +602,10 @@ export default function JobDetailPage() {
         };
 
         setWarrantyDraft({
-          kind: w.kind ?? "",
+          kind: (w.kind ?? "") as WarrantyDraftUI["kind"],
+          status: (w.status ?? "") as WarrantyDraftUI["status"],
           manufacturer: w.manufacturer ?? "",
           programName: w.programName ?? "",
-          status: w.status ?? "",
           coverageYears:
             typeof w.coverageYears === "number" ? String(w.coverageYears) : "",
           portalUrl: w.portalUrl ?? "",
@@ -804,10 +829,11 @@ export default function JobDetailPage() {
     const updated: Job = {
       ...job,
       expenses: {
-        ...job.expenses,
-        payouts: [...(job.expenses.payouts ?? []), entry],
+        ...(job.expenses ?? {}),
+        payouts: [...(job.expenses?.payouts ?? []), entry],
       },
     };
+
     await saveJob(updated);
 
     // 2) Write mirrored doc into top-level "payouts" collection
@@ -970,35 +996,57 @@ export default function JobDetailPage() {
   async function saveWarrantyDetails() {
     if (!job) return;
 
-    const coverageYearsNum =
-      warrantyDraft.coverageYears.trim() === ""
-        ? undefined
-        : Math.max(0, Number(warrantyDraft.coverageYears) || 0);
-
-    const parseYmdToDate = (s: string) => {
-      if (!s) return undefined;
-      const d = new Date(`${s}T00:00:00`);
-      return Number.isNaN(d.getTime()) ? undefined : d;
+    const toOptionalString = (s: string) => {
+      const t = s.trim();
+      return t.length ? t : undefined;
     };
 
+    const toOptionalNumber = (s: string) => {
+      const t = s.trim();
+      if (!t) return undefined;
+      const n = Number(t);
+      return Number.isFinite(n) ? Math.max(0, n) : undefined;
+    };
+
+    const ymdToTimestamp = (s: string) => {
+      const t = s.trim();
+      if (!t) return undefined;
+      const d = new Date(`${t}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return undefined;
+      return Timestamp.fromDate(d);
+    };
+
+    // Keep current kind if draft not set; otherwise require selection.
+    const kind: WarrantyKind | undefined =
+      warrantyDraft.kind || (job.warranty?.kind ?? undefined);
+
+    if (!kind) {
+      setToast({
+        status: "error",
+        title: "Select warranty type",
+        message: "Please select a warranty Type before saving.",
+      });
+      return;
+    }
+
     const nextWarranty = {
-      ...(job as any).warranty,
-      kind: warrantyDraft.kind || undefined,
-      manufacturer: warrantyDraft.manufacturer.trim() || undefined,
-      programName: warrantyDraft.programName.trim() || undefined,
-      status: warrantyDraft.status || undefined,
-      coverageYears: coverageYearsNum,
-      portalUrl: warrantyDraft.portalUrl.trim() || undefined,
-      registrationId: warrantyDraft.registrationId.trim() || undefined,
-      claimId: warrantyDraft.claimId.trim() || undefined,
-      installDate: parseYmdToDate(warrantyDraft.installDate),
-      expiresAt: parseYmdToDate(warrantyDraft.expiresAt),
+      ...(job.warranty ?? {}),
+      kind,
+      status: (warrantyDraft.status || undefined) as WarrantyStatus | undefined,
+      manufacturer: toOptionalString(warrantyDraft.manufacturer),
+      programName: toOptionalString(warrantyDraft.programName),
+      coverageYears: toOptionalNumber(warrantyDraft.coverageYears),
+      portalUrl: toOptionalString(warrantyDraft.portalUrl),
+      registrationId: toOptionalString(warrantyDraft.registrationId),
+      claimId: toOptionalString(warrantyDraft.claimId),
+      installDate: ymdToTimestamp(warrantyDraft.installDate),
+      expiresAt: ymdToTimestamp(warrantyDraft.expiresAt),
     };
 
     await saveJob({
       ...job,
       warranty: nextWarranty,
-    } as any);
+    });
 
     setToast({
       status: "success",
@@ -2059,10 +2107,11 @@ export default function JobDetailPage() {
                             const w = (job as any)?.warranty ?? {};
                             setWarrantyDraft((d) => ({
                               ...d,
-                              kind: w.kind ?? "",
+                              kind: (w.kind ?? "") as WarrantyDraftUI["kind"],
                               manufacturer: w.manufacturer ?? "",
                               programName: w.programName ?? "",
-                              status: w.status ?? "",
+                              status: (w.status ??
+                                "") as WarrantyDraftUI["status"],
                               coverageYears:
                                 typeof w.coverageYears === "number"
                                   ? String(w.coverageYears)
@@ -2099,7 +2148,7 @@ export default function JobDetailPage() {
                           onChange={(e) =>
                             setWarrantyDraft((s) => ({
                               ...s,
-                              kind: e.target.value,
+                              kind: e.target.value as WarrantyDraftUI["kind"],
                             }))
                           }
                           className={UI.input}
@@ -2122,7 +2171,8 @@ export default function JobDetailPage() {
                           onChange={(e) =>
                             setWarrantyDraft((s) => ({
                               ...s,
-                              status: e.target.value,
+                              status: e.target
+                                .value as WarrantyDraftUI["status"],
                             }))
                           }
                           className={UI.input}
