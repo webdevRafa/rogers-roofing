@@ -393,10 +393,7 @@ export default function WarrantyReportModal({
                 </div>
 
                 <div
-                  className={
-                    "rounded-xl border border-black/10 p-3 " +
-                    (totals.net >= 0 ? "bg-emerald-50" : "bg-red-50")
-                  }
+                  className={"rounded-xl border border-black/10 p-3 bg-white"}
                 >
                   <div className="text-xs text-[var(--color-muted)]">
                     Profit
