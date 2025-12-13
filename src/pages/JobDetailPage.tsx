@@ -868,9 +868,21 @@ export default function JobDetailPage() {
         const fresh = snap.data();
         setJob(fresh);
         setWarrantyNotesDraft((fresh as any)?.warranty?.notes ?? "");
+        setNotesTab("job");
+        setToast({
+          status: "success",
+          title: "Warranty notes submitted",
+          message:
+            "Warranty notes were saved and are ready for the warranty packet.",
+        });
       }
     } catch (e) {
       console.error("Failed to save warranty notes", e);
+      setToast({
+        status: "error",
+        title: "Failed to save warranty notes",
+        message: "Please try again. If it keeps failing, check the console.",
+      });
     } finally {
       setSavingWarrantyNotes(false);
     }
@@ -1909,7 +1921,7 @@ export default function JobDetailPage() {
                           (job as any)?.warranty?.notes ?? ""
                         )
                       }
-                      className={UI.btnPrimary}
+                      className={UI.btnSoft}
                       disabled={savingWarrantyNotes}
                     >
                       Reset
