@@ -14,6 +14,7 @@ import {
   FieldValue,
   deleteDoc,
   query,
+  deleteField,
   where,
   orderBy,
 } from "firebase/firestore";
@@ -256,7 +257,7 @@ export default function JobDetailPage() {
         ...job,
         earnings: {
           ...(job.earnings ?? {}),
-          flashingPay: undefined,
+          flashingPay: deleteField() as any,
           totalEarningsCents: basePayCents,
         },
       });
@@ -297,7 +298,7 @@ export default function JobDetailPage() {
       ...job,
       earnings: {
         ...(job.earnings ?? {}),
-        flashingPay: undefined,
+        flashingPay: deleteField() as any, // ✅ actually removes the field in Firestore
         totalEarningsCents: basePayCents,
       },
     });
