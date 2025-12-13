@@ -41,7 +41,6 @@ import type {
   Note,
   JobStatus,
   MaterialCategory,
-  MaterialPayItem,
   Employee,
   PayoutDoc,
 } from "../types/types";
@@ -169,16 +168,17 @@ export default function JobDetailPage() {
   const [confirmFeltDoneOpen, setConfirmFeltDoneOpen] = useState(false);
   const [confirmShinglesDoneOpen, setConfirmShinglesDoneOpen] = useState(false);
 
-  // --- NEW: Material Pay (earnings add-ons) ---
-  const [matPayOpen, setMatPayOpen] = useState(false);
-  const [matPayQty, setMatPayQty] = useState("1");
-  const [matPayUnit, setMatPayUnit] = useState("0"); // dollars
+  // --- Flashing (C/J/L) Pay (earnings add-on) ---
+  const [flashingUnits, setFlashingUnits] = useState("1");
+  const [flashingUnitPrice, setFlashingUnitPrice] = useState("0"); // dollars per unit
 
-  const matPayAmountCentsPreview = useMemo(() => {
-    const qty = Math.max(0, Number(matPayQty) || 0);
-    const unitCents = Math.round(Math.max(0, Number(matPayUnit) || 0) * 100);
-    return qty * unitCents;
-  }, [matPayQty, matPayUnit]);
+  const flashingAmountCentsPreview = useMemo(() => {
+    const units = Math.max(0, Number(flashingUnits) || 0);
+    const unitCents = Math.round(
+      Math.max(0, Number(flashingUnitPrice) || 0) * 100
+    );
+    return units * unitCents;
+  }, [flashingUnits, flashingUnitPrice]);
 
   const activeEmployees = useMemo(
     () => employees.filter((e) => e.isActive !== false),
@@ -224,68 +224,67 @@ export default function JobDetailPage() {
     if (photos.length === 0) return;
     setViewerIndex((i) => (i + 1) % photos.length);
   }
-  async function addMaterialPay() {
+
+  async function saveFlashingPay() {
     if (!job) return;
 
-    const qty = Math.max(0, Number(matPayQty) || 0);
-    const unitDollars = Math.max(0, Number(matPayUnit) || 0);
+    const units = Math.max(0, Number(flashingUnits) || 0);
+    const unit = Math.max(0, Number(flashingUnitPrice) || 0);
 
-    if (qty <= 0 || unitDollars <= 0) return;
+    // base pay from CURRENT pricing on job
+    const sqft = job.pricing?.sqft ?? 0;
+    const rate = (job.pricing?.ratePerSqFt as 31 | 35) ?? 31;
+    const basePayCents = Math.round((sqft * rate + 35) * 100);
 
-    const unitPriceCents = Math.round(unitDollars * 100);
-    const amountCents = qty * unitPriceCents;
+    // If user zeros it out, treat as "clear"
+    if (units <= 0 || unit <= 0) {
+      await saveJob({
+        ...job,
+        earnings: {
+          ...(job.earnings ?? {}),
+          flashingPay: undefined,
+          totalEarningsCents: basePayCents,
+        },
+      });
+      return;
+    }
 
-    const item: MaterialPayItem = {
-      id: "flashing", // SINGLE, REPLACEABLE ITEM
-      category: "counterFlashing", // required by type
-      label: "Flashing (C/J/L)",
-      quantity: qty,
+    const unitPriceCents = Math.round(unit * 100);
+    const amountCents = units * unitPriceCents;
+
+    const flashingPay = {
+      units,
       unitPriceCents,
       amountCents,
-      receivedAt: serverTimestamp(),
+      updatedAt: Timestamp.now(), // IMPORTANT: NOT serverTimestamp (keeps it simple)
     };
 
-    // 🔑 ALWAYS overwrite — only ONE material pay allowed
-    const nextMaterialPay: MaterialPayItem[] = [item];
+    await saveJob({
+      ...job,
+      earnings: {
+        ...(job.earnings ?? {}),
+        flashingPay,
+        totalEarningsCents: basePayCents + amountCents,
+      },
+    });
+  }
+
+  async function clearFlashingPay() {
+    if (!job) return;
 
     const sqft = job.pricing?.sqft ?? 0;
     const rate = (job.pricing?.ratePerSqFt as 31 | 35) ?? 31;
     const basePayCents = Math.round((sqft * rate + 35) * 100);
 
-    const updated: Job = {
-      ...job,
-      earnings: {
-        ...(job.earnings ?? {}),
-        materialPay: nextMaterialPay,
-        totalEarningsCents: basePayCents + amountCents,
-      },
-    };
-
-    await saveJob(updated);
-
-    // reset inputs
-    setMatPayQty("1");
-    setMatPayUnit("0");
-  }
-
-  async function removeMaterialPay(itemId: string) {
-    if (!job) return;
-
-    const next = (job.earnings?.materialPay ?? []).filter(
-      (x) => x.id !== itemId
-    );
-
-    const baseSqft = job.pricing?.sqft ?? 0;
-    const baseRate = (job.pricing?.ratePerSqFt as 31 | 35) ?? 31;
-    const basePayCents = Math.round((baseSqft * baseRate + 35) * 100);
-    const addOnsCents = next.reduce((s, x) => s + (x.amountCents || 0), 0);
+    setFlashingUnits("1");
+    setFlashingUnitPrice("0");
 
     await saveJob({
       ...job,
       earnings: {
-        ...job.earnings,
-        materialPay: next,
-        totalEarningsCents: basePayCents + addOnsCents,
+        ...(job.earnings ?? {}),
+        flashingPay: undefined,
+        totalEarningsCents: basePayCents,
       },
     });
   }
@@ -341,12 +340,9 @@ export default function JobDetailPage() {
   const totalJobPayCentsPreview = useMemo(() => {
     const nSqft = Math.max(0, Number(sqft) || 0);
     const base = Math.round((nSqft * rate + 35) * 100);
-    const materialPay = (job?.earnings?.materialPay ?? []).reduce(
-      (sum, item) => sum + (item.amountCents || 0),
-      0
-    );
-    return base + materialPay;
-  }, [sqft, rate, job?.earnings?.materialPay]);
+    const flashingPayCents = job?.earnings?.flashingPay?.amountCents ?? 0;
+    return base + flashingPayCents;
+  }, [sqft, rate, job?.earnings?.flashingPay?.amountCents]);
 
   // --- Material form state (category + unit price + quantity)
   const [material, setMaterial] = useState<{
@@ -968,6 +964,15 @@ export default function JobDetailPage() {
     ? totalJobPayCentsPreview
     : job.earnings?.totalEarningsCents ??
       Math.round((displaySqft * displayRate + 35) * 100);
+  const flashingSaved = job.earnings?.flashingPay;
+  const flashingSavedCents = flashingSaved?.amountCents ?? 0;
+  const hasFlashingPay = flashingSavedCents > 0;
+
+  const flashingSavedLabel = hasFlashingPay
+    ? `${flashingSaved?.units ?? 0} × $${(
+        (flashingSaved?.unitPriceCents ?? 0) / 100
+      ).toFixed(2)}`
+    : null;
 
   return (
     <>
@@ -1204,6 +1209,23 @@ export default function JobDetailPage() {
                   <div className="text-2xl font-semibold text-[var(--color-text)]">
                     <CountMoney cents={totalJobPayCentsPreview} />
                   </div>
+                  {hasFlashingPay && (
+                    <div className="mt-1 text-xs text-[var(--color-muted)]">
+                      Includes{" "}
+                      <span className="font-medium text-[var(--color-text)]">
+                        Flashing (C/J/L)
+                      </span>
+                      :{" "}
+                      <span className="font-medium text-[var(--color-text)]">
+                        <CountMoney cents={flashingSavedCents} />
+                      </span>
+                      {flashingSavedLabel ? (
+                        <span className="ml-2 opacity-70">
+                          ({flashingSavedLabel})
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
 
                   <div className="mt-3 flex items-center gap-2 text-xs">
                     <input
@@ -1240,12 +1262,8 @@ export default function JobDetailPage() {
 
                         // 2) material pay add-ons (optional)
                         // IMPORTANT: this assumes you added job.earnings.materialPay: { amountCents: number }[]
-                        const materialPayCents = (
-                          job.earnings?.materialPay ?? []
-                        ).reduce(
-                          (sum, item) => sum + (item.amountCents || 0),
-                          0
-                        );
+                        const flashingPayCents =
+                          job.earnings?.flashingPay?.amountCents ?? 0;
 
                         const updated: Job = {
                           ...job,
@@ -1256,9 +1274,7 @@ export default function JobDetailPage() {
                           },
                           earnings: {
                             ...(job.earnings ?? {}),
-                            // keep the add-ons array intact too
-                            materialPay: job.earnings?.materialPay ?? [],
-                            totalEarningsCents: basePayCents + materialPayCents,
+                            totalEarningsCents: basePayCents + flashingPayCents,
                           },
                         };
 
@@ -1282,92 +1298,65 @@ export default function JobDetailPage() {
                       </button>
                     )}
                   </div>
-                  {/* Material Pay (optional) */}
-                  <div className="mt-3 border-t border-black/5 pt-3 text-left">
+                  {/* Flashing (C/J/L) Pay (optional) */}
+                  <div className="mt-3 border-t border-black/5 pt-3">
                     <div className="flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => setMatPayOpen((v) => !v)}
-                        className="text-xs font-medium text-[var(--color-text)] hover:underline"
-                      >
-                        Material Pay (optional)
-                      </button>
+                      <div className="text-xs font-medium text-[var(--color-text)]">
+                        Flashing (C/J/L) Pay (optional)
+                      </div>
 
                       <div className="text-xs text-[var(--color-muted)]">
-                        + <CountMoney cents={matPayAmountCentsPreview} />
+                        + <CountMoney cents={flashingAmountCentsPreview} />
                       </div>
                     </div>
 
-                    {matPayOpen && (
-                      <div className="mt-2 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <div className="text-xs font-medium px-3 py-1 rounded-sm bg-neutral-100 border border-[var(--color-border)]">
-                            Flashing (C/J/L)
-                          </div>
-
-                          <input
-                            value={matPayQty}
-                            onChange={(e) => setMatPayQty(e.target.value)}
-                            type="number"
-                            min={0}
-                            step="1"
-                            className="w-20 rounded-sm border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                            placeholder="Qty"
-                          />
-
-                          <input
-                            value={matPayUnit}
-                            onChange={(e) => setMatPayUnit(e.target.value)}
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            className="w-24 rounded-sm border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                            placeholder="Unit $"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => void addMaterialPay()}
-                            className="rounded-sm bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-1 text-[var(--btn-text)]"
-                          >
-                            Add
-                          </button>
-                        </div>
-
-                        {/* Existing add-ons list */}
-                        {(job.earnings?.materialPay ?? []).length > 0 && (
-                          <div className="rounded-sm bg-white/70 ring-1 ring-black/5">
-                            {(job.earnings?.materialPay ?? []).map((x) => (
-                              <div
-                                key={x.id}
-                                className="flex items-center justify-between px-3 py-2 text-xs border-b last:border-b-0 border-black/5"
-                              >
-                                <div className="min-w-0">
-                                  <div className="font-medium text-[var(--color-text)] truncate">
-                                    {x.label ?? "Material Pay"}
-                                  </div>
-                                  <div className="text-[11px] text-[var(--color-muted)]">
-                                    {x.quantity} × $
-                                    {(x.unitPriceCents / 100).toFixed(2)}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                  <CountMoney cents={x.amountCents} />
-                                  <button
-                                    type="button"
-                                    onClick={() => void removeMaterialPay(x.id)}
-                                    className="rounded-sm border border-[var(--color-border)] bg-white px-2 py-1 text-[10px] text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <div className="h-10 inline-flex items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm text-[var(--color-text)] shadow-sm">
+                        Flashing (C/J/L)
                       </div>
-                    )}
+
+                      <input
+                        value={flashingUnits}
+                        onChange={(e) => setFlashingUnits(e.target.value)}
+                        type="number"
+                        min={0}
+                        step="1"
+                        className="h-10 w-20 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm"
+                        placeholder="Units"
+                      />
+
+                      <input
+                        value={flashingUnitPrice}
+                        onChange={(e) => setFlashingUnitPrice(e.target.value)}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        className="h-10 w-28 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm"
+                        placeholder="$ / unit"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => void saveFlashingPay()}
+                        className={UI.btnPrimary}
+                        disabled={
+                          Number(flashingUnits) <= 0 ||
+                          Number(flashingUnitPrice) <= 0
+                        }
+                      >
+                        Save
+                      </button>
+
+                      {(job.earnings?.flashingPay?.amountCents ?? 0) > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => void clearFlashingPay()}
+                          className={UI.btnSoft}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -1403,6 +1392,12 @@ export default function JobDetailPage() {
                           <div className="text-xl font-semibold text-[var(--color-text)] leading-none">
                             <CountMoney cents={displayTotal} />
                           </div>
+                          {hasFlashingPay && (
+                            <div className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                              + <CountMoney cents={flashingSavedCents} /> &nbsp;
+                              flashing
+                            </div>
+                          )}
                         </div>
 
                         <span className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/70 text-[var(--color-muted)] shadow-sm transition group-hover:bg-white">
