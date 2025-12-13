@@ -189,11 +189,14 @@ export default function WarrantyEditModal({
                   }))
                 }
               >
+                <option value="notStarted">Not started</option>
                 <option value="draft">Draft</option>
                 <option value="submitted">Submitted</option>
-                <option value="approved">Approved</option>
-                <option value="denied">Denied</option>
+                <option value="registered">Registered</option>
+                <option value="active">Active</option>
+                <option value="claimOpened">Claim opened</option>
                 <option value="closed">Closed</option>
+                <option value="expired">Expired</option>
               </select>
             </div>
 

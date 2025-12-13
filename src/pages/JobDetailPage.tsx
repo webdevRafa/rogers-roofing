@@ -35,8 +35,6 @@ import { Pencil } from "lucide-react";
 import InvoiceCreateModal from "../components/InvoiceCreateModal";
 import WarrantyReportModal from "../components/WarrantyReportModal";
 import WarrantyEditModal from "../components/WarrantyEditModal";
-import type { WarrantyMeta } from "../types/types";
-import type { WarrantyKind, WarrantyStatus } from "../types/types";
 import { db } from "../firebase/firebaseConfig";
 import type {
   Job,
@@ -290,50 +288,102 @@ export default function JobDetailPage() {
     });
   }
 
-  function cleanOptString(v: unknown): string | undefined {
-    if (typeof v !== "string") return undefined;
+  function toOptionalOrDelete(v: unknown) {
+    if (typeof v !== "string") return deleteField();
     const t = v.trim();
-    return t.length ? t : undefined;
+    return t.length ? t : deleteField();
   }
 
-  async function saveWarranty(nextWarranty: WarrantyMeta) {
+  function dateToTimestampOrDelete(d: any) {
+    if (!d) return deleteField();
+
+    // Accept Date OR Firestore Timestamp OR string(YYYY-MM-DD)
+    const asDate =
+      typeof d?.toDate === "function"
+        ? d.toDate()
+        : d instanceof Date
+        ? d
+        : typeof d === "string"
+        ? new Date(`${d.slice(0, 10)}T00:00:00`)
+        : null;
+
+    if (!asDate || Number.isNaN(asDate.getTime())) return deleteField();
+    return Timestamp.fromDate(asDate);
+  }
+
+  async function saveWarranty(nextWarranty: NonNullable<Job["warranty"]>) {
     if (!job) return;
 
-    const cleaned: WarrantyMeta = {
-      ...nextWarranty,
-      // only clean free-text string fields
-      manufacturer:
-        cleanOptString(nextWarranty.manufacturer) ?? nextWarranty.manufacturer,
-      programName:
-        cleanOptString(nextWarranty.programName) ?? nextWarranty.programName,
-      portalUrl:
-        cleanOptString(nextWarranty.portalUrl) ?? nextWarranty.portalUrl,
-      registrationId:
-        cleanOptString(nextWarranty.registrationId) ??
-        nextWarranty.registrationId,
-      claimId: cleanOptString(nextWarranty.claimId) ?? nextWarranty.claimId,
-      claimNumber:
-        cleanOptString(nextWarranty.claimNumber) ?? nextWarranty.claimNumber,
-      insuranceCarrier:
-        cleanOptString(nextWarranty.insuranceCarrier) ??
-        nextWarranty.insuranceCarrier,
-      policyNumber:
-        cleanOptString(nextWarranty.policyNumber) ?? nextWarranty.policyNumber,
-      notes: cleanOptString(nextWarranty.notes) ?? nextWarranty.notes,
+    // Raw ref so we can use deleteField/serverTimestamp safely
+    const rawRef = doc(collection(db, "jobs"), job.id);
+
+    // Build a PATCH that deletes empties instead of writing ""/undefined
+    const warrantyPatch: any = {
+      // Always keep kind/status if present (or delete if missing)
+      kind: nextWarranty.kind ?? deleteField(),
+      status: nextWarranty.status ?? deleteField(),
+
+      manufacturer: toOptionalOrDelete(nextWarranty.manufacturer),
+      programName: toOptionalOrDelete(nextWarranty.programName),
+      portalUrl: toOptionalOrDelete(nextWarranty.portalUrl),
+      registrationId: toOptionalOrDelete(nextWarranty.registrationId),
+      claimId: toOptionalOrDelete(nextWarranty.claimId),
+      claimNumber: toOptionalOrDelete(nextWarranty.claimNumber),
+      insuranceCarrier: toOptionalOrDelete(nextWarranty.insuranceCarrier),
+      policyNumber: toOptionalOrDelete(nextWarranty.policyNumber),
+      notes: toOptionalOrDelete(nextWarranty.notes),
+
+      // numbers
+      coverageYears:
+        typeof nextWarranty.coverageYears === "number"
+          ? nextWarranty.coverageYears
+          : deleteField(),
+
+      // dates (store as Timestamp)
+      installDate: dateToTimestampOrDelete(nextWarranty.installDate),
+      repairDate: dateToTimestampOrDelete(nextWarranty.repairDate),
+      expiresAt: dateToTimestampOrDelete(nextWarranty.expiresAt),
+
+      // nested contacts (delete empty objects cleanly)
+      homeowner: nextWarranty.homeowner ?? deleteField(),
+      adjuster: nextWarranty.adjuster ?? deleteField(),
+      thirdPartyAdmin: nextWarranty.thirdPartyAdmin ?? deleteField(),
+
+      attachments: Array.isArray(nextWarranty.attachments)
+        ? nextWarranty.attachments
+        : deleteField(),
     };
 
-    const ref = doc(db, "jobs", job.id);
-    await setDoc(
-      ref,
-      { warranty: cleaned, updatedAt: serverTimestamp() },
-      { merge: true }
-    );
+    try {
+      await setDoc(
+        rawRef,
+        {
+          warranty: warrantyPatch,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
-    setToast({
-      status: "success",
-      title: "Warranty saved",
-      message: "Warranty details and notes have been saved.",
-    });
+      // Re-fetch canonical typed doc (keeps your UI in sync)
+      const typedRef = doc(collection(db, "jobs"), job.id).withConverter(
+        jobConverter
+      );
+      const snap = await getDoc(typedRef);
+      if (snap.exists()) setJob(snap.data());
+
+      setToast({
+        status: "success",
+        title: "Warranty saved",
+        message: "Warranty details and notes have been saved.",
+      });
+    } catch (e) {
+      console.error("Failed to save warranty", e);
+      setToast({
+        status: "error",
+        title: "Warranty save failed",
+        message: "Check console for details and try again.",
+      });
+    }
   }
 
   async function clearFlashingPay() {
@@ -425,11 +475,6 @@ export default function JobDetailPage() {
   });
 
   const [noteText, setNoteText] = useState("");
-  type NotesTab = "job" | "warranty";
-
-  const [notesTab, setNotesTab] = useState<NotesTab>("job");
-  const [warrantyNotesDraft, setWarrantyNotesDraft] = useState("");
-  const [savingWarrantyNotes, setSavingWarrantyNotes] = useState(false);
 
   // --- NEW: Photo upload (file + optional caption) ---
   const [uploading, setUploading] = useState(false);
@@ -437,32 +482,6 @@ export default function JobDetailPage() {
   const [photoCaption, setPhotoCaption] = useState("");
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  type WarrantyDraftUI = {
-    kind: "" | WarrantyKind;
-    status: "" | WarrantyStatus;
-    manufacturer: string;
-    programName: string;
-    coverageYears: string; // input field = string
-    portalUrl: string;
-    registrationId: string;
-    claimId: string;
-    installDate: string; // YYYY-MM-DD
-    expiresAt: string; // YYYY-MM-DD
-  };
-
-  const [warrantyDraft, setWarrantyDraft] = useState<WarrantyDraftUI>({
-    kind: "",
-    status: "",
-    manufacturer: "",
-    programName: "",
-    coverageYears: "",
-    portalUrl: "",
-    registrationId: "",
-    claimId: "",
-    installDate: "",
-    expiresAt: "",
-  });
 
   // Generic toast (photo uploads, scheduling, etc.)
   type ToastStatus = "success" | "error";
@@ -582,40 +601,6 @@ export default function JobDetailPage() {
         }
         const data = snap.data();
         setJob(data);
-        const w = (data as any).warranty ?? {};
-
-        const toYmd = (v: any) => {
-          if (!v) return "";
-          const d =
-            typeof v?.toDate === "function"
-              ? v.toDate()
-              : v instanceof Date
-              ? v
-              : typeof v === "string" || typeof v === "number"
-              ? new Date(v)
-              : null;
-          if (!d || Number.isNaN(d.getTime())) return "";
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth() + 1).padStart(2, "0");
-          const dd = String(d.getDate()).padStart(2, "0");
-          return `${yyyy}-${mm}-${dd}`;
-        };
-
-        setWarrantyDraft({
-          kind: (w.kind ?? "") as WarrantyDraftUI["kind"],
-          status: (w.status ?? "") as WarrantyDraftUI["status"],
-          manufacturer: w.manufacturer ?? "",
-          programName: w.programName ?? "",
-          coverageYears:
-            typeof w.coverageYears === "number" ? String(w.coverageYears) : "",
-          portalUrl: w.portalUrl ?? "",
-          registrationId: w.registrationId ?? "",
-          claimId: w.claimId ?? "",
-          installDate: toYmd(w.installDate),
-          expiresAt: toYmd(w.expiresAt),
-        });
-
-        setWarrantyNotesDraft((data as any)?.warranty?.notes ?? "");
 
         if (data.pricing) {
           setSqft(String(data.pricing.sqft ?? ""));
@@ -933,128 +918,6 @@ export default function JobDetailPage() {
     await saveJob(updated);
     setNoteText("");
     noteRef.current?.focus();
-  }
-  async function saveWarrantyNotes() {
-    if (!job) return;
-    setSavingWarrantyNotes(true);
-
-    const trimmed = warrantyNotesDraft.trim();
-
-    // Optimistic UI
-    setJob((prev) => {
-      if (!prev) return prev;
-      const nextWarranty = { ...(prev as any).warranty };
-      if (trimmed) nextWarranty.notes = trimmed;
-      else delete nextWarranty.notes;
-      return { ...prev, warranty: nextWarranty } as any;
-    });
-
-    try {
-      // IMPORTANT: use a raw ref so we can use deleteField() safely
-      const rawRef = doc(collection(db, "jobs"), job.id);
-
-      await setDoc(
-        rawRef,
-        {
-          warranty: {
-            ...((job as any).warranty ?? {}),
-            notes: trimmed ? trimmed : deleteField(),
-          },
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      // Optional: re-fetch canonical doc (same pattern as saveJob)
-      const typedRef = doc(collection(db, "jobs"), job.id).withConverter(
-        jobConverter
-      );
-      const snap = await getDoc(typedRef);
-      if (snap.exists()) {
-        const fresh = snap.data();
-        setJob(fresh);
-        setWarrantyNotesDraft((fresh as any)?.warranty?.notes ?? "");
-        setNotesTab("job");
-        setToast({
-          status: "success",
-          title: "Warranty notes submitted",
-          message:
-            "Warranty notes were saved and are ready for the warranty packet.",
-        });
-      }
-    } catch (e) {
-      console.error("Failed to save warranty notes", e);
-      setToast({
-        status: "error",
-        title: "Failed to save warranty notes",
-        message: "Please try again. If it keeps failing, check the console.",
-      });
-    } finally {
-      setSavingWarrantyNotes(false);
-    }
-  }
-  async function saveWarrantyDetails() {
-    if (!job) return;
-
-    const toOptionalString = (s: string) => {
-      const t = s.trim();
-      return t.length ? t : undefined;
-    };
-
-    const toOptionalNumber = (s: string) => {
-      const t = s.trim();
-      if (!t) return undefined;
-      const n = Number(t);
-      return Number.isFinite(n) ? Math.max(0, n) : undefined;
-    };
-
-    const ymdToTimestamp = (s: string) => {
-      const t = s.trim();
-      if (!t) return undefined;
-      const d = new Date(`${t}T00:00:00`);
-      if (Number.isNaN(d.getTime())) return undefined;
-      return Timestamp.fromDate(d);
-    };
-
-    // Keep current kind if draft not set; otherwise require selection.
-    const kind: WarrantyKind | undefined =
-      warrantyDraft.kind || (job.warranty?.kind ?? undefined);
-
-    if (!kind) {
-      setToast({
-        status: "error",
-        title: "Select warranty type",
-        message: "Please select a warranty Type before saving.",
-      });
-      return;
-    }
-
-    const nextWarranty = {
-      ...(job.warranty ?? {}),
-      kind,
-      status: (warrantyDraft.status || undefined) as WarrantyStatus | undefined,
-      manufacturer: toOptionalString(warrantyDraft.manufacturer),
-      programName: toOptionalString(warrantyDraft.programName),
-      coverageYears: toOptionalNumber(warrantyDraft.coverageYears),
-      portalUrl: toOptionalString(warrantyDraft.portalUrl),
-      registrationId: toOptionalString(warrantyDraft.registrationId),
-      claimId: toOptionalString(warrantyDraft.claimId),
-      installDate: ymdToTimestamp(warrantyDraft.installDate),
-      expiresAt: ymdToTimestamp(warrantyDraft.expiresAt),
-    };
-
-    await saveJob({
-      ...job,
-      warranty: nextWarranty,
-    });
-
-    setToast({
-      status: "success",
-      title: "Warranty details saved",
-      message:
-        "Warranty metadata was saved and is ready for the warranty packet.",
-    });
-    setNotesTab("job");
   }
 
   // ------- NEW: Photo upload (Storage -> CF sharp -> Firestore) -------
@@ -1988,351 +1851,71 @@ export default function JobDetailPage() {
           {/* Notes */}
           <MotionCard title="Notes" delay={0.2}>
             {/* TAB CONTENT */}
-            {notesTab === "job" ? (
-              <>
-                {/* Job notes input */}
-                <form
-                  className="grid gap-2 max-w-full sm:grid-cols-[minmax(0,1fr)_110px]"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    addNote();
-                  }}
-                >
-                  <input
-                    ref={noteRef}
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    placeholder="Add a note"
-                    className={UI.input}
-                  />
 
-                  <button
-                    className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}
-                  >
-                    Add
-                  </button>
-                </form>
+            <>
+              {/* Job notes input */}
+              <form
+                className="grid gap-2 max-w-full sm:grid-cols-[minmax(0,1fr)_110px]"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  addNote();
+                }}
+              >
+                <input
+                  ref={noteRef}
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Add a note"
+                  className={UI.input}
+                />
 
-                {/* Job notes list */}
-                <div
-                  className={`mt-3 ${LIST_MAX_H} overflow-y-auto overflow-x-hidden pr-1`}
+                <button
+                  className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}
                 >
-                  <ul>
-                    {(job?.notes ?? [])
-                      .slice()
-                      .reverse()
-                      .map((n) => (
-                        <motion.li
-                          key={n.id}
-                          className="mb-2 flex items-start gap-3 rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
-                          variants={item}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words break-all mr-3">
-                              {n.text}
-                            </p>
-                            <div className="mt-1 text-xs text-[var(--color-muted)]">
-                              {n.createdAt ? fmtDate(n.createdAt) : ""}
-                            </div>
+                  Add
+                </button>
+              </form>
+
+              {/* Job notes list */}
+              <div
+                className={`mt-3 ${LIST_MAX_H} overflow-y-auto overflow-x-hidden pr-1`}
+              >
+                <ul>
+                  {(job?.notes ?? [])
+                    .slice()
+                    .reverse()
+                    .map((n) => (
+                      <motion.li
+                        key={n.id}
+                        className="mb-2 flex items-start gap-3 rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                        variants={item}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words break-all mr-3">
+                            {n.text}
+                          </p>
+                          <div className="mt-1 text-xs text-[var(--color-muted)]">
+                            {n.createdAt ? fmtDate(n.createdAt) : ""}
                           </div>
-                          <button
-                            onClick={() => removeNote(n.id)}
-                            className="shrink-0 rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                            title="Delete"
-                          >
-                            Delete
-                          </button>
-                        </motion.li>
-                      ))}
-
-                    {(job?.notes ?? []).length === 0 && (
-                      <li className="p-3 text-sm text-[var(--color-muted)]">
-                        No notes yet.
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Warranty notes editor */}
-                <div className="grid gap-2">
-                  <textarea
-                    value={warrantyNotesDraft}
-                    onChange={(e) => setWarrantyNotesDraft(e.target.value)}
-                    placeholder="Add warranty notes (only shown on External warranty report)…"
-                    className={`${UI.input} min-h-[120px] resize-y`}
-                  />
-
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setWarrantyNotesDraft(
-                          (job as any)?.warranty?.notes ?? ""
-                        )
-                      }
-                      className={UI.btnSoft}
-                      disabled={savingWarrantyNotes}
-                    >
-                      Reset
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={saveWarrantyNotes}
-                      className={UI.btnPrimary}
-                      disabled={savingWarrantyNotes}
-                    >
-                      {savingWarrantyNotes ? "Saving…" : "Save warranty notes"}
-                    </button>
-                  </div>
-                  {/* Warranty details */}
-                  <div className="mt-4 rounded-2xl border border-[var(--color-border)] bg-white/60 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-[var(--color-text)]">
-                          Warranty details
                         </div>
-                        <div className="text-xs text-[var(--color-muted)]">
-                          These fields power the External Warranty / 3rd party
-                          report.
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
                         <button
-                          type="button"
-                          onClick={() => {
-                            const w = (job as any)?.warranty ?? {};
-                            setWarrantyDraft((d) => ({
-                              ...d,
-                              kind: (w.kind ?? "") as WarrantyDraftUI["kind"],
-                              manufacturer: w.manufacturer ?? "",
-                              programName: w.programName ?? "",
-                              status: (w.status ??
-                                "") as WarrantyDraftUI["status"],
-                              coverageYears:
-                                typeof w.coverageYears === "number"
-                                  ? String(w.coverageYears)
-                                  : "",
-                              portalUrl: w.portalUrl ?? "",
-                              registrationId: w.registrationId ?? "",
-                              claimId: w.claimId ?? "",
-                              installDate: "",
-                              expiresAt: "",
-                            }));
-                          }}
-                          className="rounded-md border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                          onClick={() => removeNote(n.id)}
+                          className="shrink-0 rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                          title="Delete"
                         >
-                          Reset
+                          Delete
                         </button>
+                      </motion.li>
+                    ))}
 
-                        <button
-                          type="button"
-                          onClick={saveWarrantyDetails}
-                          className="rounded-md bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
-                        >
-                          Save warranty details
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Type
-                        </label>
-                        <select
-                          value={warrantyDraft.kind}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              kind: e.target.value as WarrantyDraftUI["kind"],
-                            }))
-                          }
-                          className={UI.input}
-                        >
-                          <option value="">—</option>
-                          <option value="manufacturer">Manufacturer</option>
-                          <option value="workmanship">Workmanship</option>
-                          <option value="thirdParty">3rd Party</option>
-                          <option value="insurance">Insurance</option>
-                          <option value="none">None</option>
-                        </select>
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Status
-                        </label>
-                        <select
-                          value={warrantyDraft.status}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              status: e.target
-                                .value as WarrantyDraftUI["status"],
-                            }))
-                          }
-                          className={UI.input}
-                        >
-                          <option value="">—</option>
-                          <option value="notStarted">Not started</option>
-                          <option value="draft">Draft</option>
-                          <option value="submitted">Submitted</option>
-                          <option value="registered">Registered</option>
-                          <option value="active">Active</option>
-                          <option value="claimOpened">Claim opened</option>
-                          <option value="closed">Closed</option>
-                          <option value="expired">Expired</option>
-                        </select>
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Manufacturer
-                        </label>
-                        <input
-                          value={warrantyDraft.manufacturer}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              manufacturer: e.target.value,
-                            }))
-                          }
-                          className={UI.input}
-                          placeholder="GAF, Owens Corning, CertainTeed…"
-                        />
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Program
-                        </label>
-                        <input
-                          value={warrantyDraft.programName}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              programName: e.target.value,
-                            }))
-                          }
-                          className={UI.input}
-                          placeholder="Golden Pledge / Platinum / …"
-                        />
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Coverage (years)
-                        </label>
-                        <input
-                          value={warrantyDraft.coverageYears}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              coverageYears: e.target.value,
-                            }))
-                          }
-                          className={UI.input}
-                          inputMode="numeric"
-                          placeholder="10"
-                        />
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Portal URL
-                        </label>
-                        <input
-                          value={warrantyDraft.portalUrl}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              portalUrl: e.target.value,
-                            }))
-                          }
-                          className={UI.input}
-                          placeholder="https://…"
-                        />
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Registration ID
-                        </label>
-                        <input
-                          value={warrantyDraft.registrationId}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              registrationId: e.target.value,
-                            }))
-                          }
-                          className={UI.input}
-                        />
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Claim ID
-                        </label>
-                        <input
-                          value={warrantyDraft.claimId}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              claimId: e.target.value,
-                            }))
-                          }
-                          className={UI.input}
-                        />
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Install date
-                        </label>
-                        <input
-                          type="date"
-                          value={warrantyDraft.installDate}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              installDate: e.target.value,
-                            }))
-                          }
-                          className={UI.input}
-                        />
-                      </div>
-
-                      <div className="grid gap-1">
-                        <label className="text-xs text-[var(--color-muted)]">
-                          Expires
-                        </label>
-                        <input
-                          type="date"
-                          value={warrantyDraft.expiresAt}
-                          onChange={(e) =>
-                            setWarrantyDraft((s) => ({
-                              ...s,
-                              expiresAt: e.target.value,
-                            }))
-                          }
-                          className={UI.input}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-[var(--color-muted)]">
-                    These notes are separate from Job notes and can be included
-                    in the External Warranty / 3rd party report.
-                  </div>
-                </div>
-              </>
-            )}
+                  {(job?.notes ?? []).length === 0 && (
+                    <li className="p-3 text-sm text-[var(--color-muted)]">
+                      No notes yet.
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </>
           </MotionCard>
 
           {/* Photos — fixed: full-width card inside the parent grid */}
