@@ -12,10 +12,12 @@ export function recomputeJob(job: Job): Job {
   return {
     ...job,
     earnings: {
+      ...(job.earnings ?? {}),                 // ✅ preserves flashingPay + any future fields
       currency: job.earnings?.currency ?? "USD",
       totalEarningsCents,
       entries: job.earnings?.entries ?? [],
     },
+    
     expenses: {
       currency: job.expenses?.currency ?? "USD",
       totalPayoutsCents: payoutsCents,

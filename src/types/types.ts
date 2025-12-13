@@ -78,11 +78,25 @@ export type EarningEntry = {
   attachmentUrls?: string[];
 };
 
+export type FlashingPay = {
+  /** Units of flashing pay (e.g. 1, 2, 10) */
+  units: number;
+  /** Price per unit in cents */
+  unitPriceCents: number;
+  /** Cached amount = units * unitPriceCents */
+  amountCents: MoneyCents;
+  /** Optional audit timestamp */
+  updatedAt?: FirestoreTime;
+};
+
+
 export type Earnings = {
   /** Cached sum for quick display & sorting */
   totalEarningsCents: MoneyCents;
   entries?: EarningEntry[];
+  materialPay?: MaterialPayItem[];
   currency?: CurrencyCode;
+  flashingPay?: FlashingPay;
 };
 export type PayoutCategory = "shingles" | "felt" | "technician";
 // ---------- Expenses ----------
@@ -117,6 +131,23 @@ export type MaterialCategory =
   | "counterFlashing"
   | "jFlashing"
   | "rainDiverter";
+
+
+
+  export type MaterialPayCategory =
+  | "counterFlashing";
+
+export type MaterialPayItem = {
+  id: ID;
+  category: MaterialPayCategory;
+  label?: string;          // e.g. "C/J/L Flashing"
+  quantity: number;        // e.g. 12
+  unitPriceCents: number;  // e.g. 2500 ($25)
+  amountCents: MoneyCents; // quantity * unitPriceCents (cached)
+  receivedAt?: FSDate;
+  note?: string;
+};
+
 
 
 export type MaterialExpense = {

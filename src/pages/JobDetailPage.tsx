@@ -41,6 +41,7 @@ import type {
   Note,
   JobStatus,
   MaterialCategory,
+  MaterialPayItem,
   Employee,
   PayoutDoc,
 } from "../types/types";
@@ -168,6 +169,17 @@ export default function JobDetailPage() {
   const [confirmFeltDoneOpen, setConfirmFeltDoneOpen] = useState(false);
   const [confirmShinglesDoneOpen, setConfirmShinglesDoneOpen] = useState(false);
 
+  // --- NEW: Material Pay (earnings add-ons) ---
+  const [matPayOpen, setMatPayOpen] = useState(false);
+  const [matPayQty, setMatPayQty] = useState("1");
+  const [matPayUnit, setMatPayUnit] = useState("0"); // dollars
+
+  const matPayAmountCentsPreview = useMemo(() => {
+    const qty = Math.max(0, Number(matPayQty) || 0);
+    const unitCents = Math.round(Math.max(0, Number(matPayUnit) || 0) * 100);
+    return qty * unitCents;
+  }, [matPayQty, matPayUnit]);
+
   const activeEmployees = useMemo(
     () => employees.filter((e) => e.isActive !== false),
     [employees]
@@ -211,6 +223,71 @@ export default function JobDetailPage() {
   function nextPhoto() {
     if (photos.length === 0) return;
     setViewerIndex((i) => (i + 1) % photos.length);
+  }
+  async function addMaterialPay() {
+    if (!job) return;
+
+    const qty = Math.max(0, Number(matPayQty) || 0);
+    const unitDollars = Math.max(0, Number(matPayUnit) || 0);
+
+    if (qty <= 0 || unitDollars <= 0) return;
+
+    const unitPriceCents = Math.round(unitDollars * 100);
+    const amountCents = qty * unitPriceCents;
+
+    const item: MaterialPayItem = {
+      id: "flashing", // SINGLE, REPLACEABLE ITEM
+      category: "counterFlashing", // required by type
+      label: "Flashing (C/J/L)",
+      quantity: qty,
+      unitPriceCents,
+      amountCents,
+      receivedAt: serverTimestamp(),
+    };
+
+    // 🔑 ALWAYS overwrite — only ONE material pay allowed
+    const nextMaterialPay: MaterialPayItem[] = [item];
+
+    const sqft = job.pricing?.sqft ?? 0;
+    const rate = (job.pricing?.ratePerSqFt as 31 | 35) ?? 31;
+    const basePayCents = Math.round((sqft * rate + 35) * 100);
+
+    const updated: Job = {
+      ...job,
+      earnings: {
+        ...(job.earnings ?? {}),
+        materialPay: nextMaterialPay,
+        totalEarningsCents: basePayCents + amountCents,
+      },
+    };
+
+    await saveJob(updated);
+
+    // reset inputs
+    setMatPayQty("1");
+    setMatPayUnit("0");
+  }
+
+  async function removeMaterialPay(itemId: string) {
+    if (!job) return;
+
+    const next = (job.earnings?.materialPay ?? []).filter(
+      (x) => x.id !== itemId
+    );
+
+    const baseSqft = job.pricing?.sqft ?? 0;
+    const baseRate = (job.pricing?.ratePerSqFt as 31 | 35) ?? 31;
+    const basePayCents = Math.round((baseSqft * baseRate + 35) * 100);
+    const addOnsCents = next.reduce((s, x) => s + (x.amountCents || 0), 0);
+
+    await saveJob({
+      ...job,
+      earnings: {
+        ...job.earnings,
+        materialPay: next,
+        totalEarningsCents: basePayCents + addOnsCents,
+      },
+    });
   }
 
   useEffect(() => {
@@ -263,8 +340,13 @@ export default function JobDetailPage() {
   const [rate, setRate] = useState<31 | 35>(31); // $31 or $35
   const totalJobPayCentsPreview = useMemo(() => {
     const nSqft = Math.max(0, Number(sqft) || 0);
-    return Math.round((nSqft * rate + 35) * 100);
-  }, [sqft, rate]);
+    const base = Math.round((nSqft * rate + 35) * 100);
+    const materialPay = (job?.earnings?.materialPay ?? []).reduce(
+      (sum, item) => sum + (item.amountCents || 0),
+      0
+    );
+    return base + materialPay;
+  }, [sqft, rate, job?.earnings?.materialPay]);
 
   // --- Material form state (category + unit price + quantity)
   const [material, setMaterial] = useState<{
@@ -1148,7 +1230,23 @@ export default function JobDetailPage() {
                     <button
                       onClick={() => {
                         if (!job) return;
+
                         const nSqft = Math.max(0, Number(sqft) || 0);
+
+                        // 1) base labor pay (sqft * rate + $35 fee)
+                        const basePayCents = Math.round(
+                          (nSqft * rate + 35) * 100
+                        );
+
+                        // 2) material pay add-ons (optional)
+                        // IMPORTANT: this assumes you added job.earnings.materialPay: { amountCents: number }[]
+                        const materialPayCents = (
+                          job.earnings?.materialPay ?? []
+                        ).reduce(
+                          (sum, item) => sum + (item.amountCents || 0),
+                          0
+                        );
+
                         const updated: Job = {
                           ...job,
                           pricing: {
@@ -1157,12 +1255,13 @@ export default function JobDetailPage() {
                             feeCents: 3500,
                           },
                           earnings: {
-                            ...job.earnings,
-                            totalEarningsCents: Math.round(
-                              (nSqft * rate + 35) * 100
-                            ),
+                            ...(job.earnings ?? {}),
+                            // keep the add-ons array intact too
+                            materialPay: job.earnings?.materialPay ?? [],
+                            totalEarningsCents: basePayCents + materialPayCents,
                           },
                         };
+
                         void saveJob(updated);
                         setEditingPricing(false);
                       }}
@@ -1181,6 +1280,93 @@ export default function JobDetailPage() {
                       >
                         Cancel
                       </button>
+                    )}
+                  </div>
+                  {/* Material Pay (optional) */}
+                  <div className="mt-3 border-t border-black/5 pt-3 text-left">
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setMatPayOpen((v) => !v)}
+                        className="text-xs font-medium text-[var(--color-text)] hover:underline"
+                      >
+                        Material Pay (optional)
+                      </button>
+
+                      <div className="text-xs text-[var(--color-muted)]">
+                        + <CountMoney cents={matPayAmountCentsPreview} />
+                      </div>
+                    </div>
+
+                    {matPayOpen && (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <div className="text-xs font-medium px-3 py-1 rounded-sm bg-neutral-100 border border-[var(--color-border)]">
+                            Flashing (C/J/L)
+                          </div>
+
+                          <input
+                            value={matPayQty}
+                            onChange={(e) => setMatPayQty(e.target.value)}
+                            type="number"
+                            min={0}
+                            step="1"
+                            className="w-20 rounded-sm border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                            placeholder="Qty"
+                          />
+
+                          <input
+                            value={matPayUnit}
+                            onChange={(e) => setMatPayUnit(e.target.value)}
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="w-24 rounded-sm border border-[var(--color-border)] bg-white/80 px-2 py-1 text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                            placeholder="Unit $"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => void addMaterialPay()}
+                            className="rounded-sm bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-1 text-[var(--btn-text)]"
+                          >
+                            Add
+                          </button>
+                        </div>
+
+                        {/* Existing add-ons list */}
+                        {(job.earnings?.materialPay ?? []).length > 0 && (
+                          <div className="rounded-sm bg-white/70 ring-1 ring-black/5">
+                            {(job.earnings?.materialPay ?? []).map((x) => (
+                              <div
+                                key={x.id}
+                                className="flex items-center justify-between px-3 py-2 text-xs border-b last:border-b-0 border-black/5"
+                              >
+                                <div className="min-w-0">
+                                  <div className="font-medium text-[var(--color-text)] truncate">
+                                    {x.label ?? "Material Pay"}
+                                  </div>
+                                  <div className="text-[11px] text-[var(--color-muted)]">
+                                    {x.quantity} × $
+                                    {(x.unitPriceCents / 100).toFixed(2)}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <CountMoney cents={x.amountCents} />
+                                  <button
+                                    type="button"
+                                    onClick={() => void removeMaterialPay(x.id)}
+                                    className="rounded-sm border border-[var(--color-border)] bg-white px-2 py-1 text-[10px] text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
