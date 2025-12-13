@@ -171,6 +171,20 @@ export default function JobDetailPage() {
   // --- Flashing (C/J/L) Pay (earnings add-on) ---
   const [flashingUnits, setFlashingUnits] = useState("1");
   const [flashingUnitPrice, setFlashingUnitPrice] = useState("0"); // dollars per unit
+  const [flashingModalOpen, setFlashingModalOpen] = useState(false);
+
+  const prefillFlashingInputs = () => {
+    const fp = job?.earnings?.flashingPay;
+
+    if (fp) {
+      setFlashingUnits(String(fp.units ?? 1));
+      setFlashingUnitPrice(String((fp.unitPriceCents ?? 0) / 100)); // dollars
+    } else {
+      // defaults when no flashing pay exists yet
+      setFlashingUnits("1");
+      setFlashingUnitPrice("0");
+    }
+  };
 
   const flashingAmountCentsPreview = useMemo(() => {
     const units = Math.max(0, Number(flashingUnits) || 0);
@@ -1299,65 +1313,67 @@ export default function JobDetailPage() {
                     )}
                   </div>
                   {/* Flashing (C/J/L) Pay (optional) */}
-                  <div className="mt-3 border-t border-black/5 pt-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-medium text-[var(--color-text)]">
-                        Flashing (C/J/L) Pay (optional)
+                  {!hasFlashingPay && (
+                    <div className="mt-3 border-t border-black/5 pt-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-medium text-[var(--color-text)]">
+                          Flashing (C/J/L) Pay (optional)
+                        </div>
+
+                        <div className="text-xs text-[var(--color-muted)]">
+                          + <CountMoney cents={flashingAmountCentsPreview} />
+                        </div>
                       </div>
 
-                      <div className="text-xs text-[var(--color-muted)]">
-                        + <CountMoney cents={flashingAmountCentsPreview} />
-                      </div>
-                    </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                        <div className="h-10 inline-flex items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm text-[var(--color-text)] shadow-sm">
+                          Flashing (C/J/L)
+                        </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                      <div className="h-10 inline-flex items-center rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm text-[var(--color-text)] shadow-sm">
-                        Flashing (C/J/L)
-                      </div>
+                        <input
+                          value={flashingUnits}
+                          onChange={(e) => setFlashingUnits(e.target.value)}
+                          type="number"
+                          min={0}
+                          step="1"
+                          className="h-10 w-20 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm"
+                          placeholder="Units"
+                        />
 
-                      <input
-                        value={flashingUnits}
-                        onChange={(e) => setFlashingUnits(e.target.value)}
-                        type="number"
-                        min={0}
-                        step="1"
-                        className="h-10 w-20 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm"
-                        placeholder="Units"
-                      />
+                        <input
+                          value={flashingUnitPrice}
+                          onChange={(e) => setFlashingUnitPrice(e.target.value)}
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="h-10 w-28 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm"
+                          placeholder="$ / unit"
+                        />
 
-                      <input
-                        value={flashingUnitPrice}
-                        onChange={(e) => setFlashingUnitPrice(e.target.value)}
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        className="h-10 w-28 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm"
-                        placeholder="$ / unit"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => void saveFlashingPay()}
-                        className={UI.btnPrimary}
-                        disabled={
-                          Number(flashingUnits) <= 0 ||
-                          Number(flashingUnitPrice) <= 0
-                        }
-                      >
-                        Save
-                      </button>
-
-                      {(job.earnings?.flashingPay?.amountCents ?? 0) > 0 && (
                         <button
                           type="button"
-                          onClick={() => void clearFlashingPay()}
-                          className={UI.btnSoft}
+                          onClick={() => void saveFlashingPay()}
+                          className={UI.btnPrimary}
+                          disabled={
+                            Number(flashingUnits) <= 0 ||
+                            Number(flashingUnitPrice) <= 0
+                          }
                         >
-                          Clear
+                          Save
                         </button>
-                      )}
+
+                        {(job.earnings?.flashingPay?.amountCents ?? 0) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => void clearFlashingPay()}
+                            className={UI.btnSoft}
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               ) : (
                 <div className="w-full sm:w-auto">
@@ -1366,6 +1382,10 @@ export default function JobDetailPage() {
                     onClick={() => {
                       setSqft(String(job.pricing?.sqft ?? ""));
                       setRate((job.pricing?.ratePerSqFt as 31 | 35) ?? 31);
+
+                      // ✅ NEW: prefill flashing inputs from saved job data
+                      prefillFlashingInputs();
+
                       setEditingPricing(true);
                     }}
                     className="group w-full sm:min-w-[360px] rounded-md bg-white shadow-md ring-1 ring-black/5 px-4 py-3 text-left transition hover:bg-[var(--color-card-hover)]"
@@ -1393,10 +1413,33 @@ export default function JobDetailPage() {
                             <CountMoney cents={displayTotal} />
                           </div>
                           {hasFlashingPay && (
-                            <div className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation(); // IMPORTANT: don't trigger the Pricing card click
+                                prefillFlashingInputs();
+                                setFlashingModalOpen(true);
+                              }}
+                              className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100"
+                              title="Edit flashing pay"
+                            >
                               + <CountMoney cents={flashingSavedCents} /> &nbsp;
-                              flashing included
-                            </div>
+                              flashing included • Edit
+                            </button>
+                          )}
+                          {!hasFlashingPay && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                prefillFlashingInputs();
+                                setFlashingModalOpen(true);
+                              }}
+                              className="mt-2 inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-[var(--color-text)] ring-1 ring-black/10 hover:bg-[var(--color-card-hover)]"
+                              title="Add flashing pay"
+                            >
+                              + Add flashing pay
+                            </button>
                           )}
                         </div>
 
@@ -2156,6 +2199,105 @@ export default function JobDetailPage() {
                   className="rounded-sm bg-cyan-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700"
                 >
                   Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* ===== Flashing Pay Modal ===== */}
+        {flashingModalOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                  Flashing (C/J/L) Pay
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setFlashingModalOpen(false)}
+                  className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="text-xs text-[var(--color-muted)] mb-3">
+                Optional add-on that increases total job pay.
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                    Units
+                  </label>
+                  <input
+                    value={flashingUnits}
+                    onChange={(e) => setFlashingUnits(e.target.value)}
+                    type="number"
+                    min={0}
+                    step="1"
+                    className={UI.input}
+                    placeholder="1"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                    $ / unit
+                  </label>
+                  <input
+                    value={flashingUnitPrice}
+                    onChange={(e) => setFlashingUnitPrice(e.target.value)}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className={UI.input}
+                    placeholder="10.00"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-2 text-xs text-[var(--color-muted)]">
+                Preview: + <CountMoney cents={flashingAmountCentsPreview} />
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                {(job.earnings?.flashingPay?.amountCents ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await clearFlashingPay();
+                      setFlashingModalOpen(false);
+                    }}
+                    className={UI.btnSoft}
+                  >
+                    Remove
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setFlashingModalOpen(false)}
+                  className={UI.btnSoft}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await saveFlashingPay();
+                    setFlashingModalOpen(false);
+                  }}
+                  className={UI.btnPrimary}
+                  disabled={
+                    Number(flashingUnits) <= 0 || Number(flashingUnitPrice) <= 0
+                  }
+                >
+                  {(job.earnings?.flashingPay?.amountCents ?? 0) > 0
+                    ? "Update"
+                    : "Add"}
                 </button>
               </div>
             </div>
