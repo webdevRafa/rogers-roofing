@@ -1141,7 +1141,7 @@ export default function JobDetailPage() {
                 <button
                   type="button"
                   onClick={() => setWarrantyEditOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-sm bg-white/90 hover:bg-white transition px-3 py-2 text-xs font-semibold text-[var(--color-text)] shadow-sm ring-1 ring-black/10"
+                  className="inline-flex items-center gap-2 rounded-sm bg-white/90 hover:bg-white transition px-3 py-2 text-xs font-semibold text-[var(--color-text)] shadow-sm hover:shadow-md ring-1 ring-black/20"
                   title="Edit warranty details and notes"
                 >
                   Warranty
@@ -1151,7 +1151,7 @@ export default function JobDetailPage() {
                 <button
                   type="button"
                   onClick={() => setWarrantyModalOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-sm bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-xs font-semibold text-[var(--btn-text)] shadow-sm"
+                  className="inline-flex items-center gap-2 rounded-sm bg-white/90 hover:bg-white transition duration-300 ease-in-out px-3 py-2 text-xs font-semibold text-[var(--color-text)] ring-1 ring-black/20 shadow-sm hover:shadow-md"
                   title="Create printable report"
                 >
                   Create report
