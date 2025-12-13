@@ -113,29 +113,6 @@ export default function AdminLayout() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
-                {/* Quick Search (UI only here; wire later) */}
-                <button
-                  type="button"
-                  className="hidden sm:inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-white/90 hover:bg-white/20 transition"
-                  onClick={() => {
-                    // later: open global search modal
-                    alert("Hook this to a global search modal.");
-                  }}
-                >
-                  <Search className="h-4 w-4" />
-                  Search
-                </button>
-
-                {/* Primary CTA */}
-                <button
-                  type="button"
-                  onClick={primaryCta.onClick}
-                  className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-[var(--color-logo)] shadow-sm transition hover:-translate-y-[1px] hover:shadow-md"
-                >
-                  <Plus className="h-4 w-4" />
-                  {primaryCta.label}
-                </button>
-
                 {/* Logout */}
                 <button
                   onClick={handleLogout}
