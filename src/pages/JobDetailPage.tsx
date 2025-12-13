@@ -33,6 +33,7 @@ import { motion, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
 import { Pencil } from "lucide-react";
 import InvoiceCreateModal from "../components/InvoiceCreateModal";
+import WarrantyReportModal from "../components/WarrantyReportModal";
 
 import { db } from "../firebase/firebaseConfig";
 import type {
@@ -149,6 +150,8 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [warrantyModalOpen, setWarrantyModalOpen] = useState(false);
+
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [schedulePunchOpen, setSchedulePunchOpen] = useState(false);
@@ -1033,6 +1036,15 @@ export default function JobDetailPage() {
             <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
               {/* Status pill */}
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWarrantyModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-sm bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out px-3 py-2 text-xs font-semibold text-[var(--btn-text)] shadow-sm"
+                  title="Print warranty / 3rd party packet"
+                >
+                  Warranty / 3rd party
+                </button>
+
                 <span className="rounded-sm  bg-white px-3 py-1.5 text-sm uppercase tracking-wide text-[var(--color-muted)]">
                   Status:
                   <span
@@ -2523,6 +2535,21 @@ export default function JobDetailPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Warranty Modal */}
+        {warrantyModalOpen && job && (
+          <WarrantyReportModal
+            open={warrantyModalOpen}
+            onClose={() => setWarrantyModalOpen(false)}
+            job={job}
+            photos={photos}
+            totals={{
+              earnings: totals.earnings,
+              expenses: totals.expenses,
+              net: totals.net,
+            }}
+          />
         )}
 
         {/* Invoice Modal */}

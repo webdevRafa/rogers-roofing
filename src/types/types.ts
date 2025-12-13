@@ -14,6 +14,7 @@ export type CurrencyCode = "USD" | "CAD";
 export type ID = string;
 export type FSDate = Timestamp | Date | FieldValue | null;
 export type FirestoreTime = Timestamp | Date | FieldValue | null;
+
 // ---------- Address ----------
 export type Address = {
   /** Full display line, e.g. "123 Main St, San Antonio, TX 78205" */
@@ -87,6 +88,29 @@ export type FlashingPay = {
   amountCents: MoneyCents;
   /** Optional audit timestamp */
   updatedAt?: FirestoreTime;
+};
+
+export type WarrantyKind = "manufacturer" | "workmanship" | "thirdParty" | "none";
+
+export type WarrantyMeta = {
+  kind: WarrantyKind;
+
+  // Optional “program” info (GAF/OC/CertainTeed etc)
+  manufacturer?: string;          // "GAF", "Owens Corning", "CertainTeed"
+  programName?: string;           // "Golden Pledge", "Platinum", etc (free text)
+  coverageYears?: number;
+
+  // Registration / claim tracking
+  registeredAt?: FirestoreTime;
+  registrationId?: string;
+  claimId?: string;
+
+  // Who/where it was submitted through
+  submittedBy?: { userId?: ID; name?: string };
+  portalUrl?: string;
+
+  // Extra notes just for warranty packet context
+  notes?: string;
 };
 
 
@@ -328,6 +352,7 @@ export type Job = {
   feltCompletedAt?: FSDate;
   shinglesScheduledFor?: FSDate;
   shinglesCompletedAt?: FSDate;
+  warranty?: WarrantyMeta;
 
   earnings: Earnings;
   expenses: Expenses;
