@@ -306,6 +306,9 @@ export default function JobDetailPage() {
       },
     });
   }
+  useEffect(() => {
+    setWarrantyNotesDraft((job as any)?.warranty?.notes ?? "");
+  }, [job?.id]);
 
   useEffect(() => {
     const ref = collection(db, "employees");
@@ -376,6 +379,11 @@ export default function JobDetailPage() {
   });
 
   const [noteText, setNoteText] = useState("");
+  type NotesTab = "job" | "warranty";
+
+  const [notesTab, setNotesTab] = useState<NotesTab>("job");
+  const [warrantyNotesDraft, setWarrantyNotesDraft] = useState("");
+  const [savingWarrantyNotes, setSavingWarrantyNotes] = useState(false);
 
   // --- NEW: Photo upload (file + optional caption) ---
   const [uploading, setUploading] = useState(false);
@@ -502,6 +510,8 @@ export default function JobDetailPage() {
         }
         const data = snap.data();
         setJob(data);
+        setWarrantyNotesDraft((data as any)?.warranty?.notes ?? "");
+
         if (data.pricing) {
           setSqft(String(data.pricing.sqft ?? ""));
           setRate((data.pricing.ratePerSqFt as 31 | 35) ?? 31);
@@ -817,6 +827,53 @@ export default function JobDetailPage() {
     await saveJob(updated);
     setNoteText("");
     noteRef.current?.focus();
+  }
+  async function saveWarrantyNotes() {
+    if (!job) return;
+    setSavingWarrantyNotes(true);
+
+    const trimmed = warrantyNotesDraft.trim();
+
+    // Optimistic UI
+    setJob((prev) => {
+      if (!prev) return prev;
+      const nextWarranty = { ...(prev as any).warranty };
+      if (trimmed) nextWarranty.notes = trimmed;
+      else delete nextWarranty.notes;
+      return { ...prev, warranty: nextWarranty } as any;
+    });
+
+    try {
+      // IMPORTANT: use a raw ref so we can use deleteField() safely
+      const rawRef = doc(collection(db, "jobs"), job.id);
+
+      await setDoc(
+        rawRef,
+        {
+          warranty: {
+            ...((job as any).warranty ?? {}),
+            notes: trimmed ? trimmed : deleteField(),
+          },
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      // Optional: re-fetch canonical doc (same pattern as saveJob)
+      const typedRef = doc(collection(db, "jobs"), job.id).withConverter(
+        jobConverter
+      );
+      const snap = await getDoc(typedRef);
+      if (snap.exists()) {
+        const fresh = snap.data();
+        setJob(fresh);
+        setWarrantyNotesDraft((fresh as any)?.warranty?.notes ?? "");
+      }
+    } catch (e) {
+      console.error("Failed to save warranty notes", e);
+    } finally {
+      setSavingWarrantyNotes(false);
+    }
   }
 
   // ------- NEW: Photo upload (Storage -> CF sharp -> Firestore) -------
@@ -1737,65 +1794,144 @@ export default function JobDetailPage() {
           </MotionCard>
 
           {/* Notes */}
-          <MotionCard title="Notes" delay={0.2}>
-            <form
-              className="grid gap-2 max-w-full sm:grid-cols-[minmax(0,1fr)_110px]"
-              onSubmit={(e) => {
-                e.preventDefault();
-                addNote();
-              }}
-            >
-              <input
-                ref={noteRef}
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="Add a note"
-                className={UI.input}
-              />
+          <MotionCard
+            title="Notes"
+            delay={0.2}
+            right={
+              <div className="inline-flex rounded-full border border-[var(--color-border)] bg-white/60 p-1">
+                <button
+                  type="button"
+                  onClick={() => setNotesTab("job")}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                    notesTab === "job"
+                      ? "bg-[var(--color-brown)] text-white"
+                      : "text-[var(--color-text)] hover:bg-white/60"
+                  }`}
+                >
+                  Job
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotesTab("warranty")}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                    notesTab === "warranty"
+                      ? "bg-[var(--color-brown)] text-white"
+                      : "text-[var(--color-text)] hover:bg-white/60"
+                  }`}
+                >
+                  Warranty
+                </button>
+              </div>
+            }
+          >
+            {/* TAB CONTENT */}
+            {notesTab === "job" ? (
+              <>
+                {/* Job notes input */}
+                <form
+                  className="grid gap-2 max-w-full sm:grid-cols-[minmax(0,1fr)_110px]"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    addNote();
+                  }}
+                >
+                  <input
+                    ref={noteRef}
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="Add a note"
+                    className={UI.input}
+                  />
 
-              <button
-                className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}
-              >
-                Add
-              </button>
-            </form>
-            <div
-              className={`mt-3 ${LIST_MAX_H} overflow-y-auto overflow-x-hidden pr-1`}
-            >
-              <ul>
-                {(job?.notes ?? [])
-                  .slice()
-                  .reverse()
-                  .map((n) => (
-                    <motion.li
-                      key={n.id}
-                      className="mb-2 flex items-start gap-3 rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
-                      variants={item}
+                  <button
+                    className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}
+                  >
+                    Add
+                  </button>
+                </form>
+
+                {/* Job notes list */}
+                <div
+                  className={`mt-3 ${LIST_MAX_H} overflow-y-auto overflow-x-hidden pr-1`}
+                >
+                  <ul>
+                    {(job?.notes ?? [])
+                      .slice()
+                      .reverse()
+                      .map((n) => (
+                        <motion.li
+                          key={n.id}
+                          className="mb-2 flex items-start gap-3 rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                          variants={item}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words break-all mr-3">
+                              {n.text}
+                            </p>
+                            <div className="mt-1 text-xs text-[var(--color-muted)]">
+                              {n.createdAt ? fmtDate(n.createdAt) : ""}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeNote(n.id)}
+                            className="shrink-0 rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
+                            title="Delete"
+                          >
+                            Delete
+                          </button>
+                        </motion.li>
+                      ))}
+
+                    {(job?.notes ?? []).length === 0 && (
+                      <li className="p-3 text-sm text-[var(--color-muted)]">
+                        No notes yet.
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Warranty notes editor */}
+                <div className="grid gap-2">
+                  <textarea
+                    value={warrantyNotesDraft}
+                    onChange={(e) => setWarrantyNotesDraft(e.target.value)}
+                    placeholder="Add warranty notes (only shown on External warranty report)…"
+                    className={`${UI.input} min-h-[120px] resize-y`}
+                  />
+
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setWarrantyNotesDraft(
+                          (job as any)?.warranty?.notes ?? ""
+                        )
+                      }
+                      className={UI.btnPrimary}
+                      disabled={savingWarrantyNotes}
                     >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words break-all mr-3">
-                          {n.text}
-                        </p>
-                        <div className="mt-1 text-xs text-[var(--color-muted)]">
-                          {n.createdAt ? fmtDate(n.createdAt) : ""}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => removeNote(n.id)}
-                        className="shrink-0 rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]"
-                        title="Delete"
-                      >
-                        Delete
-                      </button>
-                    </motion.li>
-                  ))}
-                {(job?.notes ?? []).length === 0 && (
-                  <li className="p-3 text-sm text-[var(--color-muted)]">
-                    No notes yet.
-                  </li>
-                )}
-              </ul>
-            </div>
+                      Reset
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={saveWarrantyNotes}
+                      className={UI.btnPrimary}
+                      disabled={savingWarrantyNotes}
+                    >
+                      {savingWarrantyNotes ? "Saving…" : "Save warranty notes"}
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-[var(--color-muted)]">
+                    These notes are separate from Job notes and can be included
+                    in the External Warranty / 3rd party report.
+                  </div>
+                </div>
+              </>
+            )}
           </MotionCard>
 
           {/* Photos — fixed: full-width card inside the parent grid */}
@@ -2580,22 +2716,28 @@ function MotionCard({
   title,
   children,
   delay = 0,
+  right,
 }: {
   title: string;
   children: React.ReactNode;
   delay?: number;
+  right?: React.ReactNode;
 }) {
   return (
     <motion.section
       className="w-full max-w-full justify-self-stretch rounded-2xl bg-white/80 backdrop-blur-md shadow-sm ring-1 ring-black/5 hover:shadow-md transition duration-300 ease-out"
       {...fadeUp(delay)}
     >
-      <div className="flex items-center justify-between px-4 sm:px-5 pt-4">
+      <div className="flex items-center justify-between px-4 sm:px-5 pt-4 gap-3">
         <h2 className="text-lg font-semibold tracking-tight text-[var(--color-text)]">
           {title}
         </h2>
+
+        {right ? <div className="shrink-0">{right}</div> : null}
       </div>
+
       <div className="mt-3 h-px w-full bg-black/5" />
+
       <div className="px-4 sm:px-5 pb-5 pt-4 flex flex-col gap-3">
         {children}
       </div>

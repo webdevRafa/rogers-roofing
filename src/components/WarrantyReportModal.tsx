@@ -731,18 +731,6 @@ export default function WarrantyReportModal({
                       </div>
                     ) : null}
 
-                    {/* Warranty notes */}
-                    {warranty?.notes ? (
-                      <div className="rounded-xl border border-black/10 bg-white p-3 sm:col-span-2">
-                        <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                          Warranty notes
-                        </div>
-                        <div className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--color-text)]">
-                          {warranty.notes}
-                        </div>
-                      </div>
-                    ) : null}
-
                     {/* Attachments */}
                     {warranty?.attachments &&
                     warranty.attachments.length > 0 ? (
@@ -818,35 +806,56 @@ export default function WarrantyReportModal({
             </>
           )}
 
-          {/* Notes (job notes – still useful in both modes) */}
-          <div className="mt-6">
-            <div className="text-sm font-semibold text-[var(--color-text)]">
-              Notes
-            </div>
-            <div className="mt-2 space-y-2">
-              {(job.notes ?? []).length === 0 ? (
-                <div className="text-sm text-[var(--color-muted)]">
-                  No notes.
-                </div>
-              ) : (
-                (job.notes ?? []).map((n) => (
-                  <div
-                    key={n.id}
-                    className="rounded-xl border border-black/10 bg-white p-3"
-                  >
-                    <div className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words">
-                      {n.text || ""}
-                    </div>
-                    {n.createdAt ? (
-                      <div className="mt-1 text-xs text-[var(--color-muted)]">
-                        {fmtMaybeDate(n.createdAt)}
-                      </div>
-                    ) : null}
+          {/* Notes */}
+          {mode === "internal" ? (
+            <div className="mt-6">
+              <div className="text-sm font-semibold text-[var(--color-text)]">
+                Notes
+              </div>
+              <div className="mt-2 space-y-2">
+                {(job.notes ?? []).length === 0 ? (
+                  <div className="text-sm text-[var(--color-muted)]">
+                    No notes.
                   </div>
-                ))
-              )}
+                ) : (
+                  (job.notes ?? []).map((n) => (
+                    <div
+                      key={n.id}
+                      className="rounded-xl border border-black/10 bg-white p-3"
+                    >
+                      <div className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words">
+                        {n.text || ""}
+                      </div>
+                      {n.createdAt ? (
+                        <div className="mt-1 text-xs text-[var(--color-muted)]">
+                          {fmtMaybeDate(n.createdAt)}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-6">
+              <div className="text-sm font-semibold text-[var(--color-text)]">
+                Warranty notes
+              </div>
+              <div className="mt-2">
+                {warranty?.notes ? (
+                  <div className="rounded-xl border border-black/10 bg-white p-3">
+                    <div className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words">
+                      {warranty.notes}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-[var(--color-muted)]">
+                    No warranty notes.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Photos */}
           <div className="mt-6">
