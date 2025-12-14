@@ -27,6 +27,7 @@ import {
   Image as ImageIcon,
   CheckCircle2,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 
 import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -185,6 +186,11 @@ export default function JobDetailPage() {
   // Delete job confirmation modal
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deletingJob, setDeletingJob] = useState(false);
+
+  const [payoutModalOpen, setPayoutModalOpen] = useState(false);
+  const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
 
   // Felt / shingles scheduling controls
   const [feltScheduleEditing, setFeltScheduleEditing] = useState(false);
@@ -1042,6 +1048,41 @@ export default function JobDetailPage() {
     noteRef.current?.focus();
   }
 
+  async function handleAddPayoutSubmit() {
+    await addPayout();
+    setPayoutModalOpen(false);
+    setToast({
+      status: "success",
+      title: "Payout added",
+      message: "Payout saved successfully.",
+    });
+  }
+
+  async function handleAddMaterialSubmit() {
+    await addMaterial();
+    setMaterialModalOpen(false);
+    setToast({
+      status: "success",
+      title: "Material added",
+      message: "Material expense saved successfully.",
+    });
+  }
+
+  async function handleAddNoteSubmit() {
+    await addNote();
+    setNoteModalOpen(false);
+    setToast({
+      status: "success",
+      title: "Note added",
+      message: "Note saved successfully.",
+    });
+  }
+
+  async function handleUploadPhotoSubmit() {
+    await uploadPhoto();
+    setPhotoModalOpen(false); // uploadPhoto already sets toast success/error
+  }
+
   // ------- NEW: Photo upload (Storage -> CF sharp -> Firestore) -------
   async function uploadPhoto() {
     if (!job || !photoFile) return;
@@ -1744,116 +1785,20 @@ export default function JobDetailPage() {
         {/* Quick edit / add panel */}
         <div className="mt-8 grid grid-cols-1 max-w-full gap-6 lg:grid-cols-2">
           {/* Payouts */}
-          <MotionCard title="Payouts" delay={0.1}>
-            {/* Tabs */}
-
-            <div className="mb-3 inline-flex max-w-full flex-wrap rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
-              {(["shingles", "felt", "technician"] as PayoutTab[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setPayoutTab(t)}
-                  className={
-                    "px-3 py-1 rounded-md capitalize " +
-                    (payoutTab === t
-                      ? "bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)]"
-                      : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
-                  }
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {/* Form for ACTIVE tab only */}
-            <form
-              className={
-                payoutTab === "technician"
-                  ? "grid gap-2 sm:grid-cols-[1fr_160px_auto]"
-                  : "grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]"
-              }
-              onSubmit={(e) => {
-                e.preventDefault();
-                addPayout();
-              }}
-            >
-              <select
-                ref={payeeRef as any}
-                value={activePayout.employeeId ?? ""}
-                onChange={(e) => {
-                  const id = e.target.value || undefined;
-                  const emp = employees.find((x) => x.id === id);
-                  setActivePayout({
-                    employeeId: id,
-                    payeeNickname: emp?.name ?? "",
-                  });
-                }}
-                className={`${UI.select}`}
-              >
-                <option value="">
-                  {activeEmployees.length
-                    ? "Select active employee…"
-                    : employees.length
-                    ? "No active employees (toggle status on Employees page)."
-                    : "No employees yet (add on Employees page)."}
-                </option>
-                {activeEmployees.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
-                ))}
-              </select>
-
-              {payoutTab === "technician" ? (
-                <input
-                  value={activePayout.amount}
-                  onChange={(e) => setActivePayout({ amount: e.target.value })}
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="Amount $"
-                  className={`${UI.input}`}
-                />
-              ) : (
-                <>
-                  <input
-                    value={activePayout.sqft}
-                    onChange={(e) => setActivePayout({ sqft: e.target.value })}
-                    type="number"
-                    min={0}
-                    step="1"
-                    placeholder="Sq"
-                    className={`${UI.input}`}
-                  />
-                  <input
-                    value={activePayout.rate}
-                    onChange={(e) => setActivePayout({ rate: e.target.value })}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="Rate $/sq.ft"
-                    className={`${UI.input}`}
-                  />
-                </>
-              )}
-
+          <MotionCard
+            title="Payouts"
+            delay={0.1}
+            right={
               <button
-                className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}
+                type="button"
+                onClick={() => setPayoutModalOpen(true)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+                title="Add payout"
               >
-                Add
+                <Plus className="h-4 w-4" />
               </button>
-            </form>
-
-            {/* Live preview */}
-            <div className="mt-2 text-xs text-[var(--color-muted)]">
-              Computed payout ({payoutTab}):{" "}
-              <span className="font-medium text-[var(--color-text)]">
-                ${(payoutAmountCents / 100).toFixed(2)}
-              </span>{" "}
-              ({activePayout.sqft || 0} sq @ ${activePayout.rate || 0}
-              /sq.ft)
-            </div>
-
+            }
+          >
             {/* Existing list */}
             <div className={`mt-3 ${LIST_MAX_H} overflow-y-auto pr-1`}>
               <ul className="rounded-lg bg-white/70">
@@ -1909,69 +1854,20 @@ export default function JobDetailPage() {
           </MotionCard>
 
           {/* Materials */}
-          <MotionCard title="Materials" delay={0.15}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                addMaterial();
-              }}
-              className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto]  sm:grid-cols-2"
-            >
-              <select
-                ref={materialRef}
-                value={material.category}
-                onChange={(e) =>
-                  setMaterial((s) => ({
-                    ...s,
-                    category: e.target.value as MaterialCategory,
-                  }))
-                }
-                className={`${UI.select}`}
-                title="Material category"
-              >
-                <option value="coilNails">Coil Nails (per box)</option>
-                <option value="tinCaps">Tin Caps (per box)</option>
-                <option value="plasticJacks">Plastic Jacks (per unit)</option>
-                <option value="np1Seal">NP1 Seal (per unit)</option>
-                <option value="counterFlashing">
-                  Flashing — Counter (per unit)
-                </option>
-                <option value="jFlashing">Flashing — J/L (per unit)</option>
-                <option value="rainDiverter">
-                  Flashing — Rain Diverter (per unit)
-                </option>
-              </select>
-
-              <input
-                value={material.unitPrice}
-                onChange={(e) =>
-                  setMaterial((s) => ({ ...s, unitPrice: e.target.value }))
-                }
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="Unit price $"
-                className={`${UI.input}`}
-              />
-
-              <input
-                value={material.quantity}
-                onChange={(e) =>
-                  setMaterial((s) => ({ ...s, quantity: e.target.value }))
-                }
-                type="number"
-                min={0}
-                step="1"
-                placeholder="Qty"
-                className={`${UI.input}`}
-              />
-
+          <MotionCard
+            title="Materials"
+            delay={0.15}
+            right={
               <button
-                className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0 sm:col-span-2 md:col-auto`}
+                type="button"
+                onClick={() => setMaterialModalOpen(true)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+                title="Add payout"
               >
-                Add
+                <Plus className="h-4 w-4" />
               </button>
-            </form>
+            }
+          >
             <div className={`mt-3 ${LIST_MAX_H} overflow-y-auto pr-1`}>
               <ul className="rounded-lg mt-0">
                 {(job?.expenses?.materials ?? []).map((m) => (
@@ -2029,33 +1925,23 @@ export default function JobDetailPage() {
           </MotionCard>
 
           {/* Notes */}
-          <MotionCard title="Notes" delay={0.2}>
+          <MotionCard
+            title="Notes"
+            delay={0.2}
+            right={
+              <button
+                type="button"
+                onClick={() => setNoteModalOpen(true)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+                title="Add payout"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            }
+          >
             {/* TAB CONTENT */}
 
             <>
-              {/* Job notes input */}
-              <form
-                className="grid gap-2 max-w-full sm:grid-cols-[minmax(0,1fr)_110px]"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  addNote();
-                }}
-              >
-                <input
-                  ref={noteRef}
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Add a note"
-                  className={UI.input}
-                />
-
-                <button
-                  className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}
-                >
-                  Add
-                </button>
-              </form>
-
               {/* Job notes list */}
               <div
                 className={`mt-3 ${LIST_MAX_H} overflow-y-auto overflow-x-hidden pr-1`}
@@ -2099,106 +1985,20 @@ export default function JobDetailPage() {
           </MotionCard>
 
           {/* Photos — fixed: full-width card inside the parent grid */}
-          <MotionCard title="Photos" delay={0.25}>
-            {/* Upload panel */}
-            <form
-              className="mb-4 flex w-full max-w-full flex-col gap-3 sm:flex-row sm:items-stretch"
-              onSubmit={(e) => {
-                e.preventDefault();
-                uploadPhoto();
-              }}
-            >
-              {/* CAMERA ONLY input */}
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment" // forces back camera
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setPhotoFile(file);
-                }}
-                className="sr-only"
-              />
-
-              {/* GALLERY ONLY input */}
-              <input
-                ref={galleryInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setPhotoFile(file);
-                }}
-                className="sr-only"
-              />
-
-              {/* Left side: pick photo + filename + caption */}
-              <div className="flex-1 space-y-2">
-                {/* Main CTA button – opens camera / gallery */}
-                <div className="flex flex-wrap gap-2">
-                  {/* Take Photo Button */}
-                  <button
-                    type="button"
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
-                  >
-                    <Camera className="h-4 w-4 text-[var(--color-primary)]" />
-                    <span>Camera</span>
-                  </button>
-
-                  {/* Choose from Gallery Button */}
-                  <button
-                    type="button"
-                    onClick={() => galleryInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
-                  >
-                    <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
-                    <span>Gallery</span>
-                  </button>
-                </div>
-
-                {/* File name / helper text */}
-                <div className="text-xs text-[var(--color-muted)] truncate max-w-full">
-                  {photoFile
-                    ? `Selected: ${photoFile.name}`
-                    : "You can snap a picture on your phone or select one from your gallery."}
-                </div>
-                {/* 🔍 Preview of selected image */}
-                {previewUrl && (
-                  <div>
-                    <div className="mb-1 text-xs text-[var(--color-muted)]">
-                      Preview
-                    </div>
-                    <img
-                      src={previewUrl}
-                      alt="Selected preview"
-                      className="h-32 w-full rounded-xl object-cover ring-1 ring-black/5 transition duration-300 group-hover:scale-[1.02]"
-                    />
-                  </div>
-                )}
-
-                {/* Caption input */}
-                <input
-                  value={photoCaption}
-                  onChange={(e) => setPhotoCaption(e.target.value)}
-                  placeholder="Optional caption (e.g. 'Front elevation', 'Before', 'After')"
-                  className={`${UI.input}`}
-                />
-              </div>
-
-              {/* Right side: Upload button */}
-              <div className="sm:w-32 flex items-end">
-                <button
-                  type="submit"
-                  disabled={uploading || !photoFile}
-                  className={`${UI.btnPrimary}`}
-                >
-                  {uploading ? "Uploading…" : "Upload"}
-                </button>
-              </div>
-            </form>
-
+          <MotionCard
+            title="Photos"
+            delay={0.25}
+            right={
+              <button
+                type="button"
+                onClick={() => setPhotoModalOpen(true)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+                title="Add payout"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            }
+          >
             {/* Thumbnails grid */}
             <div className={`${LIST_MAX_H} overflow-y-auto pr-1`}>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -2836,6 +2636,311 @@ export default function JobDetailPage() {
             </div>
           </div>
         )}
+        <ModalShell
+          open={payoutModalOpen}
+          title="Add payout"
+          onClose={() => setPayoutModalOpen(false)}
+        >
+          {/* Tabs */}
+          <div className="mb-3 inline-flex max-w-full flex-wrap rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 text-xs">
+            {(["shingles", "felt", "technician"] as PayoutTab[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setPayoutTab(t)}
+                className={
+                  "px-3 py-1 rounded-md capitalize " +
+                  (payoutTab === t
+                    ? "bg-cyan-800 hover:bg-cyan-700 transition duration-300 ease-in-out text-[var(--btn-text)]"
+                    : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
+                }
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <form
+            className={
+              payoutTab === "technician"
+                ? "grid gap-2 sm:grid-cols-[1fr_160px_auto]"
+                : "grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]"
+            }
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await handleAddPayoutSubmit();
+            }}
+          >
+            <select
+              ref={payeeRef as any}
+              value={activePayout.employeeId ?? ""}
+              onChange={(e) => {
+                const id = e.target.value || undefined;
+                const emp = employees.find((x) => x.id === id);
+                setActivePayout({
+                  employeeId: id,
+                  payeeNickname: emp?.name ?? "",
+                });
+              }}
+              className={UI.select}
+            >
+              <option value="">
+                {activeEmployees.length
+                  ? "Select active employee…"
+                  : employees.length
+                  ? "No active employees (toggle status on Employees page)."
+                  : "No employees yet (add on Employees page)."}
+              </option>
+              {activeEmployees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+
+            {payoutTab === "technician" ? (
+              <input
+                value={activePayout.amount}
+                onChange={(e) => setActivePayout({ amount: e.target.value })}
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Amount $"
+                className={UI.input}
+              />
+            ) : (
+              <>
+                <input
+                  value={activePayout.sqft}
+                  onChange={(e) => setActivePayout({ sqft: e.target.value })}
+                  type="number"
+                  min={0}
+                  step="1"
+                  placeholder="Sq"
+                  className={UI.input}
+                />
+                <input
+                  value={activePayout.rate}
+                  onChange={(e) => setActivePayout({ rate: e.target.value })}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="Rate $/sq.ft"
+                  className={UI.input}
+                />
+              </>
+            )}
+
+            <button className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}>
+              Add
+            </button>
+          </form>
+
+          <div className="mt-2 text-xs text-[var(--color-muted)]">
+            Computed payout ({payoutTab}):{" "}
+            <span className="font-medium text-[var(--color-text)]">
+              ${(payoutAmountCents / 100).toFixed(2)}
+            </span>
+            {payoutTab !== "technician" ? (
+              <span className="ml-2 opacity-70">
+                ({activePayout.sqft || 0} sq @ ${activePayout.rate || 0}/sq.ft)
+              </span>
+            ) : null}
+          </div>
+        </ModalShell>
+        <ModalShell
+          open={materialModalOpen}
+          title="Add material"
+          onClose={() => setMaterialModalOpen(false)}
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await handleAddMaterialSubmit();
+            }}
+            className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto] sm:grid-cols-2"
+          >
+            <select
+              ref={materialRef}
+              value={material.category}
+              onChange={(e) =>
+                setMaterial((s) => ({
+                  ...s,
+                  category: e.target.value as MaterialCategory,
+                }))
+              }
+              className={UI.select}
+              title="Material category"
+            >
+              <option value="coilNails">Coil Nails (per box)</option>
+              <option value="tinCaps">Tin Caps (per box)</option>
+              <option value="plasticJacks">Plastic Jacks (per unit)</option>
+              <option value="np1Seal">NP1 Seal (per unit)</option>
+              <option value="counterFlashing">
+                Flashing — Counter (per unit)
+              </option>
+              <option value="jFlashing">Flashing — J/L (per unit)</option>
+              <option value="rainDiverter">
+                Flashing — Rain Diverter (per unit)
+              </option>
+            </select>
+
+            <input
+              value={material.unitPrice}
+              onChange={(e) =>
+                setMaterial((s) => ({ ...s, unitPrice: e.target.value }))
+              }
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="Unit price $"
+              className={UI.input}
+            />
+
+            <input
+              value={material.quantity}
+              onChange={(e) =>
+                setMaterial((s) => ({ ...s, quantity: e.target.value }))
+              }
+              type="number"
+              min={0}
+              step="1"
+              placeholder="Qty"
+              className={UI.input}
+            />
+
+            <button
+              className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0 sm:col-span-2 md:col-auto`}
+            >
+              Add
+            </button>
+          </form>
+        </ModalShell>
+        <ModalShell
+          open={noteModalOpen}
+          title="Add note"
+          onClose={() => setNoteModalOpen(false)}
+        >
+          <form
+            className="grid gap-2 max-w-full sm:grid-cols-[minmax(0,1fr)_110px]"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await handleAddNoteSubmit();
+            }}
+          >
+            <input
+              ref={noteRef}
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="Add a note"
+              className={UI.input}
+            />
+            <button className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}>
+              Add
+            </button>
+          </form>
+        </ModalShell>
+
+        <ModalShell
+          open={photoModalOpen}
+          title="Upload photo"
+          onClose={() => {
+            setPhotoModalOpen(false);
+            setPhotoFile(null);
+            setPhotoCaption("");
+          }}
+        >
+          <form
+            className="flex w-full max-w-full flex-col gap-3 sm:flex-row sm:items-stretch"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await handleUploadPhotoSubmit();
+            }}
+          >
+            {/* CAMERA ONLY input */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setPhotoFile(file);
+              }}
+              className="sr-only"
+            />
+
+            {/* GALLERY ONLY input */}
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setPhotoFile(file);
+              }}
+              className="sr-only"
+            />
+
+            <div className="flex-1 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
+                >
+                  <Camera className="h-4 w-4 text-[var(--color-primary)]" />
+                  <span>Camera</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
+                >
+                  <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
+                  <span>Gallery</span>
+                </button>
+              </div>
+
+              <div className="text-xs text-[var(--color-muted)] truncate max-w-full">
+                {photoFile
+                  ? `Selected: ${photoFile.name}`
+                  : "Snap a picture or choose one from your gallery."}
+              </div>
+
+              {previewUrl && (
+                <div>
+                  <div className="mb-1 text-xs text-[var(--color-muted)]">
+                    Preview
+                  </div>
+                  <img
+                    src={previewUrl}
+                    alt="Selected preview"
+                    className="h-32 w-full rounded-xl object-cover ring-1 ring-black/5"
+                  />
+                </div>
+              )}
+
+              <input
+                value={photoCaption}
+                onChange={(e) => setPhotoCaption(e.target.value)}
+                placeholder="Optional caption"
+                className={UI.input}
+              />
+            </div>
+
+            <div className="sm:w-32 flex items-end">
+              <button
+                type="submit"
+                disabled={uploading || !photoFile}
+                className={UI.btnPrimary}
+              >
+                {uploading ? "Uploading…" : "Upload"}
+              </button>
+            </div>
+          </form>
+        </ModalShell>
 
         {/* Warranty Modal */}
         {warrantyModalOpen && job && (
@@ -2912,5 +3017,41 @@ function MotionCard({
         {children}
       </div>
     </motion.section>
+  );
+}
+
+function ModalShell({
+  open,
+  title,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-lg rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {children}
+      </div>
+    </div>
   );
 }
