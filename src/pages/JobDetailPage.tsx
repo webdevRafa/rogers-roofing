@@ -2663,40 +2663,46 @@ export default function JobDetailPage() {
           <form
             className={
               payoutTab === "technician"
-                ? "grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_110px] items-stretch"
-                : "grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_140px_110px] items-stretch"
+                ? "grid w-full gap-2 sm:grid-cols-[minmax(0,1fr)_160px_110px] items-stretch"
+                : "grid w-full gap-2 sm:grid-cols-[120px_140px_110px] items-stretch"
             }
             onSubmit={async (e) => {
               e.preventDefault();
               await handleAddPayoutSubmit();
             }}
           >
-            <select
-              ref={payeeRef as any}
-              value={activePayout.employeeId ?? ""}
-              onChange={(e) => {
-                const id = e.target.value || undefined;
-                const emp = employees.find((x) => x.id === id);
-                setActivePayout({
-                  employeeId: id,
-                  payeeNickname: emp?.name ?? "",
-                });
-              }}
-              className={UI.select}
-            >
-              <option value="">
-                {activeEmployees.length
-                  ? "Select active employee…"
-                  : employees.length
-                  ? "No active employees (toggle status on Employees page)."
-                  : "No employees yet (add on Employees page)."}
-              </option>
-              {activeEmployees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
+            <div className="sm:col-span-full">
+              <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                Employee
+              </label>
+
+              <select
+                ref={payeeRef as any}
+                value={activePayout.employeeId ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value || undefined;
+                  const emp = employees.find((x) => x.id === id);
+                  setActivePayout({
+                    employeeId: id,
+                    payeeNickname: emp?.name ?? "",
+                  });
+                }}
+                className={`${UI.select} sm:col-span-full`}
+              >
+                <option value="">
+                  {activeEmployees.length
+                    ? "Select active employee…"
+                    : employees.length
+                    ? "No active employees (toggle status on Employees page)."
+                    : "No employees yet (add on Employees page)."}
                 </option>
-              ))}
-            </select>
+                {activeEmployees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {payoutTab === "technician" ? (
               <input
