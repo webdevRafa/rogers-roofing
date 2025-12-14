@@ -856,6 +856,7 @@ export default function EmployeeDetailPage() {
       {stubToView && (
         <PayoutStubViewerModal
           stub={stubToView}
+          employeeNameOverride={employee?.name}
           onClose={() => setViewStubId(null)}
         />
       )}

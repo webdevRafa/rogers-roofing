@@ -10,6 +10,7 @@ import logo from "../assets/rogers-roofing.webp";
 export type PayoutStubViewerModalProps = {
   stub: PayoutStubDoc;
   onClose: () => void;
+  employeeNameOverride?: string;
 };
 
 // Simple money formatter
@@ -94,6 +95,7 @@ function normalizeEmployeeAddress(
 export function PayoutStubViewerModal({
   stub,
   onClose,
+  employeeNameOverride,
 }: PayoutStubViewerModalProps) {
   // In browsers, render the stub into <body> via a portal (matches GlobalPayoutStubModal)
   if (typeof document === "undefined") return null;
@@ -105,7 +107,7 @@ export function PayoutStubViewerModal({
       : (stub.lines ?? []).reduce((sum, l) => sum + (l.amountCents ?? 0), 0);
 
   const content = (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-3 print:static print:bg-transparent print:p-0">
+    <div className="paystub-print fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-3 print:static print:bg-transparent print:p-0">
       {/* Click-away overlay (not on print) */}
       <button
         type="button"
@@ -115,40 +117,75 @@ export function PayoutStubViewerModal({
       />
 
       {/* Modal card */}
-      <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-xl print:max-w-none print:rounded-none print:shadow-none">
+      <div className="paystub-print-inner relative w-full max-w-4xl rounded-2xl bg-white shadow-xl print:max-w-none print:rounded-none print:shadow-none">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5 print:border-0 print:px-0 print:py-0">
-          <div className="flex items-start gap-4">
-            <img
-              src={logo}
-              alt="Company logo"
-              className="h-10 w-10 rounded-md object-cover print:hidden"
-            />
-            <div>
-              <div className="text-xs text-gray-500">
-                Pay stub • {stub.number || stub.id}
+          <div>
+            {/* Brand header (match GlobalPayoutStubModal) */}
+            <div className="flex gap-2 items-center">
+              <img src={logo} className="max-w-[100px]" alt="" />
+              <div>
+                <h2 className="text-2xl font-semibold">
+                  Roger&apos;s Roofing &amp; Contracting LLC
+                </h2>
+                <h1>3618 Angus Crossing</h1>
+                <p className="mt-0 text-xs">San Antonio, Texas 75245</p>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                {stub.employeeNameSnapshot || "Employee"}
-              </h2>
+            </div>
 
-              <div className="mt-1 text-[12px] text-gray-600">
+            {/* Stub meta (keep it, but make it subtle + non-print if you want) */}
+            <div className="mt-2 text-xs text-gray-500 print:hidden">
+              Pay stub • {stub.number || stub.id}
+            </div>
+
+            {/* Employee section (same placement concept as Global) */}
+            <h1 className="mt-3 mb-0 text-lg">
+              <span className="font-medium">
+                {employeeNameOverride?.trim() ||
+                  stub.employeeNameSnapshot ||
+                  "Employee"}
+              </span>
+            </h1>
+
+            {/* Contractor-only audit line (never print) */}
+            {employeeNameOverride &&
+              stub.employeeNameSnapshot &&
+              employeeNameOverride.trim() !== stub.employeeNameSnapshot && (
+                <div className="mt-0.5 text-[11px] text-gray-500 print:hidden">
+                  Name on stub: {stub.employeeNameSnapshot}
+                </div>
+              )}
+
+            {/* Address under employee (same as Global style) */}
+            {empAddr && (
+              <>
+                {(empAddr.fullLine || empAddr.line1) && (
+                  <h1 className="mt-[-3px] text-md">
+                    {empAddr.fullLine || empAddr.line1}
+                  </h1>
+                )}
+
+                {(empAddr.city || empAddr.state || empAddr.zip) && (
+                  <p className="text-xs">
+                    {[empAddr.city, empAddr.state, empAddr.zip]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* Dates (keep, but hide Created line in print if you want) */}
+            <div className="mt-2 text-[12px] text-gray-600">
+              <div className="print:hidden">
                 <span className="font-medium">Created:</span>{" "}
                 {fmtDate(stub.createdAt)}
-                {stub.paidAt && (
-                  <>
-                    {" "}
-                    • <span className="font-medium">Paid:</span>{" "}
-                    {fmtDate(stub.paidAt)}
-                  </>
-                )}
               </div>
-
-              {empAddr?.fullLine && (
-                <div className="mt-1 text-[12px] text-gray-600">
-                  <span className="font-medium">Employee address:</span>{" "}
-                  {empAddr.fullLine}
-                </div>
+              {stub.paidAt && (
+                <>
+                  {" "}
+                  <span className="text-xs">Paid:</span> {fmtDate(stub.paidAt)}
+                </>
               )}
             </div>
           </div>
@@ -157,7 +194,7 @@ export function PayoutStubViewerModal({
             <button
               type="button"
               onClick={() => window.print()}
-              className="rounded-md border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+              className="rounded-md border border-gray-300 px-3 py-1 text-[11px] text-gray-700 hover:bg-gray-100 print:hidden"
             >
               Print / Save PDF
             </button>
@@ -165,7 +202,7 @@ export function PayoutStubViewerModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+              className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-100 print:hidden"
             >
               Close
             </button>
@@ -173,7 +210,7 @@ export function PayoutStubViewerModal({
         </div>
 
         {/* Table */}
-        <div className="px-6 py-5 print:px-0 print:py-0">
+        <div className="px-6 py-5 print:px-0 print:py-0 print:mt-5">
           <div className="overflow-hidden rounded-xl border border-gray-100 print:border-0">
             <table className="min-w-full">
               <thead className="bg-gray-50 print:bg-transparent">
@@ -260,11 +297,6 @@ export function PayoutStubViewerModal({
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Footer note (print-safe) */}
-          <div className="mt-6 text-[11px] text-gray-500 print:mt-3">
-            Generated from saved pay stub history.
           </div>
         </div>
       </div>
