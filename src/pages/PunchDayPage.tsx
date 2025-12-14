@@ -202,10 +202,6 @@ export default function PunchDayPage() {
       <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
         <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 py-10 md:flex-row md:items-center md:justify-between md:px-0">
           <div>
-            <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white/70">
-              <CalendarDays className="h-4 w-4" />
-              <span>Punch schedule</span>
-            </p>
             <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">
               Schedule for {displayDate}
             </h1>
