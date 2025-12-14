@@ -172,7 +172,7 @@ export default function DashboardPage() {
   const [payouts, setPayouts] = useState<PayoutDoc[]>([]);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
   const [payoutsError, setPayoutsError] = useState<string | null>(null);
-  const [payoutFilter, setPayoutFilter] = useState<PayoutFilter>("all");
+  const [payoutFilter, setPayoutFilter] = useState<PayoutFilter>("pending");
   const [payoutSearch, setPayoutSearch] = useState("");
 
   // For "Create stub" flow on pending payouts

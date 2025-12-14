@@ -119,7 +119,7 @@ export default function EmployeeDetailPage() {
   const [payouts, setPayouts] = useState<PayoutDoc[]>([]);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
   const [payoutsError, setPayoutsError] = useState<string | null>(null);
-  const [payoutFilter, setPayoutFilter] = useState<PayoutFilter>("all");
+  const [payoutFilter, setPayoutFilter] = useState<PayoutFilter>("pending");
   const [searchTerm, setSearchTerm] = useState("");
 
   // For "Create stub" flow
