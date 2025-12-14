@@ -128,14 +128,9 @@ export function PayoutStubViewerModal({
                 <h2 className="text-2xl font-semibold">
                   Roger&apos;s Roofing &amp; Contracting LLC
                 </h2>
-                <h1>3618 Angus Crossing</h1>
+                <h1 className="text-sm">3618 Angus Crossing</h1>
                 <p className="mt-0 text-xs">San Antonio, Texas 75245</p>
               </div>
-            </div>
-
-            {/* Stub meta (keep it, but make it subtle + non-print if you want) */}
-            <div className="mt-2 text-xs text-gray-500 print:hidden">
-              Pay stub • {stub.number || stub.id}
             </div>
 
             {/* Employee section (same placement concept as Global) */}
@@ -151,8 +146,8 @@ export function PayoutStubViewerModal({
             {employeeNameOverride &&
               stub.employeeNameSnapshot &&
               employeeNameOverride.trim() !== stub.employeeNameSnapshot && (
-                <div className="mt-0.5 text-[11px] text-gray-500 print:hidden">
-                  Name on stub: {stub.employeeNameSnapshot}
+                <div className="translate-y-[-8px] text-[11px] text-gray-500 print:hidden">
+                  Name on original stub: {stub.employeeNameSnapshot}
                 </div>
               )}
 
@@ -160,7 +155,7 @@ export function PayoutStubViewerModal({
             {empAddr && (
               <>
                 {(empAddr.fullLine || empAddr.line1) && (
-                  <h1 className="mt-[-3px] text-md">
+                  <h1 className="mt-[-3px] text-sm">
                     {empAddr.fullLine || empAddr.line1}
                   </h1>
                 )}
@@ -178,7 +173,7 @@ export function PayoutStubViewerModal({
             {/* Dates (keep, but hide Created line in print if you want) */}
             <div className="mt-2 text-[12px] text-gray-600">
               <div className="print:hidden">
-                <span className="font-medium">Created:</span>{" "}
+                <span className="text-xs">Created:</span>{" "}
                 {fmtDate(stub.createdAt)}
               </div>
               {stub.paidAt && (

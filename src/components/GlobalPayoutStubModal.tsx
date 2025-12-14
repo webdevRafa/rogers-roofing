@@ -99,7 +99,7 @@ export function GlobalPayoutStubModal({
                   Roger&apos;s Roofing &amp; Contracting LLC
                 </h2>
                 {/* Static company address */}
-                <h1>3618 Angus Crossing</h1>
+                <h1 className="text-sm">3618 Angus Crossing</h1>
                 <p className="mt-0 text-xs">San Antonio, Texas 75245</p>
               </div>
             </div>
@@ -115,7 +115,7 @@ export function GlobalPayoutStubModal({
                   <>
                     {/* Street / full line */}
                     {(empAddr.fullLine || empAddr.line1) && (
-                      <h1 className="mt-[-3px] text-md">
+                      <h1 className="mt-[-3px] text-sm">
                         {empAddr.fullLine || empAddr.line1}
                       </h1>
                     )}
