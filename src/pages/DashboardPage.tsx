@@ -18,6 +18,7 @@ import { DashboardProgressSection } from "../features/dashboard/DashboardProgres
 import { DashboardPayoutsSection } from "../features/dashboard/DashboardPayoutsSection";
 
 import { GlobalPayoutStubModal } from "../components/GlobalPayoutStubModal";
+import PayTechnicianModal from "../components/PayTechnicianModal";
 
 import { jobConverter } from "../types/types";
 import { recomputeJob, makeAddress } from "../utils/calc";
@@ -140,6 +141,7 @@ export default function DashboardPage() {
   const [newFeltDate, setNewFeltDate] = useState("");
   const [newShinglesDate, setNewShinglesDate] = useState("");
   const [newPunchDate, setNewPunchDate] = useState("");
+  const [payTechOpen, setPayTechOpen] = useState(false);
 
   // Pagination for jobs
   const [jobsPage, setJobsPage] = useState(1);
@@ -757,6 +759,7 @@ export default function DashboardPage() {
             clearSelectedPayouts={clearSelectedPayouts}
             setStubOpen={setStubOpen}
             onViewJob={(jobId) => navigate(`/job/${jobId}`)}
+            onOpenPayTechnician={() => setPayTechOpen(true)}
           />
         </motion.div>
 
@@ -820,6 +823,13 @@ export default function DashboardPage() {
           onClose={() => setStubOpen(false)}
           onConfirmPaid={markSelectedPayoutsAsPaid}
           saving={stubSaving}
+        />
+      )}
+
+      {payTechOpen && (
+        <PayTechnicianModal
+          onClose={() => setPayTechOpen(false)}
+          onCreated={() => setPayTechOpen(false)}
         />
       )}
     </>

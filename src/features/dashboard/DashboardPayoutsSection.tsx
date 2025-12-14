@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import { type Dispatch, type SetStateAction } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import type { PayoutDoc } from "../../types/types";
@@ -146,6 +146,8 @@ export interface DashboardPayoutsSectionProps {
   togglePayoutSelected: (id: string) => void;
   clearSelectedPayouts: () => void;
 
+  onOpenPayTechnician: () => void;
+
   setStubOpen: Dispatch<SetStateAction<boolean>>;
 
   onViewJob: (jobId: string) => void;
@@ -164,6 +166,7 @@ export function DashboardPayoutsSection({
   filteredPayoutsCount,
   payoutsPage,
   payoutsTotalPages,
+  onOpenPayTechnician,
   setPayoutsPage,
   PAYOUTS_PER_PAGE,
   selectedPayoutIds,
@@ -217,6 +220,13 @@ export function DashboardPayoutsSection({
             placeholder="Search by address or employee…"
             className="w-full sm:w-72 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
+          <button
+            type="button"
+            onClick={onOpenPayTechnician}
+            className="rounded-lg bg-cyan-700 hover:bg-cyan-600 transition duration-300 ease-in-out px-3 py-2 text-xs font-semibold w-[100px] text-white"
+          >
+            Pay tech
+          </button>
 
           <div className="inline-flex rounded-full border border-[var(--color-border)] bg-white/80 p-1 text-xs">
             {(["all", "pending", "paid"] as PayoutFilter[]).map((f) => (

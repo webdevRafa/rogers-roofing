@@ -343,12 +343,12 @@ export default function EmployeeDetailPage() {
 
       const lines: PayoutStubLine[] = payoutsToMark.map((p) => ({
         payoutId: p.id,
-        jobId: p.jobId,
+        jobId: p.jobId ?? undefined,
         category: p.category,
         sqft: p.sqft,
         ratePerSqFt: p.ratePerSqFt,
         amountCents: typeof p.amountCents === "number" ? p.amountCents : 0,
-        jobAddressSnapshot: p.jobAddressSnapshot,
+        jobAddressSnapshot: p.jobAddressSnapshot ?? undefined,
       }));
 
       const totalCents = lines.reduce(

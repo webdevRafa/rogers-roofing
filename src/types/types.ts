@@ -48,7 +48,7 @@ export type Employee = {
 
 export type PayoutDoc = {
   id: string;
-  jobId: string;
+  jobId?: string | null;
   employeeId: string;
   employeeNameSnapshot: string;
 
@@ -61,6 +61,10 @@ export type PayoutDoc = {
   sqft?: number;
   ratePerSqFt?: number;
 
+   // technician breakdown
+   daysWorked?: number;
+   ratePerDayCents?: number;
+   note?: string;
   createdAt: Timestamp | FieldValue;
   paidAt?: Timestamp | Date | FieldValue | null;
 
@@ -300,6 +304,9 @@ export interface PayoutStubLine {
   sqft?: number;
   ratePerSqFt?: number;
   amountCents: number;
+  daysWorked?: number;
+ratePerDayCents?: number;
+note?: string;
   jobAddressSnapshot?: {
     fullLine?: string;
     line1?: string;
