@@ -242,7 +242,7 @@ export default function JobDetailPage() {
       "h-10 w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none " +
       "focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm",
     btnPrimary:
-      "h-10 inline-flex items-center justify-center rounded-lg bg-cyan-800 px-4 text-sm font-medium " +
+      "h-8 inline-flex items-center justify-center rounded-md bg-cyan-800 px-4 text-sm font-medium " +
       "text-[var(--btn-text)] shadow-sm hover:bg-cyan-700 transition disabled:opacity-60 disabled:cursor-not-allowed",
     btnSoft:
       "h-10 inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-4 text-sm " +
@@ -2663,8 +2663,8 @@ export default function JobDetailPage() {
           <form
             className={
               payoutTab === "technician"
-                ? "grid gap-2 sm:grid-cols-[1fr_160px_auto]"
-                : "grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]"
+                ? "grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_110px] items-stretch"
+                : "grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_140px_110px] items-stretch"
             }
             onSubmit={async (e) => {
               e.preventDefault();
@@ -2731,9 +2731,7 @@ export default function JobDetailPage() {
               </>
             )}
 
-            <button className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}>
-              Add
-            </button>
+            <button className={`${UI.btnPrimary} w-full shrink-0`}>Add</button>
           </form>
 
           <div className="mt-2 text-xs text-[var(--color-muted)]">
@@ -2758,7 +2756,7 @@ export default function JobDetailPage() {
               e.preventDefault();
               await handleAddMaterialSubmit();
             }}
-            className="grid items-start gap-2 max-w-full md:grid-cols-[minmax(0,1fr)_120px_100px_160px_auto] sm:grid-cols-2"
+            className="grid gap-2 max-w-full sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_140px_110px_110px] items-stretch"
           >
             <select
               ref={materialRef}
@@ -2810,7 +2808,7 @@ export default function JobDetailPage() {
             />
 
             <button
-              className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0 sm:col-span-2 md:col-auto`}
+              className={`${UI.btnPrimary} w-full shrink-0 sm:col-span-2 md:col-auto`}
             >
               Add
             </button>
@@ -2851,7 +2849,7 @@ export default function JobDetailPage() {
           }}
         >
           <form
-            className="flex w-full max-w-full flex-col gap-3 sm:flex-row sm:items-stretch"
+            className="grid w-full max-w-full grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px] sm:items-end"
             onSubmit={async (e) => {
               e.preventDefault();
               await handleUploadPhotoSubmit();
@@ -2882,7 +2880,7 @@ export default function JobDetailPage() {
               className="sr-only"
             />
 
-            <div className="flex-1 space-y-2">
+            <div className="min-w-0 space-y-2">
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -2917,7 +2915,7 @@ export default function JobDetailPage() {
                   <img
                     src={previewUrl}
                     alt="Selected preview"
-                    className="h-32 w-full rounded-xl object-cover ring-1 ring-black/5"
+                    className="h-28 w-full rounded-xl object-cover ring-1 ring-black/5"
                   />
                 </div>
               )}
@@ -2930,11 +2928,11 @@ export default function JobDetailPage() {
               />
             </div>
 
-            <div className="sm:w-32 flex items-end">
+            <div className="max-w-[80px] sm:w-auto">
               <button
                 type="submit"
                 disabled={uploading || !photoFile}
-                className={UI.btnPrimary}
+                className={`${UI.btnPrimary} py-0! w-full`}
               >
                 {uploading ? "Uploading…" : "Upload"}
               </button>
