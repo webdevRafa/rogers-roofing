@@ -124,6 +124,9 @@ type ActivityItem = {
   at: Date; // normalized timestamp
   title: string; // bold-ish line
   detail?: string; // optional second line
+  // ✅ for photo preview rows
+  photoUrl?: string;
+  photoCaption?: string;
 };
 
 function toDateSafe(d: any): Date | null {
@@ -444,11 +447,11 @@ export default function JobDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (!job?.id) return;
+    if (!id) return;
 
     const qy = query(
       collection(db, "payouts"),
-      where("jobId", "==", job.id),
+      where("jobId", "==", id),
       orderBy("createdAt", "desc"),
       limit(50)
     );
@@ -456,14 +459,18 @@ export default function JobDetailPage() {
     const unsub = onSnapshot(
       qy,
       (snap) => {
-        const rows = snap.docs.map((d) => d.data() as PayoutDoc);
+        const rows = snap.docs.map((d) => {
+          const data = d.data() as PayoutDoc;
+          // Ensure id is present even if stored in doc id only
+          return { ...data, id: data.id ?? d.id };
+        });
         setPayoutDocs(rows);
       },
       (err) => console.error("payout activity listener failed", err)
     );
 
     return () => unsub();
-  }, [job?.id]);
+  }, [id]);
 
   // Keyboard handlers (ESC / Left / Right)
   useEffect(() => {
@@ -666,26 +673,21 @@ export default function JobDetailPage() {
       });
     }
 
-    // 4) Photos
-    // IMPORTANT: use whatever array you already render in your Photos section.
-    // If your photos are stored on job.attachments as Photo, use that.
-    // If you have `jobPhotos` state already, use that instead.
-    const photosAny: any[] =
-      // preferred: your existing jobPhotos state (if it exists)
-      (typeof (globalThis as any).jobPhotos !== "undefined" ? [] : []) ||
-      // fallback: attachments
-      (job.attachments ?? []);
-
-    for (const ph of photosAny) {
+    // 4) Photos (from jobPhotos collection state)
+    for (const ph of photos) {
       const at = toDateSafe(ph.createdAt) ?? null;
       if (!at) continue;
 
+      const src = (ph as any)?.thumbUrl ?? (ph as any)?.fullUrl ?? ph.url;
+
       items.push({
-        id: `photo:${ph.id ?? ph.url}`,
+        id: `photo:${ph.id}`,
         kind: "photo",
         at,
         title: "Photo uploaded",
-        detail: ph.caption ? ph.caption : "—",
+        detail: ph.caption?.trim() ? ph.caption.trim() : undefined,
+        photoUrl: src,
+        photoCaption: ph.caption?.trim() ? ph.caption.trim() : undefined,
       });
     }
 
@@ -693,7 +695,7 @@ export default function JobDetailPage() {
     items.sort((a, b) => b.at.getTime() - a.at.getTime());
 
     return items.slice(0, 50);
-  }, [job, payoutDocs]);
+  }, [job, payoutDocs, photos]);
 
   const payoutAmountCents = useMemo(() => {
     if (payoutTab === "technician") {
@@ -1705,15 +1707,27 @@ export default function JobDetailPage() {
                     className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-[var(--color-text)]">
-                          {a.title}
-                        </div>
-                        {a.detail ? (
-                          <div className="mt-1 text-xs text-[var(--color-muted)] whitespace-pre-wrap break-words">
-                            {a.detail}
-                          </div>
+                      <div className="flex min-w-0 items-start gap-3">
+                        {a.kind === "photo" && a.photoUrl ? (
+                          <img
+                            src={a.photoUrl}
+                            alt={a.photoCaption ?? "Job photo"}
+                            className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-black/5"
+                            loading="lazy"
+                          />
                         ) : null}
+
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-[var(--color-text)]">
+                            {a.title}
+                          </div>
+
+                          {a.detail ? (
+                            <div className="mt-1 text-xs text-[var(--color-muted)] whitespace-pre-wrap break-words">
+                              {a.detail}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="shrink-0 text-xs text-[var(--color-muted)]">
