@@ -14,6 +14,7 @@ import {
   FieldValue,
   deleteDoc,
   query,
+  limit,
   deleteField,
   where,
   orderBy,
@@ -115,6 +116,25 @@ type JobPhoto = {
   createdAt?: Timestamp | Date | FieldValue | null;
 };
 
+type ActivityKind = "payout" | "material" | "note" | "photo";
+
+type ActivityItem = {
+  id: string;
+  kind: ActivityKind;
+  at: Date; // normalized timestamp
+  title: string; // bold-ish line
+  detail?: string; // optional second line
+};
+
+function toDateSafe(d: any): Date | null {
+  if (!d) return null;
+  // Firestore Timestamp
+  if (typeof d?.toDate === "function") return d.toDate();
+  // JS Date
+  if (d instanceof Date) return d;
+  return null;
+}
+
 // ---------- Timestamp helpers ----------
 type FsTimestampLike = { toDate: () => Date };
 function isFsTimestamp(x: unknown): x is FsTimestampLike {
@@ -152,6 +172,7 @@ export default function JobDetailPage() {
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [warrantyModalOpen, setWarrantyModalOpen] = useState(false);
   const [warrantyEditOpen, setWarrantyEditOpen] = useState(false);
+  const [payoutDocs, setPayoutDocs] = useState<PayoutDoc[]>([]);
 
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -422,6 +443,28 @@ export default function JobDetailPage() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    if (!job?.id) return;
+
+    const qy = query(
+      collection(db, "payouts"),
+      where("jobId", "==", job.id),
+      orderBy("createdAt", "desc"),
+      limit(50)
+    );
+
+    const unsub = onSnapshot(
+      qy,
+      (snap) => {
+        const rows = snap.docs.map((d) => d.data() as PayoutDoc);
+        setPayoutDocs(rows);
+      },
+      (err) => console.error("payout activity listener failed", err)
+    );
+
+    return () => unsub();
+  }, [job?.id]);
+
   // Keyboard handlers (ESC / Left / Right)
   useEffect(() => {
     if (!viewerOpen) return;
@@ -574,6 +617,83 @@ export default function JobDetailPage() {
       [payoutTab]: { ...s[payoutTab], ...next },
     }));
   }
+  const activityItems = useMemo<ActivityItem[]>(() => {
+    if (!job) return [];
+
+    const items: ActivityItem[] = [];
+
+    // 1) Payout docs (real createdAt)
+    for (const p of payoutDocs) {
+      const at = toDateSafe(p.createdAt) ?? new Date(0);
+      items.push({
+        id: `payout:${p.id}`,
+        kind: "payout",
+        at,
+        title: `Payout created for ${p.employeeNameSnapshot}`,
+        detail: `$${(p.amountCents / 100).toFixed(2)} • ${p.category}`,
+      });
+    }
+
+    // 2) Materials (createdAt exists on MaterialExpense)
+    for (const m of job.expenses?.materials ?? []) {
+      const at = toDateSafe(m.createdAt) ?? null;
+      if (!at) continue;
+
+      items.push({
+        id: `material:${m.id}`,
+        kind: "material",
+        at,
+        title: `Material added • ${m.category}`,
+        detail: `$${(m.amountCents / 100).toFixed(2)} • qty ${m.quantity}`,
+      });
+    }
+
+    // 3) Notes (createdAt exists)
+    for (const n of job.notes ?? []) {
+      const at = toDateSafe(n.createdAt) ?? null;
+      if (!at) continue;
+
+      const trimmed = (n.text ?? "").trim();
+      const preview =
+        trimmed.length > 140 ? trimmed.slice(0, 140).trim() + "…" : trimmed;
+
+      items.push({
+        id: `note:${n.id}`,
+        kind: "note",
+        at,
+        title: "Note added",
+        detail: preview,
+      });
+    }
+
+    // 4) Photos
+    // IMPORTANT: use whatever array you already render in your Photos section.
+    // If your photos are stored on job.attachments as Photo, use that.
+    // If you have `jobPhotos` state already, use that instead.
+    const photosAny: any[] =
+      // preferred: your existing jobPhotos state (if it exists)
+      (typeof (globalThis as any).jobPhotos !== "undefined" ? [] : []) ||
+      // fallback: attachments
+      (job.attachments ?? []);
+
+    for (const ph of photosAny) {
+      const at = toDateSafe(ph.createdAt) ?? null;
+      if (!at) continue;
+
+      items.push({
+        id: `photo:${ph.id ?? ph.url}`,
+        kind: "photo",
+        at,
+        title: "Photo uploaded",
+        detail: ph.caption ? ph.caption : "—",
+      });
+    }
+
+    // newest first
+    items.sort((a, b) => b.at.getTime() - a.at.getTime());
+
+    return items.slice(0, 50);
+  }, [job, payoutDocs]);
 
   const payoutAmountCents = useMemo(() => {
     if (payoutTab === "technician") {
@@ -1560,6 +1680,52 @@ export default function JobDetailPage() {
             </div>
           </div>
         </motion.div>
+        <section className="mt-6 rounded-2xl bg-white/50 p-6 shadow">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-[var(--color-text)]">
+              Latest activity
+            </h2>
+            <span className="text-xs text-[var(--color-muted)]">
+              {activityItems.length
+                ? `${activityItems.length} updates`
+                : "No updates yet"}
+            </span>
+          </div>
+
+          <div className="max-h-64 overflow-y-auto pr-1">
+            {!activityItems.length ? (
+              <div className="rounded-xl bg-white/60 p-4 text-sm text-[var(--color-muted)]">
+                No recent activity for this job yet.
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {activityItems.map((a) => (
+                  <li
+                    key={a.id}
+                    className="rounded-xl bg-white/70 p-3 ring-1 ring-black/5 hover:bg-white transition"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-[var(--color-text)]">
+                          {a.title}
+                        </div>
+                        {a.detail ? (
+                          <div className="mt-1 text-xs text-[var(--color-muted)] whitespace-pre-wrap break-words">
+                            {a.detail}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="shrink-0 text-xs text-[var(--color-muted)]">
+                        {a.at.toLocaleString()}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
 
         {/* Quick edit / add panel */}
         <div className="mt-8 grid grid-cols-1 max-w-full gap-6 lg:grid-cols-2">

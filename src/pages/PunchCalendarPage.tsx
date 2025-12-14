@@ -112,7 +112,7 @@ export default function PunchCalendarPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white ">
       {/* Hero / header */}
       <div className="">
         <div className="mx-auto flex max-w-[1100px] flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between md:px-0"></div>
