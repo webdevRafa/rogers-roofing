@@ -16,6 +16,7 @@ import PunchDayPage from "./pages/PunchDayPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import InvoiceViewer from "./pages/InvoiceViewer";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
+import CompleteSignupPage from "./pages/CompleteSignupPage";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/" element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
+          <Route path="/complete-signup" element={<CompleteSignupPage />} />
 
           {/* ✅ Everything below gets the global navbar */}
           <Route

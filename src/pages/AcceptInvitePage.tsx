@@ -52,10 +52,8 @@ export default function AcceptInvitePage() {
     if (!inviteId) return;
     const auth = getAuth();
     if (!auth.currentUser) {
-      const returnTo = `/accept-invite?inviteId=${encodeURIComponent(
-        inviteId
-      )}`;
-      navigate(`/login?redirect=${encodeURIComponent(returnTo)}`);
+      navigate(`/complete-signup?inviteId=${encodeURIComponent(inviteId)}`);
+
       return;
     }
     try {
