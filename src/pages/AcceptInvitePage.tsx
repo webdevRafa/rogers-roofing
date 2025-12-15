@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "../firebase/firebaseConfig";
+import { getAuth } from "firebase/auth";
 
 /**
  * AcceptInvitePage handles the user-facing flow for accepting an employee
@@ -49,6 +50,14 @@ export default function AcceptInvitePage() {
   // Call the claimEmployeeInvite callable function
   async function handleClaim() {
     if (!inviteId) return;
+    const auth = getAuth();
+    if (!auth.currentUser) {
+      const returnTo = `/accept-invite?inviteId=${encodeURIComponent(
+        inviteId
+      )}`;
+      navigate(`/login?redirect=${encodeURIComponent(returnTo)}`);
+      return;
+    }
     try {
       setClaiming(true);
       setError(null);

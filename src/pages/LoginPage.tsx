@@ -1,7 +1,8 @@
 // src/pages/LoginPage.tsx
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
 import roofing from "../assets/roofing.webp";
 import logo from "../assets/rogers-roofing.webp";
 import { Eye, EyeOff } from "lucide-react";
@@ -12,6 +13,8 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,8 +28,13 @@ const LoginPage = () => {
     setSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      // ✅ redirect on success
-      navigate("/dashboard", { replace: true });
+
+      // ✅ redirect back to invite (or dashboard)
+      if (redirect) {
+        navigate(redirect, { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } catch (error: any) {
       const msg =
         error?.code === "auth/invalid-credential"
