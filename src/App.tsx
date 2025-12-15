@@ -24,6 +24,7 @@ export default function App() {
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
           {/* ✅ Everything below gets the global navbar */}
