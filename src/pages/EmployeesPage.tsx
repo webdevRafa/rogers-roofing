@@ -5,11 +5,13 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
   serverTimestamp,
-  setDoc,
+  writeBatch,
 } from "firebase/firestore";
+
 import type { FieldValue } from "firebase/firestore";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { db } from "../firebase/firebaseConfig";
 import type { Employee, EmployeeAddress } from "../types/types";
 
@@ -18,9 +20,18 @@ export default function EmployeesPage() {
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
+  const navigate = useNavigate();
   const location = useLocation();
+
+  // Temporary org until you wire auth/org selection
+  const orgId = "default";
+
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<
+    "roofer" | "foreman" | "technician" | "laborer" | "office" | "other"
+  >("roofer");
+
   const successMessage =
     (location.state as { message?: string } | null)?.message ?? null;
 
@@ -33,16 +44,34 @@ export default function EmployeesPage() {
     return () => clearTimeout(timer);
   }, [successMessage, navigate]);
 
+  // Fetch employees
   useEffect(() => {
-    const q = query(collection(db, "employees"), orderBy("name", "asc"));
+    setError(null);
 
-    const unsub = onSnapshot(q, (snap) => {
-      const list: Employee[] = snap.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...(docSnap.data() as Omit<Employee, "id">),
-      }));
-      setEmployees(list);
-    });
+    const q = query(
+      collection(db, "employees"),
+      where("orgId", "==", orgId),
+      orderBy("name", "asc")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        // Debug: confirm if Firestore is returning docs at all
+        console.log("employees snap size:", snap.size);
+
+        const list: Employee[] = snap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...(docSnap.data() as Omit<Employee, "id">),
+        }));
+        setEmployees(list);
+      },
+      (err) => {
+        console.error("Employees snapshot error:", err);
+        setError(err.message || "Failed to load employees.");
+        setEmployees([]);
+      }
+    );
 
     return () => unsub();
   }, []);
@@ -54,23 +83,61 @@ export default function EmployeesPage() {
     setError(null);
 
     try {
-      const ref = doc(collection(db, "employees"));
+      const employeeRef = doc(collection(db, "employees"));
+      const inviteEmail = email.trim().toLowerCase();
+      const hasInvite = inviteEmail.length > 0;
+
+      const batch = writeBatch(db);
+
+      const invitedByUserId = null; // placeholder for now (auth.uid later)
 
       const employee: Employee = {
-        id: ref.id,
+        id: employeeRef.id,
+        orgId,
         name: name.trim(),
-        isActive: true, // ✅ new employees start as active
+        email: hasInvite ? inviteEmail : null,
+        role: role as any,
+        accessRole: "crew" as any,
+        userId: null,
+        isActive: true,
+        invite: hasInvite
+          ? {
+              status: "pending",
+              email: inviteEmail,
+              invitedAt: serverTimestamp() as FieldValue,
+              invitedByUserId,
+              lastSentAt: serverTimestamp() as FieldValue,
+            }
+          : ({ status: "none" } as any),
         createdAt: serverTimestamp() as FieldValue,
         updatedAt: serverTimestamp() as FieldValue,
       };
 
-      await setDoc(ref, employee);
+      batch.set(employeeRef, employee);
 
-      // Clear input
+      if (hasInvite) {
+        const inviteRef = doc(collection(db, "employeeInvites"));
+        batch.set(inviteRef, {
+          id: inviteRef.id,
+          orgId,
+          employeeId: employeeRef.id,
+          email: inviteEmail,
+          status: "pending",
+          roleSnapshot: role,
+          accessRoleSnapshot: "crew",
+          createdAt: serverTimestamp(),
+          createdByUserId: invitedByUserId,
+          // expiresAt: null, // optional later
+        });
+      }
+
+      await batch.commit();
+
       setName("");
+      setEmail("");
+      setRole("roofer");
 
-      // Redirect to the newly created employee detail page
-      navigate(`/employees/${ref.id}`);
+      navigate(`/employees/${employeeRef.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -82,22 +149,44 @@ export default function EmployeesPage() {
     <>
       <div className="mx-auto max-w-[1200px] py-8 px-4 md:px-0">
         {/* Add employee */}
-        <section className="mb-6 rounded-xl   p-4 shadow">
+        <section className="mb-6 rounded-xl p-4 shadow">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-start">
-            <h2 className="text-lg font-medium poppins text-[var(--color-logo)] ">
+            <h2 className="text-lg font-medium poppins text-[var(--color-logo)]">
               New
             </h2>
+
             <div className="flex gap-2 flex-row sm:items-center">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Employee name"
-                className="w-full max-w-[300px] rounded-lg border border-[var(--color-border)]/50 bg-white  px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className="w-full max-w-[300px] rounded-lg border border-[var(--color-border)]/50 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
+
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email (optional, for invite)"
+                className="w-full max-w-[300px] rounded-lg border border-[var(--color-border)]/50 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as any)}
+                className="w-full max-w-[220px] rounded-lg border border-[var(--color-border)]/50 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              >
+                <option value="roofer">Roofer</option>
+                <option value="foreman">Foreman</option>
+                <option value="technician">Technician</option>
+                <option value="laborer">Laborer</option>
+                <option value="office">Office</option>
+                <option value="other">Other</option>
+              </select>
+
               <button
                 onClick={createEmployee}
                 disabled={creating || !name.trim()}
-                className="rounded-lg bg-gradient-to-b from-[var(--color-brown)] to-[var(--color-logo)] px-4 py-1.5 text-xs text-white hover:bg-cyan-600 disabled:opacity-60 transition duration-300 ease-in-out"
+                className="rounded-lg bg-gradient-to-b from-[var(--color-brown)] to-[var(--color-logo)] px-4 py-1.5 text-xs text-white disabled:opacity-60 transition duration-300 ease-in-out"
               >
                 {creating ? "Saving…" : "Add"}
               </button>
@@ -129,48 +218,58 @@ export default function EmployeesPage() {
             <ul className="divide-y divide-gray-100">
               {employees.map((e) => {
                 const addr = normalizeEmployeeAddress(e.address);
-                const active = e.isActive !== false; // default to active if missing
+                const active = e.isActive !== false;
 
                 return (
-                  <Link
-                    to={`/employees/${e.id}`}
-                    className="text-xs text-blue-600 hover:underline style-none"
+                  <li
+                    key={e.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/employees/${e.id}`)}
+                    onKeyDown={(ev) => {
+                      if (ev.key === "Enter" || ev.key === " ") {
+                        ev.preventDefault();
+                        navigate(`/employees/${e.id}`);
+                      }
+                    }}
+                    className="flex items-center justify-between py-4 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out cursor-pointer"
                   >
-                    <li
-                      key={e.id}
-                      className="flex items-center justify-between py-4 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-medium">{e.name}</div>
-                          <span
-                            className={
-                              "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
-                              (active
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-gray-200 text-gray-600")
-                            }
-                          >
-                            {active ? "Active" : "Inactive"}
-                          </span>
-                        </div>
-                        {addr && (
-                          <div className="text-xs text-gray-500">
-                            {addr.fullLine ||
-                              [addr.line1, addr.city, addr.state, addr.zip]
-                                .filter(Boolean)
-                                .join(", ")}
-                          </div>
-                        )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium">{e.name}</div>
+                        <span
+                          className={
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
+                            (active
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-200 text-gray-600")
+                          }
+                        >
+                          {active ? "Active" : "Inactive"}
+                        </span>
                       </div>
-                      <Link
-                        to={`/employees/${e.id}`}
-                        className="text-xs text-blue-600 hover:underline"
-                      >
-                        View / Edit
-                      </Link>
-                    </li>
-                  </Link>
+
+                      {addr && (
+                        <div className="text-xs text-gray-500">
+                          {addr.fullLine ||
+                            [addr.line1, addr.city, addr.state, addr.zip]
+                              .filter(Boolean)
+                              .join(", ")}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        navigate(`/employees/${e.id}`);
+                      }}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      View / Edit
+                    </button>
+                  </li>
                 );
               })}
             </ul>
