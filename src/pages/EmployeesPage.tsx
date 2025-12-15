@@ -31,6 +31,86 @@ export default function EmployeesPage() {
   const [role, setRole] = useState<
     "roofer" | "foreman" | "technician" | "laborer" | "office" | "other"
   >("roofer");
+  /**
+   * Create or resend an invite for the given employee.
+   * This creates a new employeeInvites doc and updates the employee’s invite metadata,
+   * including an inviteDocId.  If the employee lacks an email, an error message is shown.
+   */
+  async function sendInviteFor(employee: Employee) {
+    try {
+      if (!employee.email) {
+        setError(
+          "Employee is missing an email address. Please edit the employee and add an email before sending an invite."
+        );
+        return;
+      }
+      setError(null);
+      const inviteRef = doc(collection(db, "employeeInvites"));
+      const batch = writeBatch(db);
+      const now = serverTimestamp() as FieldValue;
+      // snapshot the current role/accessRole or fall back to sensible defaults
+      const roleSnapshot = (employee.role || role) as any;
+      const accessRoleSnapshot = (employee.accessRole || "crew") as any;
+
+      // Create the invite document
+      batch.set(inviteRef, {
+        id: inviteRef.id,
+        orgId,
+        employeeId: employee.id,
+        email: employee.email,
+        status: "pending",
+        roleSnapshot,
+        accessRoleSnapshot,
+        createdAt: now,
+        createdByUserId: null,
+      });
+
+      // Update the employee’s invite metadata and save the inviteDocId
+      batch.set(
+        doc(db, "employees", employee.id),
+        {
+          invite: {
+            status: "pending",
+            email: employee.email,
+            invitedAt: now,
+            invitedByUserId: null,
+            lastSentAt: now,
+            inviteDocId: inviteRef.id,
+          },
+        },
+        { merge: true }
+      );
+
+      await batch.commit();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+    }
+  }
+
+  /**
+   * Copy the acceptance link for a pending invite to the clipboard.
+   * The inviteDocId must be present on the employee’s invite metadata.
+   * Displays a browser alert on success or error.
+   */
+  function copyInviteLink(employee: Employee) {
+    const inviteId = (employee as any).invite?.inviteDocId;
+    if (!inviteId) {
+      setError(
+        "No invite found for this employee. Please send an invite first."
+      );
+      return;
+    }
+    const url = `${window.location.origin}/accept-invite?inviteId=${inviteId}`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        alert("Invite link copied to clipboard.");
+      })
+      .catch(() => {
+        alert("Failed to copy invite link. Please copy manually: " + url);
+      });
+  }
 
   const successMessage =
     (location.state as { message?: string } | null)?.message ?? null;
@@ -127,8 +207,18 @@ export default function EmployeesPage() {
           accessRoleSnapshot: "crew",
           createdAt: serverTimestamp(),
           createdByUserId: invitedByUserId,
-          // expiresAt: null, // optional later
         });
+        // Also store the inviteDocId on the employee’s invite metadata
+        batch.set(
+          employeeRef,
+          {
+            invite: {
+              ...(employee.invite || {}),
+              inviteDocId: inviteRef.id,
+            },
+          },
+          { merge: true }
+        );
       }
 
       await batch.commit();
@@ -232,9 +322,10 @@ export default function EmployeesPage() {
                         navigate(`/employees/${e.id}`);
                       }
                     }}
-                    className="flex items-center justify-between py-4 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out cursor-pointer"
+                    className="flex items-start justify-between py-4 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out cursor-pointer"
                   >
-                    <div>
+                    {/* Left side: employee name and address */}
+                    <div className="pr-4">
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-medium">{e.name}</div>
                         <span
@@ -259,16 +350,115 @@ export default function EmployeesPage() {
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        navigate(`/employees/${e.id}`);
-                      }}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      View / Edit
-                    </button>
+                    {/* Right side: invite status and actions */}
+                    <div className="flex flex-col items-end space-y-1">
+                      {/* Status chip */}
+                      <div>
+                        {(() => {
+                          const status = (e as any).invite?.status || "none";
+                          switch (status) {
+                            case "pending":
+                              return (
+                                <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                                  Pending
+                                </span>
+                              );
+                            case "accepted":
+                              return (
+                                <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                                  Accepted
+                                </span>
+                              );
+                            case "revoked":
+                              return (
+                                <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                                  Revoked
+                                </span>
+                              );
+                            case "expired":
+                              return (
+                                <span className="inline-flex items-center rounded-full bg-gray-200 text-gray-600 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                                  Expired
+                                </span>
+                              );
+                            case "none":
+                            default:
+                              return (
+                                <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                                  No Invite
+                                </span>
+                              );
+                          }
+                        })()}
+                      </div>
+                      {/* Invite action buttons */}
+                      <div className="flex gap-2">
+                        {(() => {
+                          const invite = (e as any).invite || {};
+                          const status = invite.status || "none";
+                          if (status === "pending") {
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    sendInviteFor(e);
+                                  }}
+                                  className="text-xs text-blue-600 hover:underline"
+                                >
+                                  Resend
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    copyInviteLink(e);
+                                  }}
+                                  className="text-xs text-blue-600 hover:underline"
+                                >
+                                  Copy Link
+                                </button>
+                              </>
+                            );
+                          }
+                          if (status === "none" || !status) {
+                            if (e.email) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    sendInviteFor(e);
+                                  }}
+                                  className="text-xs text-blue-600 hover:underline"
+                                >
+                                  Invite
+                                </button>
+                              );
+                            }
+                            return (
+                              <span className="text-xs text-gray-400 italic">
+                                Add email to invite
+                              </span>
+                            );
+                          }
+                          // For accepted or other statuses, no actions
+                          return null;
+                        })()}
+                      </div>
+                      {/* View/Edit button */}
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          navigate(`/employees/${e.id}`);
+                        }}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        View / Edit
+                      </button>
+                    </div>
                   </li>
                 );
               })}

@@ -15,6 +15,7 @@ import PunchCalendarPage from "./pages/PunchCalendarPage";
 import PunchDayPage from "./pages/PunchDayPage";
 import JobDetailPage from "./pages/JobDetailPage";
 import InvoiceViewer from "./pages/InvoiceViewer";
+import AcceptInvitePage from "./pages/AcceptInvitePage";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
           {/* ✅ Everything below gets the global navbar */}
           <Route

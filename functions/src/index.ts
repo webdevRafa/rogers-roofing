@@ -2,6 +2,8 @@
 import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { onDocumentDeleted } from "firebase-functions/v2/firestore";
 import { setGlobalOptions } from "firebase-functions/v2/options";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+
 import * as admin from "firebase-admin";
 import * as path from "path";
 import * as os from "os";
@@ -138,3 +140,78 @@ export const cleanupPhotoOnDelete = onDocumentDeleted("jobPhotos/{photoId}", asy
     console.error("cleanupPhotoOnDelete error:", err);
   }
 });
+
+
+/**
+ * claimEmployeeInvite
+ *
+ * Callable Cloud Function to allow an authenticated user to claim an employee
+ * invite.  It expects an `inviteId` in the request data and uses context.auth
+ * to determine the caller's uid.  It marks the invite as accepted, attaches
+ * the user's uid to the employee document, and copies any role/accessRole
+ * snapshots if those fields are unset on the employee.  Errors are thrown
+ * for unauthenticated callers, missing invites, or non-pending invites.
+ */
+export const claimEmployeeInvite = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const inviteId = request.data?.inviteId as string | undefined;
+    const auth = request.auth;
+    if (!auth || !auth.uid) {
+      throw new HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated."
+      );
+    }
+    if (!inviteId) {
+      throw new HttpsError("invalid-argument", "Missing inviteId parameter.");
+    }
+    const uid = auth.uid;
+    const db = admin.firestore();
+    const inviteRef = db.doc(`employeeInvites/${inviteId}`);
+    const inviteSnap = await inviteRef.get();
+    if (!inviteSnap.exists) {
+      throw new HttpsError("not-found", "Invite not found.");
+    }
+    const invite = inviteSnap.data() as any;
+    if (invite.status !== "pending") {
+      throw new HttpsError(
+        "failed-precondition",
+        `Invite is not pending (current status: ${invite.status}).`
+      );
+    }
+    const employeeRef = db.doc(`employees/${invite.employeeId}`);
+    await db.runTransaction(async (trx) => {
+      const employeeSnap = await trx.get(employeeRef);
+      if (!employeeSnap.exists) {
+        throw new HttpsError(
+          "not-found",
+          "Employee associated with invite not found."
+        );
+      }
+      const employee = employeeSnap.data() as any;
+      // Prepare updates
+      const empUpdates: any = {
+        userId: uid,
+        invite: Object.assign({}, employee.invite || {}, {
+          status: "accepted",
+          acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }),
+      };
+      // Copy snapshots if employee doesn't already have role/accessRole
+      if (!employee.role && invite.roleSnapshot) {
+        empUpdates.role = invite.roleSnapshot;
+      }
+      if (!employee.accessRole && invite.accessRoleSnapshot) {
+        empUpdates.accessRole = invite.accessRoleSnapshot;
+      }
+      trx.update(employeeRef, empUpdates);
+      trx.update(inviteRef, {
+        status: "accepted",
+        acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        acceptedByUserId: uid,
+      });
+    });
+    return { ok: true };
+  }
+);
