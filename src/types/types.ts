@@ -35,15 +35,111 @@ export type EmployeeAddress = {
   state?: string;
   zip?: string;
 };
+/**
+ * Roofing-specific crew roles (trade roles).
+ * Keep this list practical + expandable.
+ */
+export type CrewRole =
+  | "owner"
+  | "office"
+  | "projectManager"
+  | "supervisor"     // general supervisor (can map to "technician" if you want)
+  | "technician"     // site verifier / QA / punch / supplement runner
+  | "foreman"
+  | "roofer"
+  | "laborer"
+  | "driver"
+  | "subcontractor"
+  | "other";
+
+/**
+ * App access roles (authorization). Separate from trade role.
+ * This is what you'll use later to guard UI/routes.
+ */
+export type AccessRole = "admin" | "manager" | "crew" | "readOnly";
+
+/**
+ * High-level employee invite status (claim flow).
+ */
+export type EmployeeInviteStatus =
+  | "none"        // no invite created
+  | "pending"     // invite created + email sent
+  | "sent"        // (optional) you can mark explicitly if you want
+  | "accepted"    // crew member claimed the account
+  | "expired"
+  | "revoked";
+
+/**
+ * Stored on the Employee doc for UX convenience.
+ * IMPORTANT: do NOT store secret tokens here.
+ */
+export type EmployeeInviteMeta = {
+  status: EmployeeInviteStatus;
+
+  /** Email that invite was sent to (can differ from employee.email if edited) */
+  email?: string | null;
+
+  invitedAt?: FirestoreTime;
+  invitedByUserId?: ID | null;
+
+  /** When the crew member accepted/claimed */
+  acceptedAt?: FirestoreTime;
+
+  /** If you use expiring invites */
+  expiresAt?: FirestoreTime;
+
+  /** Link last sent time for "Resend invite" */
+  lastSentAt?: FirestoreTime;
+};
+
+/**
+ * Separate collection (recommended): employeeInvites
+ * This holds the "invite record" you will resolve when the user clicks the link.
+ */
+export type EmployeeInviteDoc = {
+  id: ID;
+
+  orgId: ID;
+  employeeId: ID;
+
+  email: string;
+
+  /** snapshot the chosen role at invite time */
+  roleSnapshot?: CrewRole | null;
+  accessRoleSnapshot?: AccessRole | null;
+
+  status: EmployeeInviteStatus; // pending/accepted/expired/revoked
+  createdAt: FirestoreTime;
+  createdByUserId?: ID | null;
+
+  acceptedAt?: FirestoreTime;
+  acceptedByUserId?: ID | null;
+
+  /** optional housekeeping */
+  expiresAt?: FirestoreTime;
+  revokedAt?: FirestoreTime;
+  revokedByUserId?: ID | null;
+};
 
 export type Employee = {
   id: string;
   name: string;
-  /** Optional free-form address or structured address */
   address?: EmployeeAddress | string | null;
+  orgId?: ID;
+  email?: string | null;
+  phone?: string | null;
+
+
+  role?: CrewRole | null;
+  accessRole?: AccessRole | null;
+
+  userId?: string | null;
+
+  invite?: EmployeeInviteMeta | null;
   isActive?: boolean;
   createdAt?: Timestamp | Date | FieldValue | null;
   updatedAt?: Timestamp | Date | FieldValue | null;
+  deletedAt?: Timestamp | Date | FieldValue | null;
 };
 
 export type PayoutDoc = {
@@ -71,6 +167,36 @@ export type PayoutDoc = {
   stubId?: string;
   paidStubNumber?: string;
   payoutStubId?: string;
+};
+export type Org = {
+  id: ID;
+  name: string;
+
+  /** for branding on stubs/reports later */
+  legalName?: string;
+  phone?: string;
+  email?: string;
+  address?: Address | null;
+  logoUrl?: string | null;
+
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
+};
+
+export type OrgMemberRole = "owner" | "admin" | "manager" | "crew" | "readOnly";
+
+export type OrgMember = {
+  id: ID;          // could be `${orgId}_${userId}` or auto id
+  orgId: ID;
+  userId: ID;      // Firebase Auth uid
+
+  role: OrgMemberRole;
+
+  /** optionally link to Employee doc if this user is also an employee */
+  employeeId?: ID | null;
+
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
 };
 
 // ---------- Earnings ----------
