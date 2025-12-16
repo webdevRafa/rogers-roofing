@@ -6,6 +6,7 @@ import {
   getDoc,
   onSnapshot,
   orderBy,
+  where,
   query,
   serverTimestamp,
   setDoc,
@@ -188,6 +189,9 @@ export default function DashboardPage() {
   const [endDate, setEndDate] = useState<string>("");
   const [datePreset, setDatePreset] = useState<DatePreset>("custom");
 
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [assignedEmployeeIds, setAssignedEmployeeIds] = useState<string[]>([]);
+
   function recomputeDates(p: DatePreset, now = new Date()) {
     if (p === "last7") {
       const end = now;
@@ -243,6 +247,21 @@ export default function DashboardPage() {
     );
     const unsub = onSnapshot(q, (snap) =>
       setJobs(snap.docs.map((d) => d.data()))
+    );
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      query(collection(db, "employees"), where("isActive", "==", true)),
+      (snap) => {
+        setEmployees(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<Employee, "id">),
+          }))
+        );
+      }
     );
     return () => unsub();
   }, []);
@@ -568,6 +587,7 @@ export default function DashboardPage() {
         id: newRef.id,
         status: "pending",
         address: makeAddress(address),
+        assignedEmployeeIds: assignedEmployeeIds,
 
         earnings: {
           totalEarningsCents: 0,
@@ -616,6 +636,7 @@ export default function DashboardPage() {
 
       // Clean up form state (for when user comes back to the dashboard)
       setAddress("");
+      setAssignedEmployeeIds([]);
       setOpenForm(false);
       setNewFeltDate("");
       setNewShinglesDate("");
@@ -726,6 +747,9 @@ export default function DashboardPage() {
             setJobsPage={setJobsPage}
             JOBS_PER_PAGE={JOBS_PER_PAGE}
             totalNet={totalNet}
+            employees={employees}
+            assignedEmployeeIds={assignedEmployeeIds}
+            setAssignedEmployeeIds={setAssignedEmployeeIds}
           />
 
           {/* ====== MATERIAL PROGRESS + READY FOR PUNCH ====== */}

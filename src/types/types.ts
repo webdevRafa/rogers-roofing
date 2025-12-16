@@ -545,7 +545,7 @@ export type Job = {
   punchedAt?: Timestamp | Date | FieldValue | null;
   /** When this job is scheduled to be punched (final walkthrough/finish). */
   punchScheduledFor?: FSDate;
-
+  assignedEmployeeIds?: string[];
   /** Material scheduling / completion for this job. */
   feltScheduledFor?: FSDate;
   feltCompletedAt?: FSDate;

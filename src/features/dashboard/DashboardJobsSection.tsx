@@ -9,6 +9,7 @@ import {
 } from "framer-motion";
 import { Search, Filter, ChevronDown, SquarePlus } from "lucide-react";
 import CountUp from "react-countup";
+import type { Employee } from "../../types/types";
 
 type FsTimestampLike = { toDate: () => Date };
 
@@ -154,6 +155,10 @@ export interface DashboardJobsSectionProps {
   setEndDate: Dispatch<SetStateAction<string>>;
   applyPreset: (p: DatePreset) => void;
 
+  employees: Employee[];
+  assignedEmployeeIds: string[];
+  setAssignedEmployeeIds: Dispatch<SetStateAction<string[]>>;
+
   // status filter
   filters: StatusFilter[];
   statusFilter: StatusFilter;
@@ -204,6 +209,10 @@ export function DashboardJobsSection({
   endDate,
   setEndDate,
   applyPreset,
+
+  employees,
+  assignedEmployeeIds,
+  setAssignedEmployeeIds,
 
   filters,
   statusFilter,
@@ -372,6 +381,65 @@ export function DashboardJobsSection({
                 />
               </div>
 
+              <div className="mt-4">
+                <div className="text-sm font-semibold text-[var(--color-text)]">
+                  Assign workers (optional)
+                </div>
+
+                <div className="mt-2 max-h-40 overflow-auto rounded-xl border border-[var(--color-border)] bg-white/60 p-2">
+                  {employees.length === 0 ? (
+                    <div className="text-sm text-[var(--color-text)]/60">
+                      No active employees found.
+                    </div>
+                  ) : (
+                    employees.map((emp) => {
+                      const checked = assignedEmployeeIds.includes(emp.id);
+                      return (
+                        <label
+                          key={emp.id}
+                          className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-white"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-[var(--color-text)]">
+                              {emp.name}
+                            </div>
+                            <div className="truncate text-xs text-[var(--color-text)]/60">
+                              {emp.role ?? "crew"}
+                            </div>
+                          </div>
+
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setAssignedEmployeeIds((prev) =>
+                                checked
+                                  ? prev.filter((id) => id !== emp.id)
+                                  : [...prev, emp.id]
+                              );
+                            }}
+                            className="h-4 w-4"
+                          />
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+
+                {assignedEmployeeIds.length > 0 && (
+                  <div className="mt-2 text-xs text-[var(--color-text)]/70">
+                    Assigned: {assignedEmployeeIds.length}
+                    <button
+                      type="button"
+                      onClick={() => setAssignedEmployeeIds([])}
+                      className="ml-2 underline hover:opacity-80"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Schedule fields */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
@@ -420,6 +488,7 @@ export function DashboardJobsSection({
                 onClick={() => {
                   setOpenForm(false);
                   setAddress("");
+                  setAssignedEmployeeIds([]);
                   setNewFeltDate("");
                   setNewShinglesDate("");
                   setNewPunchDate("");
