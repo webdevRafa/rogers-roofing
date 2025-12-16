@@ -5,13 +5,11 @@ import {
   where,
   onSnapshot,
   orderBy,
-  doc,
-  getDoc,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/firebaseConfig";
 import { useCurrentEmployee } from "../hooks/useCurrentEmployee";
-import type { Job, PayoutDoc } from "../types/types";
+import type { Job } from "../types/types";
 
 /**
  * CrewDashboardPage displays a list of jobs relevant to the currently
@@ -27,31 +25,19 @@ export default function CrewDashboardPage() {
   const [jobsLoading, setJobsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper to fetch jobs by IDs once we know them
-  async function fetchJobsByIds(jobIds: string[]) {
-    const promises = jobIds.map(async (id) => {
-      const docRef = doc(db, "jobs", id);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        return { id: snap.id, ...(snap.data() as Omit<Job, "id">) } as Job;
-      }
-      return null;
-    });
-    const all = await Promise.all(promises);
-    return all.filter(Boolean) as Job[];
-  }
-
   useEffect(() => {
     if (loading) return;
-    // If no employee or no accessRole, skip
+
     if (!employee || !employee.accessRole) {
       setJobs([]);
       setJobsLoading(false);
       return;
     }
+
     setJobsLoading(true);
     setError(null);
-    // For managers: subscribe to all jobs
+
+    // Managers: see all jobs
     if (employee.accessRole === "manager") {
       const q = query(collection(db, "jobs"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(
@@ -73,49 +59,32 @@ export default function CrewDashboardPage() {
       );
       return () => unsub();
     }
-    // For crew/readOnly: query payouts for this employee and fetch unique jobIds
+
+    // Crew/readOnly: see jobs assigned to them
     const q = query(
-      collection(db, "payouts"),
-      where("employeeId", "==", employee.id),
+      collection(db, "jobs"),
+      where("assignedEmployeeIds", "array-contains", employee.id),
       orderBy("createdAt", "desc")
     );
+
     const unsub = onSnapshot(
       q,
-      async (snap) => {
-        const payouts: PayoutDoc[] = snap.docs.map((d) => ({
+      (snap) => {
+        const list: Job[] = snap.docs.map((d) => ({
           id: d.id,
-          ...(d.data() as Omit<PayoutDoc, "id">),
+          ...(d.data() as Omit<Job, "id">),
         }));
-        const jobIds = Array.from(
-          new Set(
-            payouts
-              .map((p) => p.jobId)
-              .filter((jid): jid is string => typeof jid === "string")
-          )
-        );
-        if (jobIds.length === 0) {
-          setJobs([]);
-          setJobsLoading(false);
-          return;
-        }
-        try {
-          const fetched = await fetchJobsByIds(jobIds);
-          setJobs(fetched);
-          setJobsLoading(false);
-        } catch (e: any) {
-          console.error(e);
-          setError(e?.message || "Failed to load jobs.");
-          setJobs([]);
-          setJobsLoading(false);
-        }
+        setJobs(list);
+        setJobsLoading(false);
       },
       (err) => {
         console.error(err);
-        setError(err.message || "Failed to load payouts.");
+        setError(err.message || "Failed to load assigned jobs.");
         setJobs([]);
         setJobsLoading(false);
       }
     );
+
     return () => unsub();
   }, [employee, loading]);
 
