@@ -397,6 +397,8 @@ export type Expenses = {
 // ---------- Notes & Photos ----------
 export type Note = {
   id: ID;
+  authorId?: string;
+  authorName?: string;
   text: string;
   createdAt?: FSDate;
   createdBy?: ID | null;

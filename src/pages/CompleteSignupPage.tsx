@@ -6,6 +6,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { Eye, EyeOff, ShieldCheck, Mail, ArrowRight } from "lucide-react";
 
 import { auth, db } from "../firebase/firebaseConfig";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -95,8 +96,31 @@ export default function CompleteSignupPage() {
       const claimInvite = httpsCallable(functions, "claimEmployeeInvite");
       await claimInvite({ inviteId });
 
-      // 3) Done
-      navigate("/dashboard", { replace: true });
+      // 3) After claiming, fetch employee to determine role and redirect
+      let accessRole: string | undefined;
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const q = query(
+            collection(db, "employees"),
+            where("userId", "==", user.uid),
+            limit(1)
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const data: any = snap.docs[0].data();
+            accessRole = data.accessRole;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch employee record", e);
+      }
+      // Navigate based on role
+      if (accessRole === "admin" || accessRole === "manager") {
+        navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/crew", { replace: true });
+      }
     } catch (e: any) {
       const code = e?.code || "";
       if (code === "auth/email-already-in-use") {

@@ -10,6 +10,8 @@ import { Eye, EyeOff } from "lucide-react";
 // Assumes you export `auth` from ../firebase/firebaseConfig
 import { auth } from "../firebase/firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { db } from "../firebase/firebaseConfig";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -27,13 +29,38 @@ const LoginPage = () => {
     setErr(null);
     setSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+      const user = cred.user;
 
-      // ✅ redirect back to invite (or dashboard)
+      // Fetch employee record to determine access role
+      let accessRole: string | undefined;
+      try {
+        const q = query(
+          collection(db, "employees"),
+          where("userId", "==", user.uid),
+          limit(1)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const data: any = snap.docs[0].data();
+          accessRole = data.accessRole;
+        }
+      } catch (e) {
+        // ignore errors and fall back to default
+        console.error("Failed to fetch employee record", e);
+      }
+
+      // ✅ redirect back to invite or to proper dashboard based on role
       if (redirect) {
         navigate(redirect, { replace: true });
-      } else {
+      } else if (accessRole === "admin" || accessRole === "manager") {
         navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/crew", { replace: true });
       }
     } catch (error: any) {
       const msg =

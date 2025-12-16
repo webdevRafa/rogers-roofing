@@ -3,7 +3,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 
 import LoginPage from "./pages/LoginPage";
-import AdminOnly from "./components/AdminOnly";
+// Use our new role-based guards
+import AdminGuard from "../src/components/AdminGuard";
+import RoleGuard from "../src/components/RoleGuard";
+import CrewLayout from "../src/layouts/CrewLayout";
+import CrewDashboardPage from "../src/pages/CrewDashboardPage";
+import CrewJobDetailPage from "../src/pages/CrewJobDetailPage";
 import ScrollToTop from "./components/ScrollToTop";
 
 import AdminLayout from "./layouts/AdminLayout";
@@ -29,12 +34,12 @@ export default function App() {
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/complete-signup" element={<CompleteSignupPage />} />
 
-          {/* ✅ Everything below gets the global navbar */}
+          {/* ✅ Admin routes protected by AdminGuard */}
           <Route
             element={
-              <AdminOnly>
+              <AdminGuard>
                 <AdminLayout />
-              </AdminOnly>
+              </AdminGuard>
             }
           >
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -44,6 +49,18 @@ export default function App() {
             <Route path="/employees/:id" element={<EmployeeDetailPage />} />
             <Route path="/job/:id" element={<JobDetailPage />} />
             <Route path="/invoices/:id" element={<InvoiceViewer />} />
+          </Route>
+
+          {/* ✅ Crew routes accessible to crew, manager, readOnly roles */}
+          <Route
+            element={
+              <RoleGuard allowedRoles={["crew", "manager", "readOnly"]}>
+                <CrewLayout />
+              </RoleGuard>
+            }
+          >
+            <Route path="/crew" element={<CrewDashboardPage />} />
+            <Route path="/crew/job/:id" element={<CrewJobDetailPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
