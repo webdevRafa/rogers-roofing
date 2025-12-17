@@ -23,3 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 .env.local
+
+
+# Service account / credentials (NEVER commit these)
+serviceAccount*.json
+*service-account*.json
+*admin-sdk*.json
+*firebase-admin*.json
+*.key.json
+
+# Local one-off migration scripts
+scripts/
+src/scripts/
