@@ -2,14 +2,17 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { db } from "../firebase/firebaseConfig";
 import { getAuth } from "firebase/auth";
+import { db } from "../firebase/firebaseConfig";
 
 /**
- * AcceptInvitePage handles the user-facing flow for accepting an employee
+ * AcceptInvitePage handles the user‑facing flow for accepting an employee
  * invitation. It reads the invite document based on the `inviteId` query
  * parameter, displays basic info, and provides a button to claim the invite
- * via the claimEmployeeInvite callable function.
+ * via the claimEmployeeInvite callable function.  This version adds a check
+ * to ensure that the currently authenticated user's email matches the
+ * invite's email.  If the user is logged in as someone else, they will
+ * be signed out and redirected to log in with the invited email.
  */
 export default function AcceptInvitePage() {
   const [searchParams] = useSearchParams();
@@ -51,9 +54,30 @@ export default function AcceptInvitePage() {
   async function handleClaim() {
     if (!inviteId) return;
     const auth = getAuth();
-    if (!auth.currentUser) {
+    const currentUser = auth.currentUser;
+    // If no user logged in, redirect to complete‑signup
+    if (!currentUser) {
       navigate(`/complete-signup?inviteId=${encodeURIComponent(inviteId)}`);
-
+      return;
+    }
+    const inviteEmail = String(invite?.email || "")
+      .trim()
+      .toLowerCase();
+    const userEmail = String(currentUser.email || "")
+      .trim()
+      .toLowerCase();
+    if (inviteEmail && userEmail && inviteEmail !== userEmail) {
+      // The signed‑in user does not match the invite email.
+      // Sign them out and redirect to login with redirect back to accept-invite.
+      await auth.signOut();
+      setError(
+        `You are signed in as ${userEmail}, but this invite is for ${inviteEmail}. Please sign in with the invited email to accept the invite.`
+      );
+      navigate(
+        `/login?redirect=${encodeURIComponent(
+          `/accept-invite?inviteId=${inviteId}`
+        )}`
+      );
       return;
     }
     try {

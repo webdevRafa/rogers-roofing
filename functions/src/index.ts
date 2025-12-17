@@ -195,6 +195,18 @@ export const claimEmployeeInvite = onCall(
         `Invite is not pending (current status: ${invite.status}).`
       );
     }
+
+    // NEW: Verify that the current user’s email matches the invite email.
+    // auth.token.email is populated for email/password and most OAuth sign-ins.
+    const callerEmail = String(auth.token?.email || "").trim().toLowerCase();
+    const inviteEmail = String(invite.email || "").trim().toLowerCase();
+    if (!callerEmail || callerEmail !== inviteEmail) {
+      throw new HttpsError(
+        "failed-precondition",
+        `This invite is for ${inviteEmail}, but you are signed in as ${callerEmail}.`
+      );
+    }
+
     const employeeRef = db.doc(`employees/${invite.employeeId}`);
     await db.runTransaction(async (trx) => {
       const employeeSnap = await trx.get(employeeRef);
@@ -230,6 +242,7 @@ export const claimEmployeeInvite = onCall(
     return { ok: true };
   }
 );
+
 
 
 // Create full accept‑invite URL using APP_BASE_URL
