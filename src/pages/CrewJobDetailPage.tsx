@@ -247,6 +247,15 @@ export default function CrewJobDetailPage() {
     field: "feltCompletedAt" | "shinglesCompletedAt" | "punchedAt"
   ) {
     if (!job || !id) return;
+    // Check permissions for completing tasks
+    if (!canCompleteTasks) {
+      setToast({
+        status: "error",
+        title: "Permission denied",
+        message: "You are not allowed to complete this task.",
+      });
+      return;
+    }
     try {
       const ref = doc(db, "jobs", id);
       await updateDoc(ref, { [field]: serverTimestamp() });
@@ -272,6 +281,15 @@ export default function CrewJobDetailPage() {
 
   async function addNote() {
     if (!job || !id || !noteText.trim()) return;
+    // Permission check for adding notes
+    if (!canAddNotes) {
+      setToast({
+        status: "error",
+        title: "Permission denied",
+        message: "You are not allowed to add notes.",
+      });
+      return;
+    }
     try {
       const ref = doc(db, "jobs", id);
       const newNote: Note = {
@@ -302,6 +320,15 @@ export default function CrewJobDetailPage() {
   // Upload photo to Storage. Cloud Function will create jobPhotos doc.
   async function uploadPhoto() {
     if (!job || !photoFile) return;
+    // Permission check for adding photos
+    if (!canAddPhotos) {
+      setToast({
+        status: "error",
+        title: "Permission denied",
+        message: "You are not allowed to upload photos.",
+      });
+      return;
+    }
     setUploading(true);
     try {
       const storage = getStorage();
@@ -341,6 +368,15 @@ export default function CrewJobDetailPage() {
 
   // Delete photo by removing its jobPhotos doc
   async function deletePhoto(photoId: string) {
+    // Permission check for deleting photos
+    if (!canDeletePhotos) {
+      setToast({
+        status: "error",
+        title: "Permission denied",
+        message: "You are not allowed to delete photos.",
+      });
+      return;
+    }
     try {
       await deleteDoc(doc(db, "jobPhotos", photoId));
       setToast({
@@ -393,6 +429,34 @@ export default function CrewJobDetailPage() {
   const punchScheduled = job.punchScheduledFor;
   const punchCompleted = job.punchedAt;
 
+  /**
+   * Permission checks
+   *
+   * We restrict certain actions based on the employee's access role and crew role.
+   *
+   * Access roles (admin, manager, crew, readOnly) and crew roles (supervisor,
+   * technician, foreman, etc.) are defined in `types.ts`【736888808946205†L38-L59】.
+   * According to the proposed permission model, marking tasks complete should
+   * only be possible for supervisors, technicians, foremen, managers, or admins.
+   * Adding notes/photos is allowed for any role except read‑only. Deleting
+   * photos follows the same restrictions as marking tasks complete.
+   */
+  const canCompleteTasks = Boolean(
+    employee &&
+      (employee.accessRole === "admin" ||
+        employee.accessRole === "manager" ||
+        // only specific crew roles can mark tasks complete
+        ["supervisor", "technician", "foreman"].includes(
+          // cast to any since TypeScript union not imported here
+          (employee.role as any) ?? ""
+        ))
+  );
+  const canAddNotes = Boolean(employee && employee.accessRole !== "readOnly");
+  // Photo upload requires the same permissions as adding notes
+  const canAddPhotos = canAddNotes;
+  // Delete photos only for those who can complete tasks
+  const canDeletePhotos = canCompleteTasks;
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Job Details</h1>
@@ -413,7 +477,7 @@ export default function CrewJobDetailPage() {
             ) : (
               <span className="text-gray-600">Not scheduled</span>
             )}
-            {!feltCompleted && feltScheduled && (
+            {!feltCompleted && feltScheduled && canCompleteTasks && (
               <button
                 onClick={() => markCompleted("feltCompletedAt")}
                 className="ml-2 text-xs text-blue-600 underline"
@@ -431,7 +495,7 @@ export default function CrewJobDetailPage() {
             ) : (
               <span className="text-gray-600">Not scheduled</span>
             )}
-            {!shinglesCompleted && shinglesScheduled && (
+            {!shinglesCompleted && shinglesScheduled && canCompleteTasks && (
               <button
                 onClick={() => markCompleted("shinglesCompletedAt")}
                 className="ml-2 text-xs text-blue-600 underline"
@@ -449,7 +513,7 @@ export default function CrewJobDetailPage() {
             ) : (
               <span className="text-gray-600">Not scheduled</span>
             )}
-            {!punchCompleted && punchScheduled && (
+            {!punchCompleted && punchScheduled && canCompleteTasks && (
               <button
                 onClick={() => markCompleted("punchedAt")}
                 className="ml-2 text-xs text-blue-600 underline"
@@ -465,14 +529,16 @@ export default function CrewJobDetailPage() {
         title="Notes"
         delay={0.15}
         right={
-          <button
-            type="button"
-            onClick={() => setNoteModalOpen(true)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
-            title="Add note"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          canAddNotes ? (
+            <button
+              type="button"
+              onClick={() => setNoteModalOpen(true)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+              title="Add note"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          ) : null
         }
       >
         <div
@@ -513,14 +579,16 @@ export default function CrewJobDetailPage() {
         title="Photos"
         delay={0.2}
         right={
-          <button
-            type="button"
-            onClick={() => setPhotoModalOpen(true)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
-            title="Add photo"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          canAddPhotos ? (
+            <button
+              type="button"
+              onClick={() => setPhotoModalOpen(true)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-white/80 text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition"
+              title="Add photo"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          ) : null
         }
       >
         <div className={`${LIST_MAX_H} overflow-y-auto pr-1`}>
@@ -547,13 +615,15 @@ export default function CrewJobDetailPage() {
                     loading="lazy"
                   />
                 </button>
-                <button
-                  onClick={() => deletePhoto(p.id)}
-                  className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
-                  title="Delete"
-                >
-                  Delete
-                </button>
+                {canDeletePhotos && (
+                  <button
+                    onClick={() => deletePhoto(p.id)}
+                    className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition"
+                    title="Delete"
+                  >
+                    Delete
+                  </button>
+                )}
                 {p.caption && (
                   <div className="absolute inset-x-0 bottom-0 rounded-b-lg bg-black/50 p-1 text-center text-[10px] text-white">
                     {p.caption}
@@ -595,7 +665,7 @@ export default function CrewJobDetailPage() {
               await addNote();
               setNoteModalOpen(false);
             }}
-            disabled={!noteText.trim()}
+            disabled={!noteText.trim() || !canAddNotes}
             className="rounded-xl bg-[var(--color-brown)] px-4 py-2 text-sm text-white disabled:opacity-60"
           >
             Save note
@@ -688,7 +758,7 @@ export default function CrewJobDetailPage() {
           <div className="max-w-[80px] sm:w-auto">
             <button
               type="submit"
-              disabled={uploading || !photoFile}
+              disabled={uploading || !photoFile || !canAddPhotos}
               className="h-8 inline-flex items-center justify-center rounded-md bg-[var(--color-brown)] px-4 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-brown-hover)] transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {uploading ? "Uploading…" : "Upload"}
