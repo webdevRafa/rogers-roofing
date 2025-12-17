@@ -135,6 +135,14 @@ export type Employee = {
 
   userId?: string | null;
 
+  /**
+   * Link to the OrgMember document for this employee, if applicable.
+   * When migrating to the multi‑tenant model, set this to the membership
+   * record id that ties the user to the organization.  Existing records
+   * may omit this field.
+   */
+  orgMemberId?: ID | null;
+
   invite?: EmployeeInviteMeta | null;
   isActive?: boolean;
   createdAt?: Timestamp | Date | FieldValue | null;
@@ -167,6 +175,9 @@ export type PayoutDoc = {
   stubId?: string;
   paidStubNumber?: string;
   payoutStubId?: string;
+
+  /** Owning organization for this payout.  Optional for backward compatibility. */
+  orgId?: ID;
 };
 export type Org = {
   id: ID;
@@ -198,6 +209,38 @@ export type OrgMember = {
   createdAt?: FirestoreTime;
   updatedAt?: FirestoreTime;
 };
+
+/**
+ * A global User record representing an individual person.
+ * Users exist outside the context of any one organization and
+ * can belong to multiple organizations via OrgMember records.
+ * Keep fields optional to avoid breaking existing Employee-based flows.
+ */
+export type User = {
+  /** Firebase Auth uid */
+  id: ID;
+  /** Full name (copied from Employee when created) */
+  name?: string | null;
+  /** Primary email for the user */
+  email?: string | null;
+  /** Optional phone number */
+  phone?: string | null;
+  /** Timestamp when the user record was created */
+  createdAt?: FirestoreTime;
+  /** Timestamp when the user record was last updated */
+  updatedAt?: FirestoreTime;
+  /** Soft delete timestamp */
+  deletedAt?: FirestoreTime | null;
+};
+
+/**
+ * Alias types to make the multi‑tenant model explicit without
+ * breaking existing imports. Organization is equivalent to Org,
+ * and Membership is equivalent to OrgMember.  You can gradually
+ * migrate code to use these new names while old names continue to work.
+ */
+export type Organization = Org;
+export type Membership = OrgMember;
 
 // ---------- Earnings ----------
 export type EarningEntry = {
@@ -340,6 +383,12 @@ export type Payout = {
   ratePerSqFt?: number;
   memo?: string;
   attachmentUrls?: string[]; // photos of checks/receipts
+
+  /**
+   * Owning organization for this payout. When present this
+   * links the payout to its tenant. Optional for backward compatibility.
+   */
+  orgId?: ID;
 };
 export type MaterialCategory =
   | "coilNails"
@@ -379,6 +428,9 @@ export type MaterialExpense = {
   amountCents: MoneyCents;
   purchasedAt?: FSDate;
   receiptUrl?: string;
+
+  /** Owning organization for this material expense. Optional for backward compatibility. */
+  orgId?: ID;
 };
 export type JobPricing = {
   sqft: number;                 // >= 0
@@ -470,6 +522,9 @@ export interface PayoutStubDoc {
   // optional, later:
   pdfUrl?: string;
   notes?: string;
+
+  /** Owning organization for this stub.  Optional for backward compatibility. */
+  orgId?: ID;
 }
 
 export interface InvoiceLine {
@@ -505,6 +560,9 @@ export interface InvoiceDoc {
   status: InvoiceStatus;
   // For receipts, store how it was paid if you want:
   paymentNote?: string;    // e.g. "Paid by check #1023"
+
+  /** Owning organization for this invoice. Optional for backward compatibility. */
+  orgId?: ID;
 }
 
 export type JobAttachment = Photo | { url: string; label?: string };
@@ -546,6 +604,13 @@ export type Job = {
   /** When this job is scheduled to be punched (final walkthrough/finish). */
   punchScheduledFor?: FSDate;
   assignedEmployeeIds?: string[];
+  /**
+   * For multi‑tenant support, optionally track assignments by membership.
+   * Jobs created before introducing the Membership model will not have this
+   * field.  When present, use this instead of assignedEmployeeIds to
+   * associate a job with specific organization members.
+   */
+  assignedOrgMemberIds?: ID[];
   /** Material scheduling / completion for this job. */
   feltScheduledFor?: FSDate;
   feltCompletedAt?: FSDate;
@@ -578,6 +643,9 @@ export type JobListItem = {
   lastModifiedAt?: FSDate | null;
   status: JobStatus;
   netProfitCents: MoneyCents;
+
+  /** Owning organization for this job. Optional for backward compatibility. */
+  orgId?: ID;
 };
 
 export type JobDraft = Omit<Job, "id" | keyof AuditFields | "computed"> & {
