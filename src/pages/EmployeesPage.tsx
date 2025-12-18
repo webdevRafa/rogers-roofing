@@ -14,6 +14,7 @@ import type { FieldValue } from "firebase/firestore";
 import { useNavigate, useLocation } from "react-router-dom";
 import { db } from "../firebase/firebaseConfig";
 import type { Employee, EmployeeAddress } from "../types/types";
+import { useOrg } from "../contexts/OrgContext";
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -24,8 +25,7 @@ export default function EmployeesPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Temporary org until you wire auth/org selection
-  const orgId = "default";
+  const { orgId, loading: orgLoading } = useOrg();
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<
@@ -37,6 +37,11 @@ export default function EmployeesPage() {
    * including an inviteDocId.  If the employee lacks an email, an error message is shown.
    */
   async function sendInviteFor(employee: Employee) {
+    if (!orgId) {
+      setError("No organization selected.");
+      return;
+    }
+
     try {
       if (!employee.email) {
         setError(
@@ -128,6 +133,14 @@ export default function EmployeesPage() {
   useEffect(() => {
     setError(null);
 
+    if (orgLoading) return;
+
+    if (!orgId) {
+      setEmployees([]);
+      setError("No organization selected.");
+      return;
+    }
+
     const q = query(
       collection(db, "employees"),
       where("orgId", "==", orgId),
@@ -137,9 +150,6 @@ export default function EmployeesPage() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        // Debug: confirm if Firestore is returning docs at all
-        console.log("employees snap size:", snap.size);
-
         const list: Employee[] = snap.docs.map((docSnap) => ({
           id: docSnap.id,
           ...(docSnap.data() as Omit<Employee, "id">),
@@ -154,11 +164,14 @@ export default function EmployeesPage() {
     );
 
     return () => unsub();
-  }, []);
+  }, [orgId, orgLoading]);
 
   async function createEmployee() {
     if (!name.trim()) return;
-
+    if (!orgId) {
+      setError("No organization selected.");
+      return;
+    }
     setCreating(true);
     setError(null);
 

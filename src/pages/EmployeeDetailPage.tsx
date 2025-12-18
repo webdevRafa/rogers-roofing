@@ -24,6 +24,7 @@ import type {
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { GlobalPayoutStubModal } from "../components/GlobalPayoutStubModal";
 import { PayoutStubViewerModal } from "../components/PayoutStubViewerModal";
+import { useOrg } from "../contexts/OrgContext";
 
 // ---------- Small helpers ----------
 
@@ -133,15 +134,35 @@ export default function EmployeeDetailPage() {
   const [stubSearch, setStubSearch] = useState("");
   const [viewStubId, setViewStubId] = useState<string | null>(null);
 
+  const { orgId, loading: orgLoading } = useOrg();
+
   // ---------- Load employee ----------
   useEffect(() => {
     if (!id) return;
+    if (orgLoading) return; // wait for org context to resolve
+
     (async () => {
       try {
+        if (!orgId) throw new Error("No organization selected.");
+
         const ref = doc(collection(db, "employees"), id);
         const snap = await getDoc(ref);
+
         if (!snap.exists()) throw new Error("Employee not found");
-        const data = snap.data() as Employee;
+
+        // IMPORTANT: include the document id on the object
+        const data = {
+          id: snap.id,
+          ...(snap.data() as Omit<Employee, "id">),
+        } as Employee;
+
+        // ✅ Step B: guard against cross-org access
+        const employeeOrgId = (snap.data() as any).orgId as string | undefined;
+        if (employeeOrgId && employeeOrgId !== orgId) {
+          throw new Error(
+            "This employee does not belong to the active organization."
+          );
+        }
 
         setEmployee(data);
         setName(data.name);
@@ -159,14 +180,24 @@ export default function EmployeeDetailPage() {
         setError(e instanceof Error ? e.message : String(e));
       }
     })();
-  }, [id]);
+  }, [id, orgId, orgLoading]);
 
-  // ---------- Live payouts for this employee ----------
+  // ---------- Live payouts for this employee (ORG SCOPED) ----------
   useEffect(() => {
     if (!id) return;
+    if (orgLoading) return;
+
+    if (!orgId) {
+      setPayouts([]);
+      setPayoutsLoading(false);
+      setPayoutsError("No organization selected.");
+      return;
+    }
+
     const ref = collection(db, "payouts");
     const q = query(
       ref,
+      where("orgId", "==", orgId),
       where("employeeId", "==", id),
       orderBy("createdAt", "desc")
     );
@@ -191,7 +222,7 @@ export default function EmployeeDetailPage() {
     );
 
     return () => unsub();
-  }, [id]);
+  }, [id, orgId, orgLoading]);
 
   // Clear selection when leaving "pending" tab
   useEffect(() => {
@@ -227,13 +258,22 @@ export default function EmployeeDetailPage() {
       setSaving(false);
     }
   }
-  // subscribe to payoutStubs for this employee
+  // subscribe to payoutStubs for this employee (ORG SCOPED)
   useEffect(() => {
     if (!id) return;
+    if (orgLoading) return;
+
+    if (!orgId) {
+      setStubs([]);
+      setStubsLoading(false);
+      setStubsError("No organization selected.");
+      return;
+    }
 
     const ref = collection(db, "payoutStubs");
     const q = query(
       ref,
+      where("orgId", "==", orgId),
       where("employeeId", "==", id),
       orderBy("createdAt", "desc")
     );
@@ -243,7 +283,7 @@ export default function EmployeeDetailPage() {
       (snap) => {
         const list: PayoutStubDoc[] = snap.docs.map((d) => ({
           ...(d.data() as PayoutStubDoc),
-          id: d.id, // ensure id is correct even if not stored in data
+          id: d.id,
         }));
 
         setStubs(list);
@@ -258,7 +298,7 @@ export default function EmployeeDetailPage() {
     );
 
     return () => unsub();
-  }, [id]);
+  }, [id, orgId, orgLoading]);
 
   // ---- Filtered payouts (by tab + search) ----
   const filteredPayouts = useMemo(() => {
@@ -367,6 +407,7 @@ export default function EmployeeDetailPage() {
         id: stubRef.id,
         number,
         employeeId: employee.id,
+        orgId: orgId!,
         employeeNameSnapshot: employee.name,
         employeeAddressSnapshot: employeeAddr,
         payoutIds: lines.map((l) => l.payoutId),

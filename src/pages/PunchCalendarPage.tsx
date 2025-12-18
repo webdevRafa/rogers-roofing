@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/firebaseConfig";
 import type { Job } from "../types/types";
 import { jobConverter } from "../types/types";
 import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { useOrg } from "../contexts/OrgContext";
 
 type FsTimestampLike = { toDate: () => Date };
 function isFsTimestamp(x: unknown): x is FsTimestampLike {
@@ -58,17 +65,27 @@ export default function PunchCalendarPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [month, setMonth] = useState<Date>(new Date());
   const navigate = useNavigate();
+  const { orgId, loading } = useOrg();
 
   useEffect(() => {
+    if (loading) return;
+
+    if (!orgId) {
+      setJobs([]);
+      return;
+    }
+
     const q = query(
       collection(db, "jobs").withConverter(jobConverter),
+      where("orgId", "==", orgId),
       orderBy("updatedAt", "desc")
     );
+
     const unsub = onSnapshot(q, (snap) =>
       setJobs(snap.docs.map((d) => d.data()))
     );
     return () => unsub();
-  }, []);
+  }, [orgId, loading]);
 
   const days = useMemo(() => getMonthDays(month), [month]);
 
