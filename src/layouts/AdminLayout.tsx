@@ -11,6 +11,8 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { useMembership } from "../hooks/useMembership";
+import { OrgProvider } from "../contexts/OrgContext";
 
 import logo from "../assets/rogers-roofing.webp"; // adjust if needed
 
@@ -28,6 +30,14 @@ export default function AdminLayout() {
 
   const [signingOut, setSigningOut] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const {
+    memberships,
+    orgId: activeOrgId,
+    activeOrgName,
+    setActiveOrgId,
+    loading: membershipLoading,
+  } = useMembership();
 
   async function handleLogout() {
     try {
@@ -47,24 +57,57 @@ export default function AdminLayout() {
           <div className="mx-auto w-[min(1200px,94vw)] py-8">
             <div className="flex items-center justify-between gap-3">
               {/* Brand */}
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="flex items-center gap-3 text-left"
-              >
-                <img
-                  src={logo}
-                  alt="Roger's Roofing logo"
-                  className="h-10 w-10 rounded-xl shadow-md"
-                />
-                <div className="hidden sm:block">
-                  <div className="text-sm font-semibold text-white leading-4">
-                    Roger&apos;s Roofing
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="flex items-center gap-3 text-left"
+                >
+                  <img
+                    src={logo}
+                    alt="Roger's Roofing logo"
+                    className="h-10 w-10 rounded-xl shadow-md"
+                  />
+                  <div className="hidden sm:block">
+                    <div className="text-sm font-semibold text-white leading-4">
+                      Roger&apos;s Roofing
+                    </div>
+                    <div className="text-[11px] text-white/75">
+                      Jobs • Scheduling • Payouts
+                    </div>
+
+                    {/* ✅ Org switcher */}
+                    {!membershipLoading && memberships.length > 1 && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-wide text-white/75">
+                          Org
+                        </span>
+
+                        <select
+                          value={activeOrgId ?? ""}
+                          onChange={(e) => setActiveOrgId(e.target.value)}
+                          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-[11px] text-white outline-none hover:bg-white/15"
+                        >
+                          {memberships.map((m) => (
+                            <option
+                              key={m.id}
+                              value={m.orgId}
+                              className="text-black"
+                            >
+                              {m.orgId}
+                            </option>
+                          ))}
+                        </select>
+
+                        {activeOrgName && (
+                          <span className="text-[11px] text-white/70 truncate max-w-[160px]">
+                            {activeOrgName}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-[11px] text-white/75">
-                    Jobs • Scheduling • Payouts
-                  </div>
-                </div>
-              </button>
+                </button>
+              </div>
 
               {/* Desktop Nav */}
               <nav className="hidden md:flex items-center gap-2">
@@ -163,10 +206,19 @@ export default function AdminLayout() {
         </div>
       </header>
 
-      {/* Page content */}
-      <main className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10">
-        <Outlet />
-      </main>
+      <OrgProvider
+        value={{
+          orgId: activeOrgId,
+          orgName: activeOrgName ?? null,
+          memberships,
+          setOrgId: setActiveOrgId,
+          loading: membershipLoading,
+        }}
+      >
+        <main className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10">
+          <Outlet />
+        </main>
+      </OrgProvider>
     </div>
   );
 }

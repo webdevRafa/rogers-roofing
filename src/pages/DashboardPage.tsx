@@ -17,6 +17,7 @@ import type { Job, JobStatus, PayoutDoc, Employee } from "../types/types";
 import { DashboardJobsSection } from "../features/dashboard/DashboardJobsSection";
 import { DashboardProgressSection } from "../features/dashboard/DashboardProgressSection";
 import { DashboardPayoutsSection } from "../features/dashboard/DashboardPayoutsSection";
+import { useOrg } from "../contexts/OrgContext";
 
 import { GlobalPayoutStubModal } from "../components/GlobalPayoutStubModal";
 import PayTechnicianModal from "../components/PayTechnicianModal";
@@ -192,6 +193,20 @@ export default function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [assignedEmployeeIds, setAssignedEmployeeIds] = useState<string[]>([]);
 
+  const { orgId, loading: membershipLoading } = useOrg();
+
+  // ✅ Guard booleans (NO EARLY RETURNS)
+  const isBusy = membershipLoading || loading;
+  const hasOrg = Boolean(orgId);
+
+  const guardView = isBusy ? (
+    <div className="p-4">Loading organization…</div>
+  ) : !hasOrg ? (
+    <div className="p-8 text-red-600">
+      You are not linked to an organization. Please contact your admin.
+    </div>
+  ) : null;
+
   function recomputeDates(p: DatePreset, now = new Date()) {
     if (p === "last7") {
       const end = now;
@@ -239,43 +254,52 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, [datePreset]);
 
-  // Live jobs
+  // Live jobs scoped by organization
   useEffect(() => {
+    if (!orgId) return;
     const q = query(
       collection(db, "jobs").withConverter(jobConverter),
+      where("orgId", "==", orgId),
       orderBy("updatedAt", "desc")
     );
-    const unsub = onSnapshot(q, (snap) =>
-      setJobs(snap.docs.map((d) => d.data()))
-    );
+    const unsub = onSnapshot(q, (snap) => {
+      setJobs(snap.docs.map((d) => d.data()));
+    });
     return () => unsub();
-  }, []);
+  }, [orgId]);
 
+  // Active employees in this organization
   useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(db, "employees"), where("isActive", "==", true)),
-      (snap) => {
-        setEmployees(
-          snap.docs.map((d) => ({
-            id: d.id,
-            ...(d.data() as Omit<Employee, "id">),
-          }))
-        );
-      }
+    if (!orgId) return;
+    const employeesQuery = query(
+      collection(db, "employees"),
+      where("orgId", "==", orgId),
+      where("isActive", "==", true)
     );
+    const unsub = onSnapshot(employeesQuery, (snap) => {
+      setEmployees(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<Employee, "id">),
+        }))
+      );
+    });
     return () => unsub();
-  }, []);
+  }, [orgId]);
 
-  // Live payouts (all employees)
+  // Clear selection when leaving "pending" tab
+  // Live payouts scoped by organization
   useEffect(() => {
-    const ref = collection(db, "payouts");
-    const q = query(ref, orderBy("createdAt", "desc"));
-
+    if (!orgId) return;
+    const payoutsQuery = query(
+      collection(db, "payouts"),
+      where("orgId", "==", orgId),
+      orderBy("createdAt", "desc")
+    );
     const unsub = onSnapshot(
-      q,
+      payoutsQuery,
       (snap) => {
-        const list: PayoutDoc[] = snap.docs.map((d) => d.data() as PayoutDoc);
-        setPayouts(list);
+        setPayouts(snap.docs.map((d) => d.data() as PayoutDoc));
         setPayoutsLoading(false);
         setPayoutsError(null);
       },
@@ -285,17 +309,8 @@ export default function DashboardPage() {
         setPayoutsLoading(false);
       }
     );
-
     return () => unsub();
-  }, []);
-
-  // Clear selection when leaving "pending" tab
-  useEffect(() => {
-    if (payoutFilter !== "pending") {
-      setSelectedPayoutIds([]);
-      setStubOpen(false);
-    }
-  }, [payoutFilter]);
+  }, [orgId]);
 
   // Status + Date + Address filtering
   const filteredJobs = useMemo(() => {
@@ -585,6 +600,7 @@ export default function DashboardPage() {
       // Base job with the shape that matches `Job` in types.ts
       let job: Job = {
         id: newRef.id,
+        orgId: orgId!,
         status: "pending",
         address: makeAddress(address),
         assignedEmployeeIds: assignedEmployeeIds,
@@ -697,6 +713,7 @@ export default function DashboardPage() {
       ? `${formatYmdForChip(startDate)} → ${formatYmdForChip(endDate)}`
       : null);
 
+  if (guardView) return guardView;
   // JSX BEGINS HERE
   return (
     <>
