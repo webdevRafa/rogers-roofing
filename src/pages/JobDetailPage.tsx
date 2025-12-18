@@ -29,7 +29,6 @@ import {
   AlertTriangle,
   Plus,
 } from "lucide-react";
-
 import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
 import { motion, type MotionProps } from "framer-motion";
 import CountUp from "react-countup";
@@ -51,6 +50,7 @@ import type {
 import { jobConverter } from "../types/types";
 import { toCents } from "../utils/money";
 import { recomputeJob } from "../utils/calc";
+import { useOrg } from "../contexts/OrgContext";
 
 // ---------- Animation helpers ----------
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -207,6 +207,8 @@ export default function JobDetailPage() {
   const [flashingUnits, setFlashingUnits] = useState("1");
   const [flashingUnitPrice, setFlashingUnitPrice] = useState("0"); // dollars per unit
   const [flashingModalOpen, setFlashingModalOpen] = useState(false);
+
+  const { orgId } = useOrg();
 
   const prefillFlashingInputs = () => {
     const fp = job?.earnings?.flashingPay;
@@ -959,7 +961,9 @@ export default function JobDetailPage() {
         }
         return "check"; // sensible default / fallback
       })();
-
+      if (!orgId) {
+        throw new Error("Cannot create payout without orgId");
+      }
       const payoutDoc: PayoutDoc = {
         id: entry.id,
         jobId: job.id,
@@ -971,6 +975,7 @@ export default function JobDetailPage() {
         method: payoutMethod,
         sqft: entry.sqft,
         ratePerSqFt: entry.ratePerSqFt,
+        orgId,
         createdAt: serverTimestamp() as FieldValue,
         paidAt: null, // start as pending; will be filled when marked as paid
       };

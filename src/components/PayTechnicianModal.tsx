@@ -16,6 +16,7 @@ import { X, Wrench } from "lucide-react";
 
 import { db } from "../firebase/firebaseConfig";
 import type { Employee, PayoutDoc } from "../types/types";
+import { useOrg } from "../contexts/OrgContext";
 
 /**
  * PayTechnicianModal
@@ -92,9 +93,17 @@ export default function PayTechnicianModal({
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const { orgId } = useOrg();
+
   // Load active employees (fallback to all if isActive missing)
   useEffect(() => {
     (async () => {
+      if (!orgId) {
+        setEmployees([]);
+        setLoadingEmployees(false);
+        return;
+      }
+
       try {
         setLoadingEmployees(true);
         setEmployeesError(null);
@@ -104,6 +113,7 @@ export default function PayTechnicianModal({
         // Try to fetch active employees first
         const qActive = query(
           ref,
+          where("orgId", "==", orgId),
           where("isActive", "==", true),
           orderBy("name"),
           limit(200)
@@ -117,7 +127,12 @@ export default function PayTechnicianModal({
 
         // If none found (or field missing across docs), fallback to all employees
         if (list.length === 0) {
-          const qAll = query(ref, orderBy("name"), limit(200));
+          const qAll = query(
+            ref,
+            where("orgId", "==", orgId),
+            orderBy("name"),
+            limit(200)
+          );
           const allSnap = await getDocs(qAll);
           list = allSnap.docs.map((d) => ({
             id: d.id,
@@ -138,7 +153,7 @@ export default function PayTechnicianModal({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [orgId]);
 
   const selectedEmployee = useMemo(
     () => employees.find((e) => e.id === employeeId) ?? null,
@@ -173,6 +188,10 @@ export default function PayTechnicianModal({
       setFormError("Enter rate per day (must be greater than 0).");
       return;
     }
+    if (!orgId) {
+      setFormError("Org not loaded. Please refresh and try again.");
+      return;
+    }
 
     const ratePerDayCents = toCents(rateNum);
     const amountCents = Math.round(daysNum * ratePerDayCents);
@@ -185,6 +204,7 @@ export default function PayTechnicianModal({
       const docData: Omit<PayoutDoc, "id"> & {
         memo?: string;
       } = {
+        orgId,
         employeeId,
         employeeNameSnapshot: selectedEmployee.name,
 
