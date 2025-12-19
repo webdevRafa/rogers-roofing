@@ -1,4 +1,3 @@
-// src/pages/JobsPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
@@ -17,7 +16,33 @@ import { jobConverter } from "../types/types";
 import { recomputeJob, makeAddress } from "../utils/calc";
 import { useOrg } from "../contexts/OrgContext";
 import { DashboardJobsSection } from "../features/dashboard/DashboardJobsSection";
-import { useNavigate } from "react-router-dom";
+
+// Chart.js imports for summary visualisations
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Title as ChartTitle,
+  Tooltip as ChartTooltip,
+  Legend as ChartLegend,
+  type ChartData,
+  type ChartOptions,
+  type TooltipItem,
+} from "chart.js";
+import { Bar, Pie } from "react-chartjs-2";
+
+// Register chart modules
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  ChartTitle,
+  ChartTooltip,
+  ChartLegend
+);
 
 /* Small helpers matching DashboardPage */
 type FsTimestampLike = { toDate: () => Date };
@@ -58,9 +83,23 @@ function formatYmdForChip(ymd: string | ""): string {
 
 type StatusFilter = "all" | JobStatus;
 
+/** Format cents into dollar string (e.g. $1,234.56). */
+function formatCurrency(cents: number | null | undefined): string {
+  const value = (cents ?? 0) / 100;
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Pick a displayable address line from a Job's address. */
+function pickAddressLine(a: Job["address"]): string {
+  if (typeof a === "string") return a;
+  return a?.fullLine ?? "";
+}
+
 /* Main page component */
 export default function JobsPage() {
-  const navigate = useNavigate();
   const { orgId, loading: membershipLoading } = useOrg();
 
   // Jobs & employees
@@ -87,10 +126,15 @@ export default function JobsPage() {
     "custom" | "last7" | "thisMonth" | "ytd"
   >("custom");
 
+  // Sort option state
+  const [sortOption, setSortOption] = useState<"recent" | "netDesc" | "netAsc">(
+    "recent"
+  );
+
   // Pagination
   const [jobsPage, setJobsPage] = useState(1);
   const JOBS_PER_PAGE = 20;
-  const [jobsOpen, setJobsOpen] = useState(true); // keep jobs list expanded by default
+  const [jobsOpen, setJobsOpen] = useState(true);
 
   // Load jobs from Firestore
   useEffect(() => {
@@ -163,7 +207,6 @@ export default function JobsPage() {
         job.punchScheduledFor = new Date(newPunchDate + "T00:00:00");
       job = recomputeJob(job);
       await setDoc(newRef.withConverter(jobConverter), job);
-      navigate(`/job/${newRef.id}`);
       // reset form
       setAddress("");
       setAssignedEmployeeIds([]);
@@ -204,23 +247,71 @@ export default function JobsPage() {
     });
   }, [jobs, statusFilter, startDate, endDate, searchTerm]);
 
-  // Pagination & totals
+  // Sort filtered jobs based on selected option
+  const sortedJobs = useMemo(() => {
+    const arr = [...filteredJobs];
+    if (sortOption === "netDesc") {
+      return arr.sort(
+        (a, b) =>
+          (b.computed?.netProfitCents ?? 0) - (a.computed?.netProfitCents ?? 0)
+      );
+    } else if (sortOption === "netAsc") {
+      return arr.sort(
+        (a, b) =>
+          (a.computed?.netProfitCents ?? 0) - (b.computed?.netProfitCents ?? 0)
+      );
+    } else {
+      // default: most recent updatedAt
+      return arr.sort((a, b) => {
+        const aTs = toMillis(a.updatedAt ?? a.createdAt) ?? 0;
+        const bTs = toMillis(b.updatedAt ?? b.createdAt) ?? 0;
+        return bTs - aTs;
+      });
+    }
+  }, [filteredJobs, sortOption]);
+
+  // Pagination & totals based on sorted jobs
   const jobsTotalPages = Math.max(
     1,
-    Math.ceil(filteredJobs.length / JOBS_PER_PAGE)
+    Math.ceil(sortedJobs.length / JOBS_PER_PAGE)
   );
   const pagedJobs = useMemo(() => {
     const start = (jobsPage - 1) * JOBS_PER_PAGE;
-    return filteredJobs.slice(start, start + JOBS_PER_PAGE);
-  }, [filteredJobs, jobsPage]);
+    return sortedJobs.slice(start, start + JOBS_PER_PAGE);
+  }, [sortedJobs, jobsPage]);
   const totalNet = useMemo(
     () =>
-      filteredJobs.reduce(
-        (acc, j) => acc + (j.computed?.netProfitCents ?? 0),
+      sortedJobs.reduce((acc, j) => acc + (j.computed?.netProfitCents ?? 0), 0),
+    [sortedJobs]
+  );
+  const totalEarnings = useMemo(
+    () =>
+      sortedJobs.reduce(
+        (acc, j) => acc + (j.earnings?.totalEarningsCents ?? 0),
         0
       ),
-    [filteredJobs]
+    [sortedJobs]
   );
+  const totalExpenses = useMemo(
+    () =>
+      sortedJobs.reduce(
+        (acc, j) => acc + (j.computed?.totalExpensesCents ?? 0),
+        0
+      ),
+    [sortedJobs]
+  );
+  const averageProfit = useMemo(
+    () => (sortedJobs.length > 0 ? totalNet / sortedJobs.length : 0),
+    [totalNet, sortedJobs.length]
+  );
+  const highestProfit = useMemo(() => {
+    let max = 0;
+    sortedJobs.forEach((j) => {
+      const n = j.computed?.netProfitCents ?? 0;
+      if (n > max) max = n;
+    });
+    return max;
+  }, [sortedJobs]);
 
   // Build filters dynamically from statuses present
   const dynamicStatusOptions: JobStatus[] = useMemo(() => {
@@ -293,7 +384,7 @@ export default function JobsPage() {
       ? `${formatYmdForChip(startDate)} → ${formatYmdForChip(endDate)}`
       : null);
 
-  // Compute status counts for summary
+  // Compute status counts across all jobs (unfiltered) for summary
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     jobs.forEach((j) => {
@@ -301,6 +392,113 @@ export default function JobsPage() {
     });
     return counts;
   }, [jobs]);
+
+  // Chart: status distribution
+  const statusLabels = useMemo(() => Object.keys(statusCounts), [statusCounts]);
+  const statusValues = useMemo(
+    () => statusLabels.map((l) => statusCounts[l] ?? 0),
+    [statusLabels, statusCounts]
+  );
+  const statusColors = useMemo(() => {
+    // simple palette; cycle through if more statuses
+    const palette = [
+      "#fbbf24",
+      "#34d399",
+      "#60a5fa",
+      "#c084fc",
+      "#f87171",
+      "#facc15",
+      "#818cf8",
+      "#f472b6",
+    ];
+    return statusLabels.map((_, idx) => palette[idx % palette.length]);
+  }, [statusLabels]);
+  const statusChartData: ChartData<"pie", number[], string> = {
+    labels: statusLabels,
+    datasets: [
+      {
+        label: "Jobs by Status",
+        data: statusValues,
+        backgroundColor: statusColors,
+        borderWidth: 1,
+      },
+    ],
+  };
+  const statusChartOptions: ChartOptions<"pie"> = {
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: {
+          boxWidth: 12,
+          font: { size: 10 },
+          color: "#333",
+        },
+      },
+      title: { display: false },
+      tooltip: {},
+    },
+  };
+
+  // Chart: top jobs by net profit
+  const topJobs = useMemo(() => {
+    const arr = [...sortedJobs];
+    arr.sort(
+      (a, b) =>
+        (b.computed?.netProfitCents ?? 0) - (a.computed?.netProfitCents ?? 0)
+    );
+    return arr.slice(0, 5);
+  }, [sortedJobs]);
+  const topJobLabels = topJobs.map((j) => {
+    const line = pickAddressLine(j.address);
+    return line.length > 30 ? line.slice(0, 27) + "…" : line;
+  });
+  const topJobValues = topJobs.map(
+    (j) => (j.computed?.netProfitCents ?? 0) / 100
+  );
+  const topJobsData: ChartData<"bar", number[], string> = {
+    labels: topJobLabels,
+    datasets: [
+      {
+        label: "Net Profit ($)",
+        data: topJobValues,
+        backgroundColor: "#0e7490",
+        borderColor: "#0e7490",
+        borderWidth: 1,
+      },
+    ],
+  };
+  const topJobsOptions: ChartOptions<"bar"> = {
+    indexAxis: "y",
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: TooltipItem<"bar">) => {
+            const value = context.parsed.x;
+            return `$${Number(value).toFixed(2)}`;
+          },
+        },
+      },
+      title: { display: false },
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        ticks: {
+          callback: (value) => `$${value}`,
+        },
+      },
+      y: {
+        ticks: {
+          autoSkip: false,
+        },
+      },
+    },
+  };
 
   // Guard: show loading or no org message
   const isBusy = membershipLoading;
@@ -317,10 +515,108 @@ export default function JobsPage() {
     <div className="min-h-screen bg-gradient-to-b ">
       {/* Main content */}
       <div className="mx-auto w-[min(1100px,94vw)] space-y-8 py-8">
-        {/* Status summary */}
+        {/* Jobs overview section */}
         <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">
-            Job status summary
+            Jobs Overview
+          </h2>
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {/* Total jobs */}
+            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+              <div className="text-xl font-semibold text-[var(--color-text)]">
+                {sortedJobs.length}
+              </div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                Total Jobs
+              </div>
+            </div>
+            {/* Total earnings */}
+            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+              <div className="text-xl font-semibold text-[var(--color-text)]">
+                {formatCurrency(totalEarnings)}
+              </div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                Total Earnings
+              </div>
+            </div>
+            {/* Total expenses */}
+            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+              <div className="text-xl font-semibold text-[var(--color-text)]">
+                {formatCurrency(totalExpenses)}
+              </div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                Total Expenses
+              </div>
+            </div>
+            {/* Net profit */}
+            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+              <div className="text-xl font-semibold text-[var(--color-text)]">
+                {formatCurrency(totalNet)}
+              </div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                Net Profit
+              </div>
+            </div>
+            {/* Avg. profit */}
+            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+              <div className="text-xl font-semibold text-[var(--color-text)]">
+                {formatCurrency(Math.round(averageProfit))}
+              </div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                Avg. Profit/Job
+              </div>
+            </div>
+            {/* Highest profit */}
+            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+              <div className="text-xl font-semibold text-[var(--color-text)]">
+                {formatCurrency(highestProfit)}
+              </div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                Highest Profit
+              </div>
+            </div>
+          </div>
+          {/* Charts row */}
+          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+              <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
+                Job Status Distribution
+              </h3>
+              <div className="relative h-64 w-full">
+                <Pie data={statusChartData} options={statusChartOptions} />
+              </div>
+            </div>
+            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+              <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
+                Top Jobs by Profit
+              </h3>
+              <div className="relative h-64 w-full">
+                <Bar data={topJobsData} options={topJobsOptions} />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Sort options */}
+        <div className="rounded-xl border border-[var(--color-border)]/60 bg-white/90 p-3 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3">
+          <label className="text-sm font-medium text-[var(--color-text)]">
+            Sort by:
+          </label>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as any)}
+            className="rounded border border-[var(--color-border)] bg-white px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none"
+          >
+            <option value="recent">Most recent</option>
+            <option value="netDesc">Highest net profit</option>
+            <option value="netAsc">Lowest net profit</option>
+          </select>
+        </div>
+
+        {/* Job status summary */}
+        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+            Job Status Summary
           </h2>
           <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {Object.entries(statusCounts).map(([status, count]) => (
@@ -377,7 +673,7 @@ export default function JobsPage() {
             createJob={createJob}
             loading={creating}
             error={error}
-            filteredJobs={filteredJobs}
+            filteredJobs={sortedJobs}
             pagedJobs={pagedJobs}
             jobsPage={jobsPage}
             jobsTotalPages={jobsTotalPages}

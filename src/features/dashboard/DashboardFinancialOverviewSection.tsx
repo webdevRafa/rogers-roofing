@@ -15,6 +15,7 @@ import {
   type TooltipItem,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import { Link } from "react-router-dom";
 
 ChartJS.register(
   CategoryScale,
@@ -179,9 +180,11 @@ export default function DashboardFinancialOverviewSection({
 
   return (
     <section className="mt-10 mb-40 rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
-      <h2 className="mb-4 text-2xl font-semibold text-[var(--color-text)]">
-        Financial Overview
-      </h2>
+      <h1 className="text-xl sm:text-2xl poppins text-[var(--color-text)]">
+        <Link to="/financial-overview" className="hover:underline">
+          Financial Overview
+        </Link>
+      </h1>
 
       <div className="relative h-64 w-full">
         <Line data={chartData} options={chartOptions} />
