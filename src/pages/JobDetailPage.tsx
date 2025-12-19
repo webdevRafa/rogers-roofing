@@ -208,7 +208,7 @@ export default function JobDetailPage() {
   const [flashingUnitPrice, setFlashingUnitPrice] = useState("0"); // dollars per unit
   const [flashingModalOpen, setFlashingModalOpen] = useState(false);
 
-  const { orgId } = useOrg();
+  const { orgId, loading: orgLoading } = useOrg();
 
   const prefillFlashingInputs = () => {
     const fp = job?.earnings?.flashingPay;
@@ -439,8 +439,18 @@ export default function JobDetailPage() {
   }
 
   useEffect(() => {
+    // Wait until org context is ready
+    if (orgLoading) return;
+
+    // If no org selected, don't show any employees
+    if (!orgId) {
+      setEmployees([]);
+      return;
+    }
+
     const ref = collection(db, "employees");
-    const q = query(ref, orderBy("name", "asc"));
+    const q = query(ref, where("orgId", "==", orgId), orderBy("name", "asc"));
+
     const unsub = onSnapshot(q, (snap) => {
       const list: Employee[] = [];
       snap.forEach((d) =>
@@ -451,8 +461,9 @@ export default function JobDetailPage() {
       );
       setEmployees(list);
     });
+
     return () => unsub();
-  }, []);
+  }, [orgId, orgLoading]);
 
   useEffect(() => {
     if (!id) return;
