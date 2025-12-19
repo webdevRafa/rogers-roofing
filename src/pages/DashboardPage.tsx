@@ -802,7 +802,7 @@ export default function DashboardPage() {
     <>
       <div>
         <motion.div
-          className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10 "
+          className="mx-auto w-full py-6 sm:py-10 md:px-4"
           initial="initial"
           animate="animate"
         >
