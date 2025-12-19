@@ -77,7 +77,7 @@ const LoginPage = () => {
     <>
       <div className="w-full h-[100vh] flex items-center justify-center relative px-4 bg-gradient-to-tr from-[var(--color-logo)]/95 via-[var(--color-brown)]/95 to-[var(--color-logo)]/95">
         {/* login box */}
-        <div className="bg-[var(--color-card)]/70 py-10 shadow-md w-full max-w-[380px] pb-6  border-1 border-white/20">
+        <div className="bg-[var(--color-card)]/70 py-10 shadow-md w-full max-w-[380px] pb-6  border-2 border-[var(--color-brown)]">
           <img
             className="max-w-[200px] mx-auto  mb-4 shadow-md"
             src={logo}
@@ -152,7 +152,7 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 mx-auto cursor-pointer hover:scale-105 hover:drop-shadow-lg  rounded-xs block px-4 py-2.5 text-xs bg-[var(--color-brown)] text-white hover:bg-[var(--color-brown-hover)] transition duration-300 ease-in-out disabled:opacity-80 disabled:cursor-not-allowed"
+              className="mt-2 mx-auto select-none cursor-pointer hover:scale-105 hover:drop-shadow-lg  rounded-xs block px-4 py-2.5 text-xs bg-[var(--color-brown)] text-white hover:bg-[var(--color-brown-hover)] transition duration-300 ease-in-out disabled:opacity-80 disabled:cursor-not-allowed"
             >
               {submitting ? "Signing in…" : "Sign in"}
             </button>
@@ -160,7 +160,7 @@ const LoginPage = () => {
         </div>
 
         {/* Background image */}
-        <div className="w-full h-[80vh] absolute top-0 left-0 z-[-1] overflow-hidden blur-xs opacity-50">
+        <div className="w-full  h-[80vh] absolute top-0 left-0 z-[-1] overflow-hidden blur-xs opacity-50">
           <img
             className="w-full h-full object-cover"
             src={roofing}
