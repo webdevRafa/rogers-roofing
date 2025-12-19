@@ -156,7 +156,7 @@ export default function DashboardPage() {
   const PAYOUTS_PER_PAGE = 20;
 
   // ✅ collapsible sections
-  const [jobsOpen, setJobsOpen] = useState(false);
+  const [jobsOpen, setJobsOpen] = useState(true);
   const [payoutsOpen, setPayoutsOpen] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(true); // NEW: upcoming section toggle
 

@@ -10,7 +10,7 @@ import CrewLayout from "../src/layouts/CrewLayout";
 import CrewDashboardPage from "../src/pages/CrewDashboardPage";
 import CrewJobDetailPage from "../src/pages/CrewJobDetailPage";
 import ScrollToTop from "./components/ScrollToTop";
-
+import JobsPage from "./pages/JobsPage";
 import AdminLayout from "./layouts/AdminLayout";
 
 import DashboardPage from "./pages/DashboardPage";
@@ -44,6 +44,7 @@ export default function App() {
           >
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/schedule" element={<PunchCalendarPage />} />
+            <Route path="/jobs" element={<JobsPage />} />
             <Route path="/schedule/:date" element={<PunchDayPage />} />
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/employees/:id" element={<EmployeeDetailPage />} />

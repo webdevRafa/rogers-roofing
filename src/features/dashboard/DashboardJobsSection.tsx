@@ -10,7 +10,6 @@ import {
 import { Search, Filter, ChevronDown, SquarePlus } from "lucide-react";
 import CountUp from "react-countup";
 import type { Employee } from "../../types/types";
-
 type FsTimestampLike = { toDate: () => Date };
 
 function isFsTimestamp(x: unknown): x is FsTimestampLike {
@@ -250,7 +249,9 @@ export function DashboardJobsSection({
       >
         <div className="flex items-center gap-2">
           <h1 className="text-xl sm:text-2xl poppins text-[var(--color-text)]">
-            Jobs
+            <Link to="/jobs" className="hover:underline">
+              Jobs
+            </Link>
           </h1>
           <button
             type="button"
@@ -683,10 +684,15 @@ export function DashboardJobsSection({
             initial="initial"
             animate="animate"
           >
-            {/* Single scroll container that owns BOTH sticky header + sticky footer */}
-            <div className="relative max-h-[420px] overflow-y-auto overflow-x-auto section-scroll">
-              <table className="w-full text-xs">
-                <thead className="text-[var(--color-muted)] border-b border-[var(--color-border)]/60">
+            {/*
+              Single scroll container that owns BOTH sticky header + sticky footer.
+              IMPORTANT: use an explicit height (not max-height) so the table doesn't "shrink"
+              when there are fewer rows, while still allowing plenty of visible rows when there are many.
+            */}
+            <div className="relative h-[560px] lg:h-[640px] overflow-y-auto overflow-x-auto section-scroll">
+              <table className="w-full text-xs border-separate border-spacing-0">
+                {/* Sticky header: keep it inside the SAME scroll container */}
+                <thead className="sticky top-0 z-30 bg-white/90 backdrop-blur text-[var(--color-muted)] border-b border-[var(--color-border)]/60">
                   <tr>
                     <th className="sticky top-0 z-30 bg-white/90 backdrop-blur text-left px-4 py-3">
                       Address
@@ -809,8 +815,15 @@ export function DashboardJobsSection({
                     </tr>
                   )}
                 </tbody>
-                {/* Spacer so the last row can scroll above the sticky footer */}
-                <div aria-hidden className="h-12" />
+
+                {/* Spacer so the last row can scroll above the sticky footer.
+                    NOTE: must be a <tr>, not a <div>, or sticky positioning can break.
+                 */}
+                <tbody aria-hidden>
+                  <tr>
+                    <td colSpan={7} className="h-12 p-0" />
+                  </tr>
+                </tbody>
               </table>
 
               {/* Sticky pagination footer (always visible) */}
