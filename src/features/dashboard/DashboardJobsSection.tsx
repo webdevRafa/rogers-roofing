@@ -245,7 +245,7 @@ export function DashboardJobsSection({
     <>
       {/* Header */}
       <motion.header
-        className="mb-4 sm:mb-6 flex flex-wrap bg-white/60 hover:bg-white transition duration-300 ease-in-out p-6 rounded-lg shadow-md hover:shadow-lg items-center justify-start gap-2 w-full"
+        className="mb-4 sm:mb-6 select-none flex flex-wrap bg-white/60 hover:bg-white transition duration-300 ease-in-out p-6 rounded-lg shadow-md hover:shadow-lg items-center justify-start gap-2 w-full"
         {...fadeUp(0)}
       >
         <div className="flex items-center gap-2">
@@ -340,7 +340,7 @@ export function DashboardJobsSection({
               key={f}
               onClick={() => setStatusFilter(f)}
               className={[
-                "whitespace-nowrap px-3 py-2 text-xs uppercase tracking-wide transition-colors",
+                "whitespace-nowrap px-3 py-2 text-xs uppercase tracking-wide transition-colors select-none",
                 statusFilter === f
                   ? "bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] border-transparent text-white shadow-sm"
                   : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
@@ -660,7 +660,7 @@ export function DashboardJobsSection({
                     {/* View */}
                     <Link
                       to={`/job/${job.id}`}
-                      className="shrink-0 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                      className="shrink-0 rounded-lg border border-[var(--color-border)] px-2 py-1 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)] select-none"
                     >
                       View
                     </Link>
@@ -774,7 +774,7 @@ export function DashboardJobsSection({
                         <td className="px-4 py-3 text-right">
                           <Link
                             to={`/job/${job.id}`}
-                            className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                            className="inline-block rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)] select-none"
                           >
                             View
                           </Link>
