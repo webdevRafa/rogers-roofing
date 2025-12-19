@@ -532,28 +532,106 @@ export default function DashboardPage() {
 
   async function markSelectedPayoutsAsPaid() {
     if (selectedPayoutIds.length === 0) return;
+
+    const payoutsToMark = selectedPayouts.filter((p) => !p.paidAt);
+    if (payoutsToMark.length === 0) {
+      setStubOpen(false);
+      return;
+    }
+
     setStubSaving(true);
     try {
-      await Promise.all(
-        selectedPayouts
-          .filter((p) => !p.paidAt)
-          .map((p) =>
-            setDoc(
-              doc(collection(db, "payouts"), p.id),
-              { paidAt: serverTimestamp() as FieldValue },
-              { merge: true }
-            )
-          )
+      // 0) Required data
+      if (!orgId) throw new Error("Missing orgId (cannot create payout stub).");
+      if (!stubEmployee)
+        throw new Error("Missing employee (cannot create stub).");
+      if (!stubEmployee.id) throw new Error("Employee is missing id.");
+
+      // 1) Create payout stub doc
+      const stubRef = doc(collection(db, "payoutStubs"));
+      const now = new Date();
+
+      const y = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const shortId = stubRef.id.slice(0, 6).toUpperCase();
+      const number = `STUB-${y}${mm}${dd}-${shortId}`;
+
+      // Build lines WITHOUT undefined fields (Firestore rejects undefined anywhere)
+      const lines = payoutsToMark.map((p) => ({
+        payoutId: p.id,
+        category: p.category,
+        sqft: p.sqft,
+        ratePerSqFt: p.ratePerSqFt,
+        amountCents:
+          typeof (p as any).amountCents === "number"
+            ? (p as any).amountCents
+            : 0,
+        ...((p as any).jobId ? { jobId: (p as any).jobId } : {}),
+        ...((p as any).jobAddressSnapshot
+          ? { jobAddressSnapshot: (p as any).jobAddressSnapshot }
+          : {}),
+      }));
+
+      const totalCents = lines.reduce(
+        (sum, l) => sum + (l.amountCents || 0),
+        0
       );
+
+      const jobIds = Array.from(
+        new Set(lines.map((l) => l.jobId).filter(Boolean))
+      ) as string[];
+
+      // Normalize employee address, but OMIT if empty (never write undefined)
+      const employeeAddr = stubEmployee.address
+        ? typeof stubEmployee.address === "string"
+          ? { fullLine: stubEmployee.address, line1: stubEmployee.address }
+          : stubEmployee.address
+        : null;
+
+      const stubDoc = {
+        id: stubRef.id,
+        number,
+        employeeId: stubEmployee.id,
+        orgId,
+        employeeNameSnapshot: stubEmployee.name,
+        ...(employeeAddr ? { employeeAddressSnapshot: employeeAddr } : {}),
+        payoutIds: lines.map((l) => l.payoutId),
+        jobIds,
+        lines,
+        totalCents,
+        createdAt: serverTimestamp() as unknown as FieldValue,
+        paidAt: serverTimestamp() as unknown as FieldValue,
+        status: "paid",
+      };
+
+      await setDoc(stubRef, stubDoc);
+
+      // 2) Mark payouts as paid + attach stub backref
+      await Promise.all(
+        payoutsToMark.map((p) =>
+          setDoc(
+            doc(collection(db, "payouts"), p.id),
+            {
+              paidAt: serverTimestamp(),
+              payoutStubId: stubRef.id,
+            },
+            { merge: true }
+          )
+        )
+      );
+
+      // 3) UI cleanup
       setSelectedPayoutIds([]);
       setStubOpen(false);
     } catch (e) {
-      console.error("Failed to mark payouts as paid", e);
-      alert("Failed to mark some payouts as paid. Check console for details.");
+      console.error("Failed to mark payouts as paid + create stub", e);
+      alert("Failed to mark payouts as paid + create stub. See console.");
     } finally {
       setStubSaving(false);
     }
   }
+
   // Load employee details for the stub when it's opened
   useEffect(() => {
     if (!stubOpen) {
@@ -575,7 +653,10 @@ export default function DashboardPage() {
         const snap = await getDoc(ref);
         if (!snap.exists()) return;
         if (!cancelled) {
-          setStubEmployee(snap.data() as Employee);
+          setStubEmployee({
+            id: snap.id,
+            ...(snap.data() as Omit<Employee, "id">),
+          });
         }
       } catch (err) {
         console.error("Failed to load employee for stub", err);
@@ -725,19 +806,12 @@ export default function DashboardPage() {
           initial="initial"
           animate="animate"
         >
-          <motion.div
-            className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10"
-            initial="initial"
-            animate="animate"
-          >
-            <DashboardSummarySection
-              jobs={jobs}
-              materialProgressJobs={materialProgressJobs}
-              readyForPunchJobs={readyForPunchJobs}
-              payouts={payouts}
-            />
-            {/* existing DashboardJobsSection, DashboardProgressSection, DashboardPayoutsSection go here */}
-          </motion.div>
+          <DashboardSummarySection
+            jobs={jobs}
+            materialProgressJobs={materialProgressJobs}
+            readyForPunchJobs={readyForPunchJobs}
+            payouts={payouts}
+          />
 
           {/* Header */}
           <DashboardJobsSection
