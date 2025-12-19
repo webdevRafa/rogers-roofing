@@ -18,6 +18,7 @@ import { DashboardJobsSection } from "../features/dashboard/DashboardJobsSection
 import { DashboardProgressSection } from "../features/dashboard/DashboardProgressSection";
 import { DashboardPayoutsSection } from "../features/dashboard/DashboardPayoutsSection";
 import DashboardSummarySection from "../features/dashboard/DashboardSummarySection";
+import DashboardFinancialOverviewSection from "../features/dashboard/DashboardFinancialOverviewSection";
 
 import { useOrg } from "../contexts/OrgContext";
 
@@ -876,7 +877,7 @@ export default function DashboardPage() {
             />
           </div>
           {/* ====== PAYOUTS (all employees) ====== */}
-          <div className="lg:col-span-12">
+          <div className="lg:col-span-12 xl:col-span-6">
             <DashboardPayoutsSection
               payoutsOpen={payoutsOpen}
               setPayoutsOpen={setPayoutsOpen}
@@ -901,6 +902,9 @@ export default function DashboardPage() {
               onViewJob={(jobId) => navigate(`/job/${jobId}`)}
               onOpenPayTechnician={() => setPayTechOpen(true)}
             />
+          </div>
+          <div className="lg:col-span-12 xl:col-span-6">
+            <DashboardFinancialOverviewSection jobs={jobs} payouts={payouts} />
           </div>
         </motion.div>
 
