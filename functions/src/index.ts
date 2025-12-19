@@ -410,8 +410,6 @@ export const onEmployeeInviteCreated = onDocumentCreated(
 );
 
 
-
-
 export const sendInvoiceEmail = onCall(
   {
     region: "us-central1",
@@ -521,8 +519,113 @@ export const sendInvoiceEmail = onCall(
       console.error("Resend invoice send error:", error);
       throw new HttpsError("internal", error.message || "Failed to send invoice email.");
     }
+
+    // Record when the invoice was emailed for audit/resend purposes.  Mirror the behavior
+    // used for employee invites by writing a timestamp into the invoice document.  This
+    // allows automatic triggers to skip duplicates when the invoice is first created.
+    try {
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      await db.doc(`invoices/${invoiceId}`).set(
+        {
+          lastEmailSentAt: now,
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error("Failed to update invoice with lastEmailSentAt:", err);
+    }
     
     return { ok: true, id: data?.id || null };
     
+  }
+);
+
+// Helper to build invoice URL from APP_BASE_URL.  Duplicated logic from
+// sendInvoiceEmail so triggers can reuse it.
+function buildInvoiceLink(invoiceId: string): string {
+  const baseUrl = (APP_BASE_URL.value() || "").replace(/\/$/, "");
+  return `${baseUrl}/app/invoices?invoiceId=${encodeURIComponent(invoiceId)}`;
+}
+
+// Helper to send the invoice via Resend using the same template as sendInvoiceEmail.
+// This function runs server-side and does not perform auth/org checks; callers must
+// enforce appropriate permissions.  It updates lastEmailSentAt on the invoice doc.
+async function sendInvoiceViaResend(invoiceId: string, invoice: any, toEmail: string) {
+  const resend = getResend();
+  const from = INVITE_FROM_EMAIL.value();
+  const appBase = APP_BASE_URL.value();
+  if (!from) throw new Error("Missing INVITE_FROM_EMAIL secret.");
+  if (!appBase) throw new Error("Missing APP_BASE_URL secret.");
+  const number = invoice.number || "Invoice";
+  const totalCents = Number(invoice.money?.totalCents || 0);
+  const total = (totalCents / 100).toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+  });
+  const invoiceUrl = buildInvoiceLink(invoiceId);
+  const subject = `${number} from Roger’s Roofing`;
+  const html = `
+      <div style="font-family: ui-sans-serif, system-ui, -apple-system; line-height:1.5;">
+        <h2 style="margin:0 0 8px;">${number}</h2>
+        <p style="margin:0 0 12px;">Total due: <b>${total}</b></p>
+        <p style="margin:0 0 16px;">
+          View your invoice here:
+          <a href="${invoiceUrl}">${invoiceUrl}</a>
+        </p>
+        <p style="margin:0; color:#666; font-size:12px;">
+          If you have any questions, reply to this email.
+        </p>
+      </div>
+    `;
+  const { error } = await resend.emails.send({
+    from,
+    to: [toEmail],
+    subject,
+    html,
+  });
+  if (error) {
+    throw new Error(error.message || "Failed to send invoice email.");
+  }
+  // update lastEmailSentAt on the invoice
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  await admin.firestore().doc(`invoices/${invoiceId}`).set(
+    { lastEmailSentAt: now },
+    { merge: true }
+  );
+}
+
+/**
+ * onInvoiceCreated
+ *
+ * Firestore trigger that automatically sends an invoice email when an invoice
+ * document is first created with status "sent" and a customer email.  This
+ * mirrors the auto-send behavior used for employee invites and makes the
+ * feature more reliable by not relying solely on the client to call the
+ * sendInvoiceEmail callable.  It also prevents duplicate sends by checking
+ * for an existing lastEmailSentAt timestamp.
+ */
+export const onInvoiceCreated = onDocumentCreated(
+  {
+    document: "invoices/{invoiceId}",
+    region: "us-central1",
+    secrets: [RESEND_API_KEY, INVITE_FROM_EMAIL, APP_BASE_URL],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const data = snap.data() as any;
+    if (!data) return;
+    const invoiceId = snap.id;
+    // Only send if the invoice is marked as sent, has a customer email, and
+    // hasn't been emailed before.
+    if (data.status !== "sent") return;
+    const email = data.customer?.email;
+    if (!email) return;
+    if (data.lastEmailSentAt) return;
+    try {
+      await sendInvoiceViaResend(invoiceId, data, email);
+    } catch (err) {
+      console.error("Failed to send invoice email on create:", err);
+    }
   }
 );

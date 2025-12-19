@@ -251,7 +251,12 @@ function NewInvoiceModal({
       // After persisting the invoice, optionally send it via email when status is "sent" and a customer email exists.
       try {
         if (status === "sent" && customerEmail.trim()) {
-          const functions = getFunctions();
+          // Always specify the region when fetching Functions to avoid any mismatches with
+          // your deployed region (us‑central1).  Without specifying the region,
+          // getFunctions() may default to the wrong endpoint, which would cause
+          // sendInvoiceEmail to silently fail.  See similar patterns in the
+          // employee invite workflow.
+          const functions = getFunctions(undefined, "us-central1");
           const sendInvoiceEmail = httpsCallable(functions, "sendInvoiceEmail");
           // Fire and forget; if the call fails we log but don't block the UI.
           await sendInvoiceEmail({
