@@ -25,7 +25,7 @@ import CompleteSignupPage from "./pages/CompleteSignupPage";
 
 export default function App() {
   return (
-    <div className="relative z-30 min-h-[1000px]">
+    <div className="relative z-30 ">
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
