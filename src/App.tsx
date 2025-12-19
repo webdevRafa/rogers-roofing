@@ -22,6 +22,7 @@ import JobDetailPage from "./pages/JobDetailPage";
 import InvoiceViewer from "./pages/InvoiceViewer";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
 import CompleteSignupPage from "./pages/CompleteSignupPage";
+import InvoicesPage from "./pages/InvoicesPage";
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/invoices-page" element={<InvoicesPage />} />
             <Route
               path="/financial-overview"
               element={<FinancialOverviewPage />}

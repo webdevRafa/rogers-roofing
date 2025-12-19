@@ -136,7 +136,7 @@ export default function AdminLayout() {
 
                 {/* Optional route (keep if you want invoices in global nav) */}
                 <NavLink
-                  to="/invoices/placeholder"
+                  to="/invoices-page"
                   className={({ isActive }) => navLinkBase(isActive)}
                 >
                   <FileText className="h-4 w-4" />
