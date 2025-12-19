@@ -17,6 +17,8 @@ import type { Job, JobStatus, PayoutDoc, Employee } from "../types/types";
 import { DashboardJobsSection } from "../features/dashboard/DashboardJobsSection";
 import { DashboardProgressSection } from "../features/dashboard/DashboardProgressSection";
 import { DashboardPayoutsSection } from "../features/dashboard/DashboardPayoutsSection";
+import DashboardSummarySection from "../features/dashboard/DashboardSummarySection";
+
 import { useOrg } from "../contexts/OrgContext";
 
 import { GlobalPayoutStubModal } from "../components/GlobalPayoutStubModal";
@@ -723,6 +725,20 @@ export default function DashboardPage() {
           initial="initial"
           animate="animate"
         >
+          <motion.div
+            className="mx-auto w-[min(1200px,94vw)] py-6 sm:py-10"
+            initial="initial"
+            animate="animate"
+          >
+            <DashboardSummarySection
+              jobs={jobs}
+              materialProgressJobs={materialProgressJobs}
+              readyForPunchJobs={readyForPunchJobs}
+              payouts={payouts}
+            />
+            {/* existing DashboardJobsSection, DashboardProgressSection, DashboardPayoutsSection go here */}
+          </motion.div>
+
           {/* Header */}
           <DashboardJobsSection
             jobsOpen={jobsOpen}
