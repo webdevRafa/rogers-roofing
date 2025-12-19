@@ -9,6 +9,7 @@ import {
   FileText,
   LogOut,
   Menu,
+  BarChart3,
   X,
 } from "lucide-react";
 import { useMembership } from "../hooks/useMembership";
@@ -141,6 +142,13 @@ export default function AdminLayout() {
                   <FileText className="h-4 w-4" />
                   Invoices
                 </NavLink>
+                <NavLink
+                  to="/financial-overview"
+                  className={({ isActive }) => navLinkBase(isActive)}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Financial Overview
+                </NavLink>
               </nav>
 
               {/* Actions */}
@@ -198,6 +206,13 @@ export default function AdminLayout() {
                   >
                     <Users className="h-4 w-4" />
                     Employees
+                  </NavLink>
+                  <NavLink
+                    to="/financial-overview"
+                    className={({ isActive }) => navLinkBase(isActive)}
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Financial Overview
                   </NavLink>
                 </div>
               </div>

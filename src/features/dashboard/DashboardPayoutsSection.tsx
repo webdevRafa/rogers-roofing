@@ -218,7 +218,7 @@ export function DashboardPayoutsSection({
             value={payoutSearch}
             onChange={(e) => setPayoutSearch(e.target.value)}
             placeholder="Search by address or employee…"
-            className="w-full sm:w-72 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="w-full sm:w-72 max-w-[200px] rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
           <button
             type="button"

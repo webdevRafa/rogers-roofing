@@ -12,7 +12,7 @@ import CrewJobDetailPage from "../src/pages/CrewJobDetailPage";
 import ScrollToTop from "./components/ScrollToTop";
 import JobsPage from "./pages/JobsPage";
 import AdminLayout from "./layouts/AdminLayout";
-
+import FinancialOverviewPage from "./pages/FinancialOverviewPage";
 import DashboardPage from "./pages/DashboardPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
@@ -43,6 +43,10 @@ export default function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route
+              path="/financial-overview"
+              element={<FinancialOverviewPage />}
+            />
             <Route path="/schedule" element={<PunchCalendarPage />} />
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/schedule/:date" element={<PunchDayPage />} />
