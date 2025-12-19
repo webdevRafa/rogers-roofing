@@ -409,6 +409,19 @@ export const onEmployeeInviteCreated = onDocumentCreated(
   }
 );
 
+async function ensureInvoicePublicToken(invoiceId: string, invoice: any): Promise<string> {
+  const existing = String(invoice.publicToken || "").trim();
+  if (existing) return existing;
+
+  const token = randomUUID();
+  await admin.firestore().doc(`invoices/${invoiceId}`).set(
+    { publicToken: token },
+    { merge: true }
+  );
+
+  return token;
+}
+
 
 export const sendInvoiceEmail = onCall(
   {
@@ -435,6 +448,7 @@ export const sendInvoiceEmail = onCall(
 
     // Pull the invoice
     const invSnap = await db.doc(`invoices/${invoiceId}`).get();
+    
     if (!invSnap.exists) {
       throw new HttpsError("not-found", "Invoice not found.");
     }
@@ -488,9 +502,10 @@ export const sendInvoiceEmail = onCall(
       currency: "USD",
     });
 
-    // Pick a link that exists in your app.
-    // If you don’t have a dedicated route yet, this will at least land them on invoices.
-    const invoiceUrl = `${appBase}/app/invoices?invoiceId=${encodeURIComponent(invoiceId)}`;
+    // Ensure the invoice has a publicToken and build the public viewer link
+const publicToken = await ensureInvoicePublicToken(invoiceId, invoice);
+const invoiceUrl = buildInvoiceLink(invoiceId, publicToken);
+
 
     const subject = `${number} from Roger’s Roofing`;
 
@@ -542,10 +557,12 @@ export const sendInvoiceEmail = onCall(
 
 // Helper to build invoice URL from APP_BASE_URL.  Duplicated logic from
 // sendInvoiceEmail so triggers can reuse it.
-function buildInvoiceLink(invoiceId: string): string {
+function buildInvoiceLink(invoiceId: string, publicToken: string): string {
   const baseUrl = (APP_BASE_URL.value() || "").replace(/\/$/, "");
-  return `${baseUrl}/app/invoices?invoiceId=${encodeURIComponent(invoiceId)}`;
+  return `${baseUrl}/invoice/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(publicToken)}`;
 }
+
+
 
 // Helper to send the invoice via Resend using the same template as sendInvoiceEmail.
 // This function runs server-side and does not perform auth/org checks; callers must
@@ -562,7 +579,9 @@ async function sendInvoiceViaResend(invoiceId: string, invoice: any, toEmail: st
     style: "currency",
     currency: "USD",
   });
-  const invoiceUrl = buildInvoiceLink(invoiceId);
+  const publicToken = await ensureInvoicePublicToken(invoiceId, invoice);
+const invoiceUrl = buildInvoiceLink(invoiceId, publicToken);
+
   const subject = `${number} from Roger’s Roofing`;
   const html = `
       <div style="font-family: ui-sans-serif, system-ui, -apple-system; line-height:1.5;">
@@ -629,3 +648,4 @@ export const onInvoiceCreated = onDocumentCreated(
     }
   }
 );
+

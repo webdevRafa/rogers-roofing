@@ -34,6 +34,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/complete-signup" element={<CompleteSignupPage />} />
+          <Route path="/invoice/:id" element={<InvoiceViewer />} />
 
           {/* ✅ Admin routes protected by AdminGuard */}
           <Route
