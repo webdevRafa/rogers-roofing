@@ -621,13 +621,13 @@ export function DashboardJobsSection({
           </motion.div>
 
           {/* MOBILE CARDS */}
-          <div className="grid gap-3 sm:hidden">
+          <div className="grid gap-3 md:hidden">
             {pagedJobs.map((job) => {
               const a = addr(job.address);
               return (
                 <div
                   key={job.id}
-                  className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2"
+                  className="rounded-2xl  bg-[var(--color-card)] px-3 py-2"
                 >
                   <div className="flex items-center gap-2">
                     {/* Address */}
@@ -678,22 +678,37 @@ export function DashboardJobsSection({
 
           {/* DESKTOP TABLE */}
           <motion.div
-            className="hidden sm:block rounded-tr-2xl shadow-md bg-[var(--color-card)]"
+            className="hidden md:block rounded-tr-2xl shadow-md bg-[var(--color-card)]"
             variants={staggerParent}
             initial="initial"
             animate="animate"
           >
-            <div className="max-h-[420px] overflow-y-auto overflow-x-auto section-scroll">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-white/90 text-[var(--color-muted)] backdrop-blur border-b border-[var(--color-border)]/60">
+            {/* Single scroll container that owns BOTH sticky header + sticky footer */}
+            <div className="relative max-h-[420px] overflow-y-auto overflow-x-auto section-scroll">
+              <table className="w-full text-xs">
+                <thead className="text-[var(--color-muted)] border-b border-[var(--color-border)]/60">
                   <tr>
-                    <th className="text-left px-4 py-3">Address</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-right px-4 py-3">Total Pay</th>
-                    <th className="text-right px-4 py-3">Expenses</th>
-                    <th className="text-right px-4 py-3">Net</th>
-                    <th className="text-left px-4 py-3">Last Updated</th>
-                    <th className="text-right px-4 py-3">Actions</th>
+                    <th className="sticky top-0 z-30 bg-white/90 backdrop-blur text-left px-4 py-3">
+                      Address
+                    </th>
+                    <th className="sticky top-0 z-30 bg-white/90 backdrop-blur text-left px-4 py-3">
+                      Status
+                    </th>
+                    <th className="sticky top-0 z-30 bg-white/90 backdrop-blur text-right px-4 py-3">
+                      Total Pay
+                    </th>
+                    <th className="sticky top-0 z-30 bg-white/90 backdrop-blur hidden lg:table-cell text-right px-4 py-3">
+                      Expenses
+                    </th>
+                    <th className="sticky top-0 z-30 bg-white/90 backdrop-blur text-right px-4 py-3">
+                      Net
+                    </th>
+                    <th className="sticky top-0 z-30 bg-white/90 backdrop-blur text-left px-4 py-3 whitespace-nowrap">
+                      Last Updated
+                    </th>
+                    <th className="sticky top-0 z-30 bg-white/90 backdrop-blur text-right px-4 py-3">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
 
@@ -709,7 +724,7 @@ export function DashboardJobsSection({
                         }
                       >
                         <td className="px-4 py-3">
-                          <div className="font-medium text-[var(--color-text)]">
+                          <div className="truncate max-w-[150px] font-medium text-[var(--color-text)]">
                             <Link
                               to={`/job/${job.id}`}
                               className="hover:underline"
@@ -742,7 +757,7 @@ export function DashboardJobsSection({
                           />
                         </td>
 
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right hidden lg:table-cell">
                           <CountMoney
                             cents={job.computed?.totalExpensesCents ?? 0}
                           />
@@ -762,11 +777,11 @@ export function DashboardJobsSection({
                           </span>
                         </td>
 
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 ">
                           <div className="text-[var(--color-text)]">
                             {fmtDateTime(job.updatedAt)}
                           </div>
-                          <div className="text-xs text-[var(--color-muted)]">
+                          <div className="hidden lg:block text-xs text-[var(--color-muted)]">
                             Created {fmtDateTime(job.createdAt)}
                           </div>
                         </td>
@@ -794,13 +809,53 @@ export function DashboardJobsSection({
                     </tr>
                   )}
                 </tbody>
+                {/* Spacer so the last row can scroll above the sticky footer */}
+                <div aria-hidden className="h-12" />
               </table>
+
+              {/* Sticky pagination footer (always visible) */}
+              {filteredJobs.length > 0 && (
+                <div className="sticky bottom-0 z-30 bg-white/90 backdrop-blur border-t border-[var(--color-border)]/60 px-4 py-2 flex items-center justify-between text-xs text-[var(--color-muted)]">
+                  <span>
+                    Showing{" "}
+                    {filteredJobs.length === 0
+                      ? 0
+                      : (jobsPage - 1) * JOBS_PER_PAGE + 1}{" "}
+                    – {Math.min(jobsPage * JOBS_PER_PAGE, filteredJobs.length)}{" "}
+                    of {filteredJobs.length} jobs
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={jobsPage === 1}
+                      onClick={() => setJobsPage((p) => Math.max(1, p - 1))}
+                      className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
+                    >
+                      Prev
+                    </button>
+                    <span>
+                      Page {jobsPage} / {jobsTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={jobsPage === jobsTotalPages}
+                      onClick={() =>
+                        setJobsPage((p) => Math.min(jobsTotalPages, p + 1))
+                      }
+                      className="rounded border border-[var(--color-border)] px-2 py-1 disabled:opacity-40"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
 
-          {/* Jobs pagination controls */}
+          {/* Jobs pagination controls (mobile only; desktop uses sticky footer) */}
           {filteredJobs.length > 0 && (
-            <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-muted)]">
+            <div className="mt-3 md:hidden flex items-center justify-between text-xs text-[var(--color-muted)]">
               <span>
                 Showing{" "}
                 {filteredJobs.length === 0
