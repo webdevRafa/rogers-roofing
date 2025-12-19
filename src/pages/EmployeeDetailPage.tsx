@@ -381,14 +381,17 @@ export default function EmployeeDetailPage() {
       const shortId = stubRef.id.slice(0, 6).toUpperCase();
       const number = `STUB-${y}${mm}${dd}-${shortId}`;
 
+      // Build lines WITHOUT undefined fields (Firestore rejects undefined anywhere)
       const lines: PayoutStubLine[] = payoutsToMark.map((p) => ({
         payoutId: p.id,
-        jobId: p.jobId ?? undefined,
         category: p.category,
         sqft: p.sqft,
         ratePerSqFt: p.ratePerSqFt,
         amountCents: typeof p.amountCents === "number" ? p.amountCents : 0,
-        jobAddressSnapshot: p.jobAddressSnapshot ?? undefined,
+        ...(p.jobId ? { jobId: p.jobId } : {}),
+        ...(p.jobAddressSnapshot
+          ? { jobAddressSnapshot: p.jobAddressSnapshot }
+          : {}),
       }));
 
       const totalCents = lines.reduce(
@@ -400,16 +403,19 @@ export default function EmployeeDetailPage() {
         new Set(lines.map((l) => l.jobId).filter(Boolean) as string[])
       );
 
-      const employeeAddr =
-        normalizeEmployeeAddress(employee.address) ?? undefined;
+      // Normalize employee address, but store null (or omit) — never undefined
+      const employeeAddr = normalizeEmployeeAddress(employee.address);
+
+      // IMPORTANT: if orgId can ever be missing, fail fast (don’t write invalid stub)
+      if (!orgId) throw new Error("Missing orgId (cannot create payout stub).");
 
       const stubDoc: PayoutStubDoc = {
         id: stubRef.id,
         number,
         employeeId: employee.id,
-        orgId: orgId!,
+        orgId,
         employeeNameSnapshot: employee.name,
-        employeeAddressSnapshot: employeeAddr,
+        ...(employeeAddr ? { employeeAddressSnapshot: employeeAddr } : {}),
         payoutIds: lines.map((l) => l.payoutId),
         jobIds,
         lines,
@@ -420,6 +426,8 @@ export default function EmployeeDetailPage() {
       };
 
       await setDoc(stubRef, stubDoc);
+      setViewStubId(stubRef.id);
+
       setViewStubId(stubRef.id);
 
       // 2) Mark payouts paid + backref stub id
