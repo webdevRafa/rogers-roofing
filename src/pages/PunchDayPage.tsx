@@ -6,6 +6,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  where,
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
@@ -15,6 +16,7 @@ import type { Job } from "../types/types";
 import { jobConverter } from "../types/types";
 import { recomputeJob, makeAddress } from "../utils/calc";
 import { ArrowLeft, CalendarDays, Home, PlusCircle } from "lucide-react";
+import { useMembership } from "../hooks/useMembership";
 
 type FsTimestampLike = { toDate: () => Date };
 function isFsTimestamp(x: unknown): x is FsTimestampLike {
@@ -110,19 +112,32 @@ export default function PunchDayPage() {
   const [address, setAddress] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { orgId, loading: orgLoading } = useMembership();
+
   useEffect(() => {
+    if (orgLoading) return;
+    if (!orgId) {
+      setJobs([]);
+      return;
+    }
+
     const q = query(
       collection(db, "jobs").withConverter(jobConverter),
+      where("orgId", "==", orgId),
       orderBy("updatedAt", "desc")
     );
-    const unsub = onSnapshot(q, (snap) =>
-      setJobs(snap.docs.map((d) => d.data()))
-    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      setJobs(snap.docs.map((d) => d.data()));
+    });
+
     return () => unsub();
-  }, []);
+  }, [orgId, orgLoading]);
+
   async function createJobForDay() {
     if (!date) return;
-
+    if (!orgId) throw new Error("No active organization selected.");
     setCreating(true);
     setError(null);
 
@@ -136,6 +151,7 @@ export default function PunchDayPage() {
 
       let job: Job = {
         id: newRef.id,
+        orgId,
         status: "pending",
         address: makeAddress(address),
         earnings: {
@@ -195,6 +211,17 @@ export default function PunchDayPage() {
   const displayDate = date
     ? new Date(date + "T00:00:00").toLocaleDateString()
     : "Unknown date";
+
+  if (orgLoading)
+    return <div className="p-6 text-sm">Loading organization…</div>;
+
+  if (!orgId)
+    return (
+      <div className="p-6 text-sm">
+        No organization selected. Please select an organization to view the
+        schedule.
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
