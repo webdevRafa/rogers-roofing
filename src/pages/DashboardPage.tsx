@@ -867,8 +867,9 @@ export default function DashboardPage() {
         />
       )}
 
-      {payTechOpen && (
+      {payTechOpen && orgId && (
         <PayTechnicianModal
+          orgId={orgId}
           onClose={() => setPayTechOpen(false)}
           onCreated={() => setPayTechOpen(false)}
         />

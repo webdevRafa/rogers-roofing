@@ -177,7 +177,7 @@ export type PayoutDoc = {
   payoutStubId?: string;
 
   /** Owning organization for this payout.  Optional for backward compatibility. */
-  orgId?: ID;
+  orgId: ID;
 };
 export type Org = {
   id: ID;
@@ -524,7 +524,7 @@ export interface PayoutStubDoc {
   notes?: string;
 
   /** Owning organization for this stub.  Optional for backward compatibility. */
-  orgId?: ID;
+  orgId: ID;
 }
 
 export interface InvoiceLine {

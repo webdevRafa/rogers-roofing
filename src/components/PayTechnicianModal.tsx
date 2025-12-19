@@ -16,7 +16,6 @@ import { X, Wrench } from "lucide-react";
 
 import { db } from "../firebase/firebaseConfig";
 import type { Employee, PayoutDoc } from "../types/types";
-import { useOrg } from "../contexts/OrgContext";
 
 /**
  * PayTechnicianModal
@@ -38,6 +37,7 @@ import { useOrg } from "../contexts/OrgContext";
 export type PayTechnicianModalProps = {
   onClose: () => void;
 
+  orgId: string;
   /** Optional: preselect an employee (useful on EmployeeDetailPage) */
   defaultEmployeeId?: string;
 
@@ -70,6 +70,7 @@ export default function PayTechnicianModal({
   onClose,
   defaultEmployeeId,
   lockEmployee,
+  orgId,
   onCreated,
   defaultRatePerDay,
   defaultMethod = "check",
@@ -92,8 +93,6 @@ export default function PayTechnicianModal({
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-
-  const { orgId } = useOrg();
 
   // Load active employees (fallback to all if isActive missing)
   useEffect(() => {
