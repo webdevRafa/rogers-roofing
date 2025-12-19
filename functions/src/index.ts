@@ -408,3 +408,121 @@ export const onEmployeeInviteCreated = onDocumentCreated(
     }
   }
 );
+
+
+
+
+export const sendInvoiceEmail = onCall(
+  {
+    region: "us-central1",
+    secrets: [RESEND_API_KEY, INVITE_FROM_EMAIL, APP_BASE_URL],
+  },
+  async (request) => {
+    // Auth guard (so random people can’t spam emails)
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "You must be signed in.");
+    }
+
+    const invoiceId = String(request.data?.invoiceId || "").trim();
+    const email = String(request.data?.email || "").trim();
+
+    if (!invoiceId) {
+      throw new HttpsError("invalid-argument", "Missing invoiceId.");
+    }
+    if (!email || !email.includes("@")) {
+      throw new HttpsError("invalid-argument", "Missing/invalid email.");
+    }
+
+    const db = admin.firestore();
+
+    // Pull the invoice
+    const invSnap = await db.doc(`invoices/${invoiceId}`).get();
+    if (!invSnap.exists) {
+      throw new HttpsError("not-found", "Invoice not found.");
+    }
+
+    const invoice = invSnap.data() as any;
+
+    // IMPORTANT: multi-tenant safety
+    // Your InvoicesPage writes `orgId` into invoice docs.
+    // If old invoices don’t have it yet, you can decide whether to block or allow.
+    const invoiceOrgId = String(invoice.orgId || "").trim();
+    if (!invoiceOrgId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Invoice missing orgId. Re-save invoice with latest schema."
+      );
+    }
+
+    // Verify caller belongs to that org (best-effort without your full auth model):
+    // This assumes you store orgId on an employee doc keyed by uid OR a user doc keyed by uid.
+    // Try both patterns; keep whichever matches your actual schema.
+    const uid = request.auth.uid;
+
+    // Pattern A: users/{uid}.orgId
+    const userSnap = await db.doc(`users/${uid}`).get();
+    const userOrgId = userSnap.exists ? String((userSnap.data() as any).orgId || "") : "";
+
+    // Pattern B: employees where userId == uid (fallback)
+    let employeeOrgId = "";
+    if (!userOrgId) {
+      const empQ = await db.collection("employees").where("userId", "==", uid).limit(1).get();
+      if (!empQ.empty) employeeOrgId = String((empQ.docs[0].data() as any).orgId || "");
+    }
+
+    const callerOrgId = userOrgId || employeeOrgId;
+    if (!callerOrgId || callerOrgId !== invoiceOrgId) {
+      throw new HttpsError("permission-denied", "Not allowed to send this invoice.");
+    }
+
+    const resend = getResend();
+
+    const from = INVITE_FROM_EMAIL.value();
+    const appBase = APP_BASE_URL.value();
+
+    if (!from) throw new HttpsError("failed-precondition", "Missing INVITE_FROM_EMAIL secret.");
+    if (!appBase) throw new HttpsError("failed-precondition", "Missing APP_BASE_URL secret.");
+
+    const number = invoice.number || "Invoice";
+    const totalCents = Number(invoice.money?.totalCents || 0);
+    const total = (totalCents / 100).toLocaleString(undefined, {
+      style: "currency",
+      currency: "USD",
+    });
+
+    // Pick a link that exists in your app.
+    // If you don’t have a dedicated route yet, this will at least land them on invoices.
+    const invoiceUrl = `${appBase}/app/invoices?invoiceId=${encodeURIComponent(invoiceId)}`;
+
+    const subject = `${number} from Roger’s Roofing`;
+
+    const html = `
+      <div style="font-family: ui-sans-serif, system-ui, -apple-system; line-height:1.5;">
+        <h2 style="margin:0 0 8px;">${number}</h2>
+        <p style="margin:0 0 12px;">Total due: <b>${total}</b></p>
+        <p style="margin:0 0 16px;">
+          View your invoice here:
+          <a href="${invoiceUrl}">${invoiceUrl}</a>
+        </p>
+        <p style="margin:0; color:#666; font-size:12px;">
+          If you have any questions, reply to this email.
+        </p>
+      </div>
+    `;
+
+    const { data, error } = await resend.emails.send({
+      from,
+      to: [email], // keep consistent with your invite sender
+      subject,
+      html,
+    });
+    
+    if (error) {
+      console.error("Resend invoice send error:", error);
+      throw new HttpsError("internal", error.message || "Failed to send invoice email.");
+    }
+    
+    return { ok: true, id: data?.id || null };
+    
+  }
+);
