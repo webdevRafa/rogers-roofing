@@ -77,7 +77,7 @@ const LoginPage = () => {
     <>
       <div className="w-full h-[100vh] flex items-center justify-center relative px-4 bg-gradient-to-tr from-[var(--color-logo)]/95 via-[var(--color-brown)]/95 to-[var(--color-logo)]/95">
         {/* login box */}
-        <div className="bg-[var(--color-card)]/70 py-10 shadow-md w-full max-w-[380px] pb-6  border-2 border-[var(--color-brown)]">
+        <div className="bg-[var(--color-card)]/70 py-10 shadow-md w-full max-w-[380px] pb-6  border-2 border-[var(--color-brown)] select-none">
           <img
             className="max-w-[200px] mx-auto  mb-4 shadow-md"
             src={logo}
