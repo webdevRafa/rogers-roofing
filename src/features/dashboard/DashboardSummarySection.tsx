@@ -43,7 +43,6 @@ export default function DashboardSummarySection({
   const totalJobs = jobs.length;
 
   const pendingJobs = jobs.filter((j) => j.status === "pending").length;
-  const activeJobs = jobs.filter((j) => j.status === "active").length;
   const completedJobs = jobs.filter((j) => j.status === "completed").length;
 
   const pendingPayouts = payouts.filter((p) => !p.paidAt).length;
@@ -52,10 +51,9 @@ export default function DashboardSummarySection({
   return (
     <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <Card label="Total Jobs" value={totalJobs} />
-      <Card label="Pending" value={pendingJobs} className="bg-yellow-50" />
-      <Card label="Active" value={activeJobs} className="bg-sky-50" />
+      <Card label="Pending Completion" value={pendingJobs} />
       <Card
-        label="In Progress"
+        label="Scheduled / In Progress"
         value={materialProgressJobs.length}
         className="bg-sky-50"
       />

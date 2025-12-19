@@ -689,7 +689,7 @@ export function DashboardJobsSection({
                   <tr>
                     <th className="text-left px-4 py-3">Address</th>
                     <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-right px-4 py-3">Total Job Pay</th>
+                    <th className="text-right px-4 py-3">Total Pay</th>
                     <th className="text-right px-4 py-3">Expenses</th>
                     <th className="text-right px-4 py-3">Net</th>
                     <th className="text-left px-4 py-3">Last Updated</th>

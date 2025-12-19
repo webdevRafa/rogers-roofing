@@ -141,7 +141,7 @@ export function DashboardProgressSection({
         <div className="flex items-center gap-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold text-[var(--color-text)]">
-              Active / Scheduled
+              IN PROGRESS
             </h2>
           </div>
           <button
@@ -181,7 +181,7 @@ export function DashboardProgressSection({
           {/* Progress tracker */}
           <motion.div {...fadeUp(0.05)}>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-              Active / Scheduled
+              Scheduled DRY IN & SHINGLES
             </h3>
 
             {materialProgressJobs.length === 0 ? (
@@ -191,7 +191,7 @@ export function DashboardProgressSection({
               </div>
             ) : (
               <motion.div
-                className="max-h-[360px] overflow-y-auto section-scroll space-y-3"
+                className="max-h-[60vh] overflow-y-auto section-scroll space-y-3"
                 variants={staggerParent}
                 initial="initial"
                 animate="animate"
@@ -241,7 +241,7 @@ export function DashboardProgressSection({
                     <motion.div
                       key={job.id}
                       variants={item}
-                      className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-2 sm:gap-3 sm:py-3"
+                      className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/80 px-3 py-2 sm:gap-3 sm:py-3 "
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="truncate text-sm font-semibold text-[var(--color-text)]">

@@ -802,96 +802,106 @@ export default function DashboardPage() {
     <>
       <div>
         <motion.div
-          className="mx-auto w-full py-6 sm:py-10 md:px-4"
+          className="mx-auto w-full py-6 sm:py-10 md:px-4
+          grid gap-6
+          grid-cols-1 lg:grid-cols-12"
           initial="initial"
           animate="animate"
         >
-          <DashboardSummarySection
-            jobs={jobs}
-            materialProgressJobs={materialProgressJobs}
-            readyForPunchJobs={readyForPunchJobs}
-            payouts={payouts}
-          />
+          {/* Summary occupies full width */}
+          <div className="lg:col-span-12">
+            <DashboardSummarySection
+              jobs={jobs}
+              materialProgressJobs={materialProgressJobs}
+              readyForPunchJobs={readyForPunchJobs}
+              payouts={payouts}
+            />
+          </div>
 
-          {/* Header */}
-          <DashboardJobsSection
-            jobsOpen={jobsOpen}
-            setJobsOpen={setJobsOpen}
-            showSearch={showSearch}
-            setShowSearch={setShowSearch}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            hasActiveDateFilter={hasActiveDateFilter}
-            rangeLabel={rangeLabel}
-            startDate={startDate}
-            endDate={endDate}
-            setDatePreset={setDatePreset}
-            setStartDate={setStartDate}
-            setEndDate={setEndDate}
-            applyPreset={applyPreset}
-            filters={filters}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            openForm={openForm}
-            setOpenForm={setOpenForm}
-            address={address}
-            setAddress={setAddress}
-            newFeltDate={newFeltDate}
-            setNewFeltDate={setNewFeltDate}
-            newShinglesDate={newShinglesDate}
-            setNewShinglesDate={setNewShinglesDate}
-            newPunchDate={newPunchDate}
-            setNewPunchDate={setNewPunchDate}
-            createJob={createJob}
-            loading={loading}
-            error={error}
-            filteredJobs={filteredJobs}
-            pagedJobs={pagedJobs}
-            jobsPage={jobsPage}
-            jobsTotalPages={jobsTotalPages}
-            setJobsPage={setJobsPage}
-            JOBS_PER_PAGE={JOBS_PER_PAGE}
-            totalNet={totalNet}
-            employees={employees}
-            assignedEmployeeIds={assignedEmployeeIds}
-            setAssignedEmployeeIds={setAssignedEmployeeIds}
-          />
+          {/* Jobs List */}
+          <div className="lg:col-span-12 xl:col-span-7">
+            <DashboardJobsSection
+              jobsOpen={jobsOpen}
+              setJobsOpen={setJobsOpen}
+              showSearch={showSearch}
+              setShowSearch={setShowSearch}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              showFilters={showFilters}
+              setShowFilters={setShowFilters}
+              hasActiveDateFilter={hasActiveDateFilter}
+              rangeLabel={rangeLabel}
+              startDate={startDate}
+              endDate={endDate}
+              setDatePreset={setDatePreset}
+              setStartDate={setStartDate}
+              setEndDate={setEndDate}
+              applyPreset={applyPreset}
+              filters={filters}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              openForm={openForm}
+              setOpenForm={setOpenForm}
+              address={address}
+              setAddress={setAddress}
+              newFeltDate={newFeltDate}
+              setNewFeltDate={setNewFeltDate}
+              newShinglesDate={newShinglesDate}
+              setNewShinglesDate={setNewShinglesDate}
+              newPunchDate={newPunchDate}
+              setNewPunchDate={setNewPunchDate}
+              createJob={createJob}
+              loading={loading}
+              error={error}
+              filteredJobs={filteredJobs}
+              pagedJobs={pagedJobs}
+              jobsPage={jobsPage}
+              jobsTotalPages={jobsTotalPages}
+              setJobsPage={setJobsPage}
+              JOBS_PER_PAGE={JOBS_PER_PAGE}
+              totalNet={totalNet}
+              employees={employees}
+              assignedEmployeeIds={assignedEmployeeIds}
+              setAssignedEmployeeIds={setAssignedEmployeeIds}
+            />
+          </div>
 
-          {/* ====== MATERIAL PROGRESS + READY FOR PUNCH ====== */}
-          <DashboardProgressSection
-            upcomingOpen={upcomingOpen}
-            setUpcomingOpen={setUpcomingOpen}
-            materialProgressJobs={materialProgressJobs}
-            readyForPunchJobs={readyForPunchJobs}
-          />
-
+          {/* Progress Tracker */}
+          <div className="lg:col-span-12 xl:col-span-5">
+            <DashboardProgressSection
+              upcomingOpen={upcomingOpen}
+              setUpcomingOpen={setUpcomingOpen}
+              materialProgressJobs={materialProgressJobs}
+              readyForPunchJobs={readyForPunchJobs}
+            />
+          </div>
           {/* ====== PAYOUTS (all employees) ====== */}
-          <DashboardPayoutsSection
-            payoutsOpen={payoutsOpen}
-            setPayoutsOpen={setPayoutsOpen}
-            payoutSearch={payoutSearch}
-            setPayoutSearch={setPayoutSearch}
-            payoutFilter={payoutFilter}
-            setPayoutFilter={setPayoutFilter}
-            payoutsLoading={payoutsLoading}
-            payoutsError={payoutsError}
-            pagedPayouts={pagedPayouts}
-            filteredPayoutsCount={filteredPayouts.length}
-            payoutsPage={payoutsPage}
-            payoutsTotalPages={payoutsTotalPages}
-            setPayoutsPage={setPayoutsPage}
-            PAYOUTS_PER_PAGE={PAYOUTS_PER_PAGE}
-            selectedPayoutIds={selectedPayoutIds}
-            selectedEmployeeIds={selectedEmployeeIds}
-            canCreateStub={canCreateStub}
-            togglePayoutSelected={togglePayoutSelected}
-            clearSelectedPayouts={clearSelectedPayouts}
-            setStubOpen={setStubOpen}
-            onViewJob={(jobId) => navigate(`/job/${jobId}`)}
-            onOpenPayTechnician={() => setPayTechOpen(true)}
-          />
+          <div className="lg:col-span-12">
+            <DashboardPayoutsSection
+              payoutsOpen={payoutsOpen}
+              setPayoutsOpen={setPayoutsOpen}
+              payoutSearch={payoutSearch}
+              setPayoutSearch={setPayoutSearch}
+              payoutFilter={payoutFilter}
+              setPayoutFilter={setPayoutFilter}
+              payoutsLoading={payoutsLoading}
+              payoutsError={payoutsError}
+              pagedPayouts={pagedPayouts}
+              filteredPayoutsCount={filteredPayouts.length}
+              payoutsPage={payoutsPage}
+              payoutsTotalPages={payoutsTotalPages}
+              setPayoutsPage={setPayoutsPage}
+              PAYOUTS_PER_PAGE={PAYOUTS_PER_PAGE}
+              selectedPayoutIds={selectedPayoutIds}
+              selectedEmployeeIds={selectedEmployeeIds}
+              canCreateStub={canCreateStub}
+              togglePayoutSelected={togglePayoutSelected}
+              clearSelectedPayouts={clearSelectedPayouts}
+              setStubOpen={setStubOpen}
+              onViewJob={(jobId) => navigate(`/job/${jobId}`)}
+              onOpenPayTechnician={() => setPayTechOpen(true)}
+            />
+          </div>
         </motion.div>
 
         {/* 🔁 Reschedule punch modal */}

@@ -215,7 +215,7 @@ export default function AdminLayout() {
           loading: membershipLoading,
         }}
       >
-        <main className="mx-auto w-full max-w-7xl py-6 sm:py-10">
+        <main className="mx-auto w-full max-w-[1700px] py-6 sm:py-10">
           <Outlet />
         </main>
       </OrgProvider>
