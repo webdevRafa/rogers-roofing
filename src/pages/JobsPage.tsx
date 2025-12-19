@@ -597,22 +597,6 @@ export default function JobsPage() {
           </div>
         </section>
 
-        {/* Sort options */}
-        <div className="rounded-xl border border-[var(--color-border)]/60 bg-white/90 p-3 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3">
-          <label className="text-sm font-medium text-[var(--color-text)]">
-            Sort by:
-          </label>
-          <select
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as any)}
-            className="rounded border border-[var(--color-border)] bg-white px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none"
-          >
-            <option value="recent">Most recent</option>
-            <option value="netDesc">Highest net profit</option>
-            <option value="netAsc">Lowest net profit</option>
-          </select>
-        </div>
-
         {/* Job status summary */}
         <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">
@@ -634,7 +618,21 @@ export default function JobsPage() {
             ))}
           </div>
         </section>
-
+        {/* Sort options */}
+        <div className="rounded-xl border border-[var(--color-border)]/60 bg-white/90 p-3 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3">
+          <label className="text-sm font-medium text-[var(--color-text)]">
+            Sort by:
+          </label>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as any)}
+            className="rounded border border-[var(--color-border)] bg-white px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none"
+          >
+            <option value="recent">Most recent</option>
+            <option value="netDesc">Highest net profit</option>
+            <option value="netAsc">Lowest net profit</option>
+          </select>
+        </div>
         {/* Jobs list section using existing DashboardJobsSection component */}
         <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
           <DashboardJobsSection
