@@ -158,7 +158,7 @@ export default function DashboardPage() {
 
   // ✅ collapsible sections
   const [jobsOpen, setJobsOpen] = useState(true);
-  const [payoutsOpen, setPayoutsOpen] = useState(false);
+  const [payoutsOpen, setPayoutsOpen] = useState(true);
   const [upcomingOpen, setUpcomingOpen] = useState(true); // NEW: upcoming section toggle
 
   // 🔁 Reschedule punch modal
