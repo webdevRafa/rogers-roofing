@@ -187,39 +187,51 @@ function NewInvoiceModal({
       const number = await generateInvoiceNumber(orgId);
       // Prepare invoice doc
       const docRef = doc(collection(db, "invoices"));
+      const custName = customerName.trim();
+      const custEmail = customerEmail.trim();
+      const custPhone = customerPhone.trim();
+      const desc = description.trim();
+
+      // Build customer only if at least one value exists
+      const customer =
+        custName || custEmail || custPhone
+          ? {
+              ...(custName ? { name: custName } : {}),
+              ...(custEmail ? { email: custEmail } : {}),
+              ...(custPhone ? { phone: custPhone } : {}),
+            }
+          : undefined;
+
+      // Build an address snapshot with NO undefined values (use "" defaults)
+      const addressSnapshot =
+        typeof selectedJob.address === "string"
+          ? {
+              fullLine: selectedJob.address,
+              line1: selectedJob.address,
+              city: "",
+              state: "",
+              zip: "",
+            }
+          : {
+              fullLine: selectedJob.address.fullLine ?? "",
+              line1: selectedJob.address.street ?? "",
+              city: selectedJob.address.city ?? "",
+              state: selectedJob.address.state ?? "",
+              zip: selectedJob.address.postalCode ?? "",
+            };
+
       const invoice: InvoiceDoc = {
         id: docRef.id,
         kind: "invoice",
         jobId: selectedJob.id,
         number,
-        customer: {
-          name: customerName || undefined,
-          email: customerEmail || undefined,
-          phone: customerPhone || undefined,
-        },
-        addressSnapshot: {
-          fullLine:
-            typeof selectedJob.address === "string"
-              ? selectedJob.address
-              : selectedJob.address.fullLine,
-          line1:
-            typeof selectedJob.address === "string"
-              ? selectedJob.address
-              : selectedJob.address.street,
-          city:
-            typeof selectedJob.address === "string"
-              ? undefined
-              : selectedJob.address.city,
-          state:
-            typeof selectedJob.address === "string"
-              ? undefined
-              : selectedJob.address.state,
-          zip:
-            typeof selectedJob.address === "string"
-              ? undefined
-              : selectedJob.address.postalCode,
-        },
-        description: description || undefined,
+
+        ...(customer ? { customer } : {}),
+
+        addressSnapshot,
+
+        ...(desc ? { description: desc } : {}),
+
         lines,
         money: {
           materialsCents,
@@ -232,9 +244,9 @@ function NewInvoiceModal({
         createdAt: serverTimestamp() as unknown as FieldValue,
         updatedAt: serverTimestamp() as unknown as FieldValue,
         status,
-        paymentNote: undefined,
         orgId,
       };
+
       await setDoc(docRef, invoice as any);
       // After persisting the invoice, optionally send it via email when status is "sent" and a customer email exists.
       try {
@@ -846,7 +858,6 @@ export default function InvoicesPage() {
       await updateDoc(ref, {
         status: "paid",
         updatedAt: serverTimestamp() as unknown as FieldValue,
-        paymentNote: `Marked paid on ${new Date().toLocaleDateString()}`,
       });
     } catch (e) {
       // eslint-disable-next-line no-console
