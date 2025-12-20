@@ -23,6 +23,7 @@ import type {
 } from "../types/types";
 import { jobConverter } from "../types/types";
 import { useOrg } from "../contexts/OrgContext";
+import JobDetailPage from "../pages/JobDetailPage";
 
 import {
   Chart as ChartJS,
@@ -143,6 +144,28 @@ export default function FinancialOverviewPage() {
   const [payouts, setPayouts] = useState<PayoutDoc[]>([]);
   const [rangeOption, setRangeOption] = useState<RangeOption>("6months");
   const [invoices, setInvoices] = useState<InvoiceDoc[]>([]);
+  const [quickViewJobId, setQuickViewJobId] = useState<string | null>(null);
+
+  const openJobQuickView = (jobId: string) => setQuickViewJobId(jobId);
+  const closeJobQuickView = () => setQuickViewJobId(null);
+
+  // Close on ESC + lock background scroll while modal is open
+  useEffect(() => {
+    if (!quickViewJobId) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeJobQuickView();
+    };
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [quickViewJobId]);
 
   // Subscribe to jobs and payouts for the current organisation
   useEffect(() => {
@@ -372,11 +395,12 @@ export default function FinancialOverviewPage() {
     };
   }, [filteredPayouts, filteredJobs, rangeStart]);
 
-  // Top jobs by net profit
-  const { topJobLabels, topJobValues } = useMemo(() => {
+  // Top jobs by net profit (keep jobId so we can open JobDetailPage modal)
+  const { topJobsList, topJobLabels, topJobValues } = useMemo(() => {
     const list = filteredJobs
       .map((j) => {
         const profit = j.computed?.netProfitCents ?? 0;
+
         const label = (() => {
           const addr: any = j.address;
           if (typeof addr === "string") return addr;
@@ -389,11 +413,14 @@ export default function FinancialOverviewPage() {
           }
           return j.id;
         })();
-        return { label, profit };
+
+        return { jobId: j.id, label, profit };
       })
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 5);
+
     return {
+      topJobsList: list,
       topJobLabels: list.map((x) => x.label),
       topJobValues: list.map((x) => x.profit / 100),
     };
@@ -996,7 +1023,7 @@ export default function FinancialOverviewPage() {
 
                 {(
                   [
-                    { label: "Sent + Paid", value: "sentPaid" },
+                    { label: "Issued ", value: "sentPaid" },
                     { label: "Paid only", value: "paidOnly" },
                     { label: "Include drafts", value: "includeDrafts" },
                   ] as { label: string; value: ReportInvoiceMode }[]
@@ -1105,9 +1132,14 @@ export default function FinancialOverviewPage() {
                       </td>
 
                       <td className="px-3 py-2">
-                        <div className="font-medium text-[var(--color-text)]">
+                        <button
+                          type="button"
+                          onClick={() => openJobQuickView(inv.jobId)}
+                          className="font-medium text-[var(--color-text)] hover:underline text-left"
+                          title="Quick view job"
+                        >
                           {invoiceJobLabel(inv)}
-                        </div>
+                        </button>
                       </td>
 
                       <td className="px-3 py-2">
@@ -1187,6 +1219,30 @@ export default function FinancialOverviewPage() {
               </div>
             )}
           </div>
+
+          {/* Clickable list for quick job viewing */}
+          {topJobsList.length > 0 && (
+            <div className="mt-3 space-y-1">
+              {topJobsList.map((j) => (
+                <button
+                  key={j.jobId}
+                  type="button"
+                  onClick={() => openJobQuickView(j.jobId)}
+                  className="w-full text-left text-sm px-2 py-1 rounded-lg hover:bg-white/60 transition"
+                  title="Quick view job"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="truncate font-medium text-[var(--color-text)]">
+                      {j.label}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-[var(--color-muted)]">
+                      {formatCurrency(j.profit)}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
@@ -1244,6 +1300,27 @@ export default function FinancialOverviewPage() {
           </div>
         </div>
       </div>
+
+      {/* Quick Job View Modal */}
+      {quickViewJobId && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/50 p-3 sm:p-6 flex items-center justify-center"
+          onMouseDown={(e) => {
+            // click outside closes
+            if (e.target === e.currentTarget) closeJobQuickView();
+          }}
+        >
+          <div className="w-full max-w-[1200px] h-[92vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-white/10">
+            <div className="h-full overflow-y-auto">
+              <JobDetailPage
+                jobId={quickViewJobId}
+                variant="modal"
+                onClose={closeJobQuickView}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

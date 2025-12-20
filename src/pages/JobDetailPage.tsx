@@ -166,9 +166,37 @@ function toYMD(x: unknown): string {
   return d.toISOString().slice(0, 10);
 }
 
-export default function JobDetailPage() {
-  const { id } = useParams<{ id: string }>();
+type JobDetailPageProps = {
+  /**
+   * Optional jobId override (for rendering this page as an embedded component/modal).
+   * If not provided, falls back to the route param (:id).
+   */
+  jobId?: string;
+  /**
+   * Optional close handler for embedded/modal usage.
+   * If provided, the header will show a Close button and call this.
+   */
+  onClose?: () => void;
+  /**
+   * Visual mode. "page" keeps original route-page behavior; "modal" swaps header back-link for close.
+   */
+  variant?: "page" | "modal";
+};
+
+export default function JobDetailPage({
+  jobId,
+  onClose,
+  variant = "page",
+}: JobDetailPageProps) {
+  const { id: routeJobId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const resolvedJobId = jobId ?? routeJobId;
+  const isModal = variant === "modal" || typeof onClose === "function";
+  const handleClose = () => {
+    if (onClose) return onClose();
+    navigate(-1);
+  };
 
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
@@ -209,6 +237,16 @@ export default function JobDetailPage() {
   const [flashingModalOpen, setFlashingModalOpen] = useState(false);
 
   const { orgId, loading: orgLoading } = useOrg();
+
+  // When mounted as a modal/component, jobId may be passed via props.
+  // When used as a route page, routeJobId comes from the URL.
+  if (!resolvedJobId) {
+    return (
+      <div className="p-8 text-red-600">
+        Missing job id. Navigate to a job route or pass <code>jobId</code> prop.
+      </div>
+    );
+  }
 
   const prefillFlashingInputs = () => {
     const fp = job?.earnings?.flashingPay;
@@ -466,11 +504,11 @@ export default function JobDetailPage() {
   }, [orgId, orgLoading]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!resolvedJobId) return;
 
     const qy = query(
       collection(db, "payouts"),
-      where("jobId", "==", id),
+      where("jobId", "==", resolvedJobId),
       orderBy("createdAt", "desc"),
       limit(50)
     );
@@ -489,7 +527,7 @@ export default function JobDetailPage() {
     );
 
     return () => unsub();
-  }, [id]);
+  }, [resolvedJobId]);
 
   // Keyboard handlers (ESC / Left / Right)
   useEffect(() => {
@@ -728,10 +766,12 @@ export default function JobDetailPage() {
 
   // Load job + its photos (real-time)
   useEffect(() => {
-    if (!id) return;
+    if (!resolvedJobId) return;
 
     // Job listener
-    const jobRef = doc(collection(db, "jobs"), id).withConverter(jobConverter);
+    const jobRef = doc(collection(db, "jobs"), resolvedJobId).withConverter(
+      jobConverter
+    );
     const unsubJob = onSnapshot(
       jobRef,
       (snap) => {
@@ -759,7 +799,7 @@ export default function JobDetailPage() {
     const photosRef = collection(db, "jobPhotos");
     const q = query(
       photosRef,
-      where("jobId", "==", id),
+      where("jobId", "==", resolvedJobId),
       orderBy("createdAt", "desc")
     );
     const unsubPhotos = onSnapshot(q, (qs) => {
@@ -772,7 +812,7 @@ export default function JobDetailPage() {
       unsubJob();
       unsubPhotos();
     };
-  }, [id]);
+  }, [resolvedJobId]);
 
   const totals = useMemo(() => {
     const earnings = job?.earnings?.totalEarningsCents ?? 0;
@@ -1196,7 +1236,8 @@ export default function JobDetailPage() {
       await deleteDoc(doc(collection(db, "jobs"), job.id));
       // Close modal (in case navigate is delayed) and go back to jobs list
       setConfirmDeleteOpen(false);
-      navigate("/dashboard");
+      if (isModal) handleClose();
+      else navigate("/dashboard");
     } catch (e) {
       console.error("Failed to permanently delete job", e);
       alert("Failed to delete the job. Check console for details.");
@@ -1293,19 +1334,34 @@ export default function JobDetailPage() {
         >
           <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto]  lg:items-start">
             <div className="rounded-sm bg-white shadow-md backdrop-blur-md p-4 max-w-[400px]  ">
-              <Link
-                to="/dashboard"
-                className="text-sm text-[var(--color-muted)] hover:underline"
-              >
-                <div className="flex items-center gap-0 rounded-sm">
-                  <ChevronLeft
-                    className="text-[var(--color-muted)]"
-                    size="30"
-                  />
+              {isModal ? (
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="text-sm text-[var(--color-muted)] hover:underline"
+                >
+                  <div className="flex items-center gap-0 rounded-sm">
+                    <X className="text-[var(--color-muted)]" size="26" />
+                    <p className="text-[var(--color-muted)]">close</p>
+                  </div>
+                </button>
+              ) : (
+                <Link
+                  to="/dashboard"
+                  className="text-sm text-[var(--color-muted)] hover:underline"
+                >
+                  <div className="flex items-center gap-0 rounded-sm">
+                    <ChevronLeft
+                      className="text-[var(--color-muted)]"
+                      size="30"
+                    />
 
-                  <p className="text-[var(--color-muted)]">back to dashboard</p>
-                </div>
-              </Link>
+                    <p className="text-[var(--color-muted)]">
+                      back to dashboard
+                    </p>
+                  </div>
+                </Link>
+              )}
               <h1 className="mt-2 text-2xl font-bold uppercase text-[var(--color-logo)]">
                 {job.address?.fullLine}
               </h1>
@@ -1698,7 +1754,7 @@ export default function JobDetailPage() {
         </motion.header>
       </div>
       <motion.div
-        key={id}
+        key={resolvedJobId}
         className="mx-auto w-full max-w-full md:max-w-[1400px] overflow-x-hidden  py-8  md:px-10"
         {...fadeUp(0)}
       >
