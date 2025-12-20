@@ -8,6 +8,7 @@ import {
   documentId,
 } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
+import type { Address } from "../types/types";
 
 export type MembershipDoc = {
   id: string;
@@ -21,6 +22,10 @@ type OrgDoc = {
   id: string;
   name?: string;
   legalName?: string;
+  logoUrl?: string | null;
+  phone?: string;
+  email?: string;
+  address?: Address | null;
 };
 
 const LS_KEY = "rr_activeOrgId";
@@ -106,7 +111,16 @@ export function useMembership() {
     const unsub = onSnapshot(q, (snap) => {
       const map: Record<string, OrgDoc> = {};
       snap.docs.forEach((d) => {
-        map[d.id] = { id: d.id, ...(d.data() as Omit<OrgDoc, "id">) };
+        const data = d.data() as any;
+        map[d.id] = {
+          id: d.id,
+          name: data.name,
+          legalName: data.legalName,
+          logoUrl: data.logoUrl,
+          phone: data.phone,
+          email: data.email,
+          address: data.address ?? null,
+        };
       });
       setOrgsById(map);
     });

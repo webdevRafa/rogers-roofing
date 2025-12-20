@@ -243,6 +243,10 @@ function NewInvoiceModal({
         },
         createdAt: serverTimestamp() as unknown as FieldValue,
         updatedAt: serverTimestamp() as unknown as FieldValue,
+        ...(status === "sent"
+          ? { sentAt: serverTimestamp() as unknown as FieldValue }
+          : {}),
+
         status,
         orgId,
       };
@@ -862,6 +866,7 @@ export default function InvoicesPage() {
       const ref = doc(db, "invoices", inv.id);
       await updateDoc(ref, {
         status: "paid",
+        paidAt: serverTimestamp() as unknown as FieldValue,
         updatedAt: serverTimestamp() as unknown as FieldValue,
       });
     } catch (e) {

@@ -557,6 +557,8 @@ export interface InvoiceDoc {
   money: InvoiceMoney;     // computed totals
   createdAt: Timestamp | Date | FieldValue;
   updatedAt?: Timestamp | Date | FieldValue;
+  paidAt?: Timestamp | Date | FieldValue;
+  sentAt?: Timestamp | Date | FieldValue;
   publicToken?: string;
 lastEmailSentAt?: any;
   status: InvoiceStatus;
