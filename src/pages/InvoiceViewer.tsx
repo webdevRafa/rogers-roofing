@@ -67,6 +67,20 @@ export default function InvoiceViewer() {
     })();
   }, [id]);
 
+  useEffect(() => {
+    const root = document.getElementById("root");
+    if (!root) return;
+
+    // Tell the global print CSS "this is the printable surface"
+    root.classList.add("paystub-print");
+
+    // Optional but recommended: apply the "inner" layout rules too
+    // (We'll add this class to your invoice card below, not the root)
+    return () => {
+      root.classList.remove("paystub-print");
+    };
+  }, []);
+
   const createdLabel = useMemo(() => {
     if (!inv) return "—";
     return fmtDateTime((inv as unknown as { createdAt?: unknown })?.createdAt);
@@ -128,7 +142,7 @@ export default function InvoiceViewer() {
       <div className="mx-auto w-[min(980px,94vw)] pb-14">
         <div
           className="
-            rounded-2xl bg-white p-6 shadow-sm border border-slate-200/60
+          paystub-print-inner rounded-2xl bg-white p-6 shadow-sm border border-slate-200/60
             print:rounded-none print:shadow-none print:border-0 print:p-0
           "
         >
