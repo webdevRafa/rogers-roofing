@@ -448,7 +448,6 @@ export const sendInvoiceEmail = onCall(
 
     // Pull the invoice
     const invSnap = await db.doc(`invoices/${invoiceId}`).get();
-    
     if (!invSnap.exists) {
       throw new HttpsError("not-found", "Invoice not found.");
     }
@@ -456,8 +455,6 @@ export const sendInvoiceEmail = onCall(
     const invoice = invSnap.data() as any;
 
     // IMPORTANT: multi-tenant safety
-    // Your InvoicesPage writes `orgId` into invoice docs.
-    // If old invoices don’t have it yet, you can decide whether to block or allow.
     const invoiceOrgId = String(invoice.orgId || "").trim();
     if (!invoiceOrgId) {
       throw new HttpsError(
@@ -466,19 +463,23 @@ export const sendInvoiceEmail = onCall(
       );
     }
 
-    // Verify caller belongs to that org (best-effort without your full auth model):
-    // This assumes you store orgId on an employee doc keyed by uid OR a user doc keyed by uid.
-    // Try both patterns; keep whichever matches your actual schema.
+    // Verify caller belongs to that org (best-effort without your full auth model)
     const uid = request.auth.uid;
 
     // Pattern A: users/{uid}.orgId
     const userSnap = await db.doc(`users/${uid}`).get();
-    const userOrgId = userSnap.exists ? String((userSnap.data() as any).orgId || "") : "";
+    const userOrgId = userSnap.exists
+      ? String((userSnap.data() as any).orgId || "")
+      : "";
 
     // Pattern B: employees where userId == uid (fallback)
     let employeeOrgId = "";
     if (!userOrgId) {
-      const empQ = await db.collection("employees").where("userId", "==", uid).limit(1).get();
+      const empQ = await db
+        .collection("employees")
+        .where("userId", "==", uid)
+        .limit(1)
+        .get();
       if (!empQ.empty) employeeOrgId = String((empQ.docs[0].data() as any).orgId || "");
     }
 
@@ -487,73 +488,111 @@ export const sendInvoiceEmail = onCall(
       throw new HttpsError("permission-denied", "Not allowed to send this invoice.");
     }
 
-    const resend = getResend();
-
-    const from = INVITE_FROM_EMAIL.value();
-    const appBase = APP_BASE_URL.value();
-
-    if (!from) throw new HttpsError("failed-precondition", "Missing INVITE_FROM_EMAIL secret.");
-    if (!appBase) throw new HttpsError("failed-precondition", "Missing APP_BASE_URL secret.");
-
-    const number = invoice.number || "Invoice";
-    const totalCents = Number(invoice.money?.totalCents || 0);
-    const total = (totalCents / 100).toLocaleString(undefined, {
-      style: "currency",
-      currency: "USD",
-    });
-
-    // Ensure the invoice has a publicToken and build the public viewer link
-const publicToken = await ensureInvoicePublicToken(invoiceId, invoice);
-const invoiceUrl = buildInvoiceLink(invoiceId, publicToken);
-
-
-    const subject = `${number} from Roger’s Roofing`;
-
-    const html = `
-      <div style="font-family: ui-sans-serif, system-ui, -apple-system; line-height:1.5;">
-        <h2 style="margin:0 0 8px;">${number}</h2>
-        <p style="margin:0 0 12px;">Total due: <b>${total}</b></p>
-        <p style="margin:0 0 16px;">
-          View your invoice here:
-          <a href="${invoiceUrl}">${invoiceUrl}</a>
-        </p>
-        <p style="margin:0; color:#666; font-size:12px;">
-          If you have any questions, reply to this email.
-        </p>
-      </div>
-    `;
-
-    const { data, error } = await resend.emails.send({
-      from,
-      to: [email], // keep consistent with your invite sender
-      subject,
-      html,
-    });
-    
-    if (error) {
-      console.error("Resend invoice send error:", error);
-      throw new HttpsError("internal", error.message || "Failed to send invoice email.");
+    // ✅ Idempotency: if already sent very recently, skip
+    const last = invoice.lastEmailSentAt?.toDate?.() ?? null;
+    if (last) {
+      const ms = Date.now() - last.getTime();
+      if (ms >= 0 && ms < 2 * 60 * 1000) {
+        return { ok: true, id: null, skipped: true, reason: "recently_sent" };
+      }
     }
 
-    // Record when the invoice was emailed for audit/resend purposes.  Mirror the behavior
-    // used for employee invites by writing a timestamp into the invoice document.  This
-    // allows automatic triggers to skip duplicates when the invoice is first created.
+    // ✅ If another send is already in-flight, skip
+    const inFlight = invoice.emailSendInFlightAt?.toDate?.() ?? null;
+    if (inFlight) {
+      const ms = Date.now() - inFlight.getTime();
+      if (ms >= 0 && ms < 2 * 60 * 1000) {
+        return { ok: true, id: null, skipped: true, reason: "in_flight" };
+      }
+    }
+
+    // ✅ Set in-flight lock (non-fatal)
     try {
+      const lockRef = db.doc(`invoices/${invoiceId}`);
       const now = admin.firestore.FieldValue.serverTimestamp();
-      await db.doc(`invoices/${invoiceId}`).set(
-        {
-          lastEmailSentAt: now,
-        },
-        { merge: true }
-      );
+      await lockRef.set({ emailSendInFlightAt: now }, { merge: true });
     } catch (err) {
-      console.error("Failed to update invoice with lastEmailSentAt:", err);
+      console.error("Failed to set emailSendInFlightAt (non-fatal):", err);
     }
-    
-    return { ok: true, id: data?.id || null };
-    
+
+    // From this point on: ALWAYS try to clear the lock in finally
+    try {
+      const resend = getResend();
+
+      const from = INVITE_FROM_EMAIL.value();
+      const appBase = APP_BASE_URL.value();
+
+      if (!from) throw new HttpsError("failed-precondition", "Missing INVITE_FROM_EMAIL secret.");
+      if (!appBase) throw new HttpsError("failed-precondition", "Missing APP_BASE_URL secret.");
+
+      const number = invoice.number || "Invoice";
+      const totalCents = Number(invoice.money?.totalCents || 0);
+      const total = (totalCents / 100).toLocaleString(undefined, {
+        style: "currency",
+        currency: "USD",
+      });
+
+      // Ensure the invoice has a publicToken and build the public viewer link
+      const publicToken = await ensureInvoicePublicToken(invoiceId, invoice);
+      const invoiceUrl = buildInvoiceLink(invoiceId, publicToken);
+
+      const subject = `${number} from Roger’s Roofing`;
+
+      const html = `
+        <div style="font-family: ui-sans-serif, system-ui, -apple-system; line-height:1.5;">
+          <h2 style="margin:0 0 8px;">${number}</h2>
+          <p style="margin:0 0 12px;">Total due: <b>${total}</b></p>
+          <p style="margin:0 0 16px;">
+            View your invoice here:
+            <a href="${invoiceUrl}">${invoiceUrl}</a>
+          </p>
+          <p style="margin:0; color:#666; font-size:12px;">
+            If you have any questions, reply to this email.
+          </p>
+        </div>
+      `;
+
+      const { data, error } = await resend.emails.send({
+        from,
+        to: [email],
+        subject,
+        html,
+      });
+
+      if (error) {
+        console.error("Resend invoice send error:", error);
+        throw new HttpsError("internal", error.message || "Failed to send invoice email.");
+      }
+
+      // ✅ Record send metadata (non-fatal)
+      try {
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        await db.doc(`invoices/${invoiceId}`).set(
+          {
+            lastEmailSentAt: now,
+            lastEmailResendId: data?.id || null,
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error("Failed to update invoice email audit fields:", err);
+      }
+
+      return { ok: true, id: data?.id || null };
+    } finally {
+      // ✅ ALWAYS clear in-flight lock (non-fatal)
+      try {
+        await db.doc(`invoices/${invoiceId}`).set(
+          { emailSendInFlightAt: admin.firestore.FieldValue.delete() },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error("Failed to clear emailSendInFlightAt:", err);
+      }
+    }
   }
 );
+
 
 // Helper to build invoice URL from APP_BASE_URL.  Duplicated logic from
 // sendInvoiceEmail so triggers can reuse it.
