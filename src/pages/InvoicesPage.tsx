@@ -304,26 +304,38 @@ function NewInvoiceModal({
               "sendInvoiceEmail"
             );
 
-            await sendInvoiceEmail({
+            const res = await sendInvoiceEmail({
               invoiceId: docRef.id,
               email,
             });
 
-            pushToast({
-              status: "success",
-              title: "Invoice sent",
-              message: "Customer has been emailed the invoice link.",
-            });
+            const data = res?.data as any;
+
+            if (data?.skipped) {
+              pushToast({
+                status: "success",
+                title: "Invoice already sent",
+                message:
+                  data?.reason === "in_flight"
+                    ? "A send was already in progress — skipping duplicate."
+                    : "This invoice was already emailed recently — skipping duplicate.",
+              });
+            } else {
+              pushToast({
+                status: "success",
+                title: "Invoice sent",
+                message: "Customer has been emailed the invoice link.",
+              });
+            }
           } catch (emailErr: any) {
             // eslint-disable-next-line no-console
             console.error("Failed to send invoice email:", emailErr);
 
             pushToast({
               status: "error",
-              title: "Invoice saved, but email failed",
+              title: "Invoice saved — delivery not confirmed",
               message:
-                emailErr?.message ??
-                "The invoice was created, but the email could not be sent.",
+                "The invoice was created, but we couldn’t confirm the email delivery. The customer may still have received it. If needed, open the invoice and resend.",
             });
           }
         }
