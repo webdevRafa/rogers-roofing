@@ -92,10 +92,7 @@ const LoginPage = () => {
           )}
 
           {/* Email / Password */}
-          <form
-            onSubmit={handleEmailLogin}
-            className="px-5 space-y-3 mt-[-70px]"
-          >
+          <form onSubmit={handleEmailLogin} className="px-5 space-y-3">
             <div className="space-y-1.5">
               <label
                 htmlFor="email"
