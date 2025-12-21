@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import roofing from "../assets/roofing.webp";
-import logo from "../assets/rogers-roofing.webp";
+import logo from "../assets/rogers-roofing-logo-hero.png";
 import { Eye, EyeOff } from "lucide-react";
 
 // Assumes you export `auth` from ../firebase/firebaseConfig
@@ -77,9 +77,9 @@ const LoginPage = () => {
     <>
       <div className="w-full h-[100vh] flex items-center justify-center relative px-4 bg-gradient-to-tr from-[var(--color-logo)]/95 via-[var(--color-brown)]/95 to-[var(--color-logo)]/95">
         {/* login box */}
-        <div className="bg-[var(--color-card)]/70 py-10 shadow-md w-full max-w-[380px] pb-6  border-2 border-[var(--color-brown)] select-none">
+        <div className="bg-[var(--color-card)]  w-full max-w-[380px] pb-6  border-2 border-[var(--color-brown)] select-none ">
           <img
-            className="max-w-[200px] mx-auto  mb-4 shadow-md"
+            className="max-h-[350px] mx-auto  mb-0  "
             src={logo}
             alt="Rogers Roofing"
           />
@@ -92,7 +92,10 @@ const LoginPage = () => {
           )}
 
           {/* Email / Password */}
-          <form onSubmit={handleEmailLogin} className="px-5 space-y-3">
+          <form
+            onSubmit={handleEmailLogin}
+            className="px-5 space-y-3 mt-[-70px]"
+          >
             <div className="space-y-1.5">
               <label
                 htmlFor="email"
