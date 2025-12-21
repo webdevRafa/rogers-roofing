@@ -429,14 +429,13 @@ export const sendInvoiceEmail = onCall(
     secrets: [RESEND_API_KEY, INVITE_FROM_EMAIL, APP_BASE_URL],
   },
   async (request) => {
-    // Auth guard (so random people can’t spam emails)
+    // Auth guard
     if (!request.auth?.uid) {
       throw new HttpsError("unauthenticated", "You must be signed in.");
     }
 
     const invoiceId = String(request.data?.invoiceId || "").trim();
     const email = String(request.data?.email || "").trim();
-
     if (!invoiceId) {
       throw new HttpsError("invalid-argument", "Missing invoiceId.");
     }
@@ -445,16 +444,14 @@ export const sendInvoiceEmail = onCall(
     }
 
     const db = admin.firestore();
-
-    // Pull the invoice
-    const invSnap = await db.doc(`invoices/${invoiceId}`).get();
-    if (!invSnap.exists) {
+    // Pull invoice doc
+    const snap = await db.doc(`invoices/${invoiceId}`).get();
+    if (!snap.exists) {
       throw new HttpsError("not-found", "Invoice not found.");
     }
+    const invoice = snap.data() as any;
 
-    const invoice = invSnap.data() as any;
-
-    // IMPORTANT: multi-tenant safety
+    // Multi-tenant check: require orgId on invoice and match caller’s org
     const invoiceOrgId = String(invoice.orgId || "").trim();
     if (!invoiceOrgId) {
       throw new HttpsError(
@@ -462,17 +459,9 @@ export const sendInvoiceEmail = onCall(
         "Invoice missing orgId. Re-save invoice with latest schema."
       );
     }
-
-    // Verify caller belongs to that org (best-effort without your full auth model)
     const uid = request.auth.uid;
-
-    // Pattern A: users/{uid}.orgId
     const userSnap = await db.doc(`users/${uid}`).get();
-    const userOrgId = userSnap.exists
-      ? String((userSnap.data() as any).orgId || "")
-      : "";
-
-    // Pattern B: employees where userId == uid (fallback)
+    const userOrgId = userSnap.exists ? String((userSnap.data() as any).orgId || "") : "";
     let employeeOrgId = "";
     if (!userOrgId) {
       const empQ = await db
@@ -480,15 +469,16 @@ export const sendInvoiceEmail = onCall(
         .where("userId", "==", uid)
         .limit(1)
         .get();
-      if (!empQ.empty) employeeOrgId = String((empQ.docs[0].data() as any).orgId || "");
+      if (!empQ.empty) {
+        employeeOrgId = String((empQ.docs[0].data() as any).orgId || "");
+      }
     }
-
     const callerOrgId = userOrgId || employeeOrgId;
     if (!callerOrgId || callerOrgId !== invoiceOrgId) {
       throw new HttpsError("permission-denied", "Not allowed to send this invoice.");
     }
 
-    // ✅ Idempotency: if already sent very recently, skip
+    // Idempotency: skip if already sent recently
     const last = invoice.lastEmailSentAt?.toDate?.() ?? null;
     if (last) {
       const ms = Date.now() - last.getTime();
@@ -496,48 +486,44 @@ export const sendInvoiceEmail = onCall(
         return { ok: true, id: null, skipped: true, reason: "recently_sent" };
       }
     }
-
-    // ✅ If another send is already in-flight, skip
+    // Skip if another send is already in-flight
     const inFlight = invoice.emailSendInFlightAt?.toDate?.() ?? null;
     if (inFlight) {
       const ms = Date.now() - inFlight.getTime();
       if (ms >= 0 && ms < 2 * 60 * 1000) {
-        return { ok: true, id: null, skipped: true, reason: "in_flight" };
+      return { ok: true, id: null, skipped: true, reason: "in_flight" };
       }
     }
 
-    // ✅ Set in-flight lock (non-fatal)
+    // Set in-flight lock (non-fatal if it fails)
     try {
-      const lockRef = db.doc(`invoices/${invoiceId}`);
-      const now = admin.firestore.FieldValue.serverTimestamp();
-      await lockRef.set({ emailSendInFlightAt: now }, { merge: true });
+      await db.doc(`invoices/${invoiceId}`).set(
+        { emailSendInFlightAt: admin.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
     } catch (err) {
       console.error("Failed to set emailSendInFlightAt (non-fatal):", err);
     }
 
-    // From this point on: ALWAYS try to clear the lock in finally
     try {
+      // Prepare Resend
       const resend = getResend();
-
       const from = INVITE_FROM_EMAIL.value();
       const appBase = APP_BASE_URL.value();
-
       if (!from) throw new HttpsError("failed-precondition", "Missing INVITE_FROM_EMAIL secret.");
-      if (!appBase) throw new HttpsError("failed-precondition", "Missing APP_BASE_URL secret.");
+      if (!appBase)
+        throw new HttpsError("failed-precondition", "Missing APP_BASE_URL secret.");
 
+      // Build subject, HTML and invoice link
       const number = invoice.number || "Invoice";
       const totalCents = Number(invoice.money?.totalCents || 0);
       const total = (totalCents / 100).toLocaleString(undefined, {
         style: "currency",
         currency: "USD",
       });
-
-      // Ensure the invoice has a publicToken and build the public viewer link
       const publicToken = await ensureInvoicePublicToken(invoiceId, invoice);
       const invoiceUrl = buildInvoiceLink(invoiceId, publicToken);
-
       const subject = `${number} from Roger’s Roofing`;
-
       const html = `
         <div style="font-family: ui-sans-serif, system-ui, -apple-system; line-height:1.5;">
           <h2 style="margin:0 0 8px;">${number}</h2>
@@ -552,24 +538,23 @@ export const sendInvoiceEmail = onCall(
         </div>
       `;
 
+      // Send email via Resend
       const { data, error } = await resend.emails.send({
         from,
         to: [email],
         subject,
         html,
       });
-
       if (error) {
         console.error("Resend invoice send error:", error);
         throw new HttpsError("internal", error.message || "Failed to send invoice email.");
       }
 
-      // ✅ Record send metadata (non-fatal)
+      // Record timestamp and Resend ID for auditing (non-fatal)
       try {
-        const now = admin.firestore.FieldValue.serverTimestamp();
         await db.doc(`invoices/${invoiceId}`).set(
           {
-            lastEmailSentAt: now,
+            lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
             lastEmailResendId: data?.id || null,
           },
           { merge: true }
@@ -580,7 +565,7 @@ export const sendInvoiceEmail = onCall(
 
       return { ok: true, id: data?.id || null };
     } finally {
-      // ✅ ALWAYS clear in-flight lock (non-fatal)
+      // Always clear in-flight lock (non-fatal)
       try {
         await db.doc(`invoices/${invoiceId}`).set(
           { emailSendInFlightAt: admin.firestore.FieldValue.delete() },
@@ -592,6 +577,7 @@ export const sendInvoiceEmail = onCall(
     }
   }
 );
+
 
 
 // Helper to build invoice URL from APP_BASE_URL.  Duplicated logic from
