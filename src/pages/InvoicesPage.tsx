@@ -21,7 +21,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import type { FieldValue } from "firebase/firestore";
-
+import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { useOrg } from "../contexts/OrgContext";
 import { db } from "../firebase/firebaseConfig";
 import type {
@@ -96,11 +96,17 @@ function NewInvoiceModal({
   jobs,
   onClose,
   onCreated,
+  pushToast,
 }: {
   orgId: string;
   jobs: Job[];
   onClose: () => void;
   onCreated?: (invoice: InvoiceDoc) => void;
+  pushToast: (t: {
+    status: "success" | "error" | "loading";
+    title: string;
+    message: string;
+  }) => void;
 }) {
   if (typeof document === "undefined") return null;
 
@@ -112,6 +118,8 @@ function NewInvoiceModal({
   const [description, setDescription] = useState<string>("");
   const [extras, setExtras] = useState<{ label: string; amount: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [savingMode, setSavingMode] = useState<InvoiceStatus | null>(null);
+
   const [formError, setFormError] = useState<string | null>(null);
 
   const selectedJob = useMemo(
@@ -143,6 +151,7 @@ function NewInvoiceModal({
 
   async function submit(status: InvoiceStatus) {
     setFormError(null);
+
     if (!orgId) {
       setFormError("Organization not loaded.");
       return;
@@ -151,6 +160,7 @@ function NewInvoiceModal({
       setFormError("Please select a job to invoice.");
       return;
     }
+
     // Build invoice lines: labor, materials, extras (only if > 0)
     const lines: InvoiceLine[] = [];
     if (laborCents > 0) {
@@ -177,14 +187,34 @@ function NewInvoiceModal({
         });
       }
     });
+
     if (lines.length === 0) {
       setFormError("At least one line item is required.");
       return;
     }
+
+    // ✅ Toast: show immediate feedback (so when modal closes, user still sees state)
+    if (status === "sent") {
+      pushToast({
+        status: "loading",
+        title: "Sending invoice…",
+        message: "Creating the invoice and emailing the customer.",
+      });
+    } else {
+      pushToast({
+        status: "loading",
+        title: "Saving invoice…",
+        message: "Creating your invoice draft.",
+      });
+    }
+    setSavingMode(status);
+
     setSaving(true);
+
     try {
       // Pre-generate invoice number
       const number = await generateInvoiceNumber(orgId);
+
       // Prepare invoice doc
       const docRef = doc(collection(db, "invoices"));
       const custName = customerName.trim();
@@ -251,33 +281,76 @@ function NewInvoiceModal({
         orgId,
       };
 
+      // ✅ 1) Persist invoice
       await setDoc(docRef, invoice as any);
-      // After persisting the invoice, optionally send it via email when status is "sent" and a customer email exists.
-      try {
-        if (status === "sent" && customerEmail.trim()) {
-          // Always specify the region when fetching Functions to avoid any mismatches with
-          // your deployed region (us‑central1).  Without specifying the region,
-          // getFunctions() may default to the wrong endpoint, which would cause
-          // sendInvoiceEmail to silently fail.  See similar patterns in the
-          // employee invite workflow.
-          const functions = getFunctions(undefined, "us-central1");
-          const sendInvoiceEmail = httpsCallable(functions, "sendInvoiceEmail");
-          // Fire and forget; if the call fails we log but don't block the UI.
-          await sendInvoiceEmail({
-            invoiceId: docRef.id,
-            email: customerEmail.trim(),
+
+      // ✅ 2) If "sent", attempt email
+      // IMPORTANT: we no longer "silently succeed" if email fails — we toast it.
+      if (status === "sent") {
+        const email = customerEmail.trim();
+
+        if (!email) {
+          // invoice saved as sent but we can't email anyone
+          pushToast({
+            status: "success",
+            title: "Invoice saved",
+            message: "Marked as sent, but no customer email was provided.",
           });
+        } else {
+          try {
+            const functions = getFunctions(undefined, "us-central1");
+            const sendInvoiceEmail = httpsCallable(
+              functions,
+              "sendInvoiceEmail"
+            );
+
+            await sendInvoiceEmail({
+              invoiceId: docRef.id,
+              email,
+            });
+
+            pushToast({
+              status: "success",
+              title: "Invoice sent",
+              message: "Customer has been emailed the invoice link.",
+            });
+          } catch (emailErr: any) {
+            // eslint-disable-next-line no-console
+            console.error("Failed to send invoice email:", emailErr);
+
+            pushToast({
+              status: "error",
+              title: "Invoice saved, but email failed",
+              message:
+                emailErr?.message ??
+                "The invoice was created, but the email could not be sent.",
+            });
+          }
         }
-      } catch (emailErr) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to send invoice email:", emailErr);
+      } else {
+        // Draft (or other statuses if you ever call them)
+        pushToast({
+          status: "success",
+          title: "Invoice saved",
+          message:
+            status === "draft" ? "Saved as a draft." : `Saved as "${status}".`,
+        });
       }
+
       onCreated?.(invoice);
       onClose();
     } catch (e: any) {
-      setFormError(e?.message ?? String(e));
+      const msg = e?.message ?? String(e);
+      setFormError(msg);
+
+      pushToast({
+        status: "error",
+        title: status === "sent" ? "Send failed" : "Save failed",
+        message: msg,
+      });
     } finally {
       setSaving(false);
+      setSavingMode(null);
     }
   }
 
@@ -308,7 +381,7 @@ function NewInvoiceModal({
             </div>
             <div>
               <h2 className="text-xl font-semibold text-[var(--color-text)]">
-                Create invoice
+                Create invoices
               </h2>
               <p className="mt-1 text-xs text-[var(--color-muted)]">
                 Generate an invoice from a job
@@ -544,7 +617,7 @@ function NewInvoiceModal({
               disabled={saving}
               className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300 disabled:opacity-60"
             >
-              {saving ? "Saving…" : "Save draft"}
+              {saving && savingMode === "draft" ? "Saving…" : "Save draft"}
             </button>
             <button
               type="button"
@@ -552,7 +625,7 @@ function NewInvoiceModal({
               disabled={saving}
               className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
             >
-              {saving ? "Sending…" : "Save & Send"}
+              {saving && savingMode === "sent" ? "Sending…" : "Save & Send"}
             </button>
           </div>
         </div>
@@ -782,6 +855,28 @@ export default function InvoicesPage() {
   );
   const [markingPaid, setMarkingPaid] = useState(false);
 
+  // ---- Global toast (match JobDetailPage styling) ----
+  type ToastStatus = "success" | "error" | "loading";
+  type ToastState = {
+    status: ToastStatus;
+    title: string;
+    message: string;
+  } | null;
+
+  const [toast, setToast] = useState<ToastState>(null);
+
+  function pushToast(next: NonNullable<ToastState>) {
+    setToast(next);
+  }
+
+  useEffect(() => {
+    if (!toast) return;
+    if (toast.status === "loading") return;
+
+    const id = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(id);
+  }, [toast]);
+
   // Subscribe to invoices for the current organisation
   useEffect(() => {
     if (!orgId) return;
@@ -958,7 +1053,7 @@ export default function InvoicesPage() {
           <button
             type="button"
             onClick={() => setOpenForm(true)}
-            className="inline-flex items-center gap-1 rounded-lg bg-emerald-800 hover:bg-emerald-700 transition px-4 py-2 text-sm font-semibold text-white"
+            className="inline-flex items-center gap-1  bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] transition rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-white"
           >
             <Plus className="h-4 w-4" /> New Invoice
           </button>
@@ -1070,10 +1165,12 @@ export default function InvoicesPage() {
           jobs={jobs}
           onClose={() => setOpenForm(false)}
           onCreated={() => {
-            // Could trigger a toast here e.g. using react-hot-toast; omitted for brevity
+            // optional: refresh, analytics, etc
           }}
+          pushToast={pushToast}
         />
       )}
+
       {/* Invoice preview modal */}
       {selectedInvoice && (
         <InvoicePreviewModal
@@ -1085,6 +1182,50 @@ export default function InvoicesPage() {
           }}
           saving={markingPaid}
         />
+      )}
+
+      {/* ===== Global Toast (matches JobDetailPage) ===== */}
+      {toast && (
+        <div className="fixed right-4 top-20 z-50">
+          <div className="flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-white/95 px-4 py-3 text-sm shadow-lg">
+            <div className="mt-0.5">
+              {toast.status === "loading" ? (
+                <Loader2 className="h-5 w-5 animate-spin text-[var(--color-muted)]" />
+              ) : toast.status === "success" ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+              )}
+            </div>
+
+            <div className="flex-1">
+              <div
+                className={
+                  "font-semibold " +
+                  (toast.status === "success"
+                    ? "text-emerald-700"
+                    : toast.status === "error"
+                    ? "text-red-600"
+                    : "text-[var(--color-text)]")
+                }
+              >
+                {toast.title}
+              </div>
+              <div className="mt-0.5 text-xs text-[var(--color-muted)]">
+                {toast.message}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="ml-2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

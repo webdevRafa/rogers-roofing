@@ -224,15 +224,15 @@ export default function PunchDayPage() {
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
+    <div className="min-h-screen ">
       {/* Hero / header */}
-      <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
+      <div className="text-[var(--color-text)] ">
         <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 py-10 md:flex-row md:items-center md:justify-between md:px-0">
           <div>
-            <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">
+            <h1 className="mt-2 text-2xl font-semiboldmd:text-3xl">
               Schedule for {displayDate}
             </h1>
-            <p className="mt-1 text-sm text-white/80">
+            <p className="mt-1 text-sm ">
               Shingles, felt, and punch jobs scheduled for this day.
             </p>
           </div>
@@ -241,7 +241,7 @@ export default function PunchDayPage() {
             <button
               type="button"
               onClick={() => navigate("/schedule")}
-              className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
+              className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-xs font-medium  backdrop-blur-sm transition hover:bg-white/20"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to calendar
@@ -250,7 +250,7 @@ export default function PunchDayPage() {
             <button
               type="button"
               onClick={() => navigate("/dashboard")}
-              className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
+              className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-medium  backdrop-blur-sm transition hover:bg-white/20"
             >
               <Home className="h-4 w-4" />
               Jobs overview

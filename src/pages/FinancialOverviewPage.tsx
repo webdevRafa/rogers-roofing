@@ -1232,7 +1232,7 @@ export default function FinancialOverviewPage() {
                   title="Quick view job"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="truncate font-medium text-[var(--color-text)]">
+                    <span className="truncate  text-[var(--color-text)] hover:underline">
                       {j.label}
                     </span>
                     <span className="shrink-0 text-[11px] text-[var(--color-muted)]">
