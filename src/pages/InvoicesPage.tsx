@@ -193,20 +193,16 @@ function NewInvoiceModal({
       return;
     }
 
-    // ✅ Toast: show immediate feedback (so when modal closes, user still sees state)
-    if (status === "sent") {
-      pushToast({
-        status: "loading",
-        title: "Sending invoice…",
-        message: "Creating the invoice and emailing the customer.",
-      });
-    } else {
-      pushToast({
-        status: "loading",
-        title: "Saving invoice…",
-        message: "Creating your invoice draft.",
-      });
-    }
+    // ✅ Toast: show immediate feedback (modal can close but user still sees status)
+    pushToast({
+      status: "loading",
+      title: status === "sent" ? "Sending invoice…" : "Saving invoice…",
+      message:
+        status === "sent"
+          ? "Creating the invoice and sending it to the customer."
+          : "Creating your invoice draft.",
+    });
+
     setSavingMode(status);
 
     setSaving(true);
