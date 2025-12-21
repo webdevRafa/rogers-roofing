@@ -560,7 +560,9 @@ export interface InvoiceDoc {
   paidAt?: Timestamp | Date | FieldValue;
   sentAt?: Timestamp | Date | FieldValue;
   publicToken?: string;
-lastEmailSentAt?: any;
+  lastEmailSentAt?: Timestamp | Date | FieldValue | null;
+  lastEmailResendId?: string | null;
+  emailSendInFlightAt?: Timestamp | Date | FieldValue | null;
   status: InvoiceStatus;
   // For receipts, store how it was paid if you want:
   paymentNote?: string;    // e.g. "Paid by check #1023"
