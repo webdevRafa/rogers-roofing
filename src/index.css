@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 .section-scroll {
-  max-height: 24rem;       /* ~384px, tweak as you like */
+  max-height: 28rem;       /* ~384px, tweak as you like */
   overflow-y: auto;        /* enable vertical scrolling when content exceeds max-height */
   padding-right: 0.25rem;  /* tiny breathing room next to scrollbar */
 }
@@ -15,6 +15,24 @@
   border-radius: 999px;
 }
 .section-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.section-scroll-invoices {
+  max-height: 30rem;       /* ~384px, tweak as you like */
+  overflow-y: auto;        /* enable vertical scrolling when content exceeds max-height */
+  padding-right: 0.25rem;  /* tiny breathing room next to scrollbar */
+}
+
+/* Optional: hide scrollbar on WebKit (Chrome/Safari) while keeping scrollability */
+.section-scroll-invoices::-webkit-scrollbar {
+  width: 6px;
+}
+.section-scroll-invoices::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+.section-scroll-invoices::-webkit-scrollbar-track {
   background: transparent;
 }
 @media print {

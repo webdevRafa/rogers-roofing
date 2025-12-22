@@ -1093,7 +1093,7 @@ export default function FinancialOverviewPage() {
           </div>
 
           {/* Table */}
-          <div className="mt-5 overflow-x-auto rounded-2xl border border-[var(--color-border)]/60 bg-white/70">
+          <div className="mt-5 overflow-x-auto rounded-2xl border border-[var(--color-border)]/60 bg-white/70 section-scroll-invoices">
             <table className="min-w-full text-sm">
               <thead className="bg-[var(--color-card)] text-[11px] uppercase tracking-wide text-[var(--color-muted)]">
                 <tr>

@@ -608,7 +608,7 @@ export function DashboardJobsSection({
 
       {/* Jobs list + totals + pagination */}
       {jobsOpen && (
-        <div className="mt-2 section-scroll space-y-4">
+        <div className="mt-2 space-y-4">
           {/* Totals */}
           <motion.div
             className="mb-0 rounded-tr-2xl p-2 text-sm max-w-[400px] shadow-md bg-gray-50/35 text-[var(--color-text)]"
@@ -689,10 +689,10 @@ export function DashboardJobsSection({
               IMPORTANT: use an explicit height (not max-height) so the table doesn't "shrink"
               when there are fewer rows, while still allowing plenty of visible rows when there are many.
             */}
-            <div className="relative h-[560px] lg:h-[640px] overflow-y-auto overflow-x-auto section-scroll">
+            <div className="relative overflow-auto section-scroll">
               <table className="w-full text-xs border-separate border-spacing-0">
                 {/* Sticky header: keep it inside the SAME scroll container */}
-                <thead className="sticky top-0 z-30 bg-white/90 backdrop-blur text-[var(--color-muted)] border-b border-[var(--color-border)]/60">
+                <thead className="sticky top-0 z-30 bg-[var(--color-card)] text-[11px] uppercase tracking-wide text-[var(--color-muted)] border-b border-[var(--color-border)]/40">
                   <tr>
                     <th className="sticky top-0 z-30 bg-white/90 backdrop-blur text-left px-4 py-3">
                       Address
@@ -828,7 +828,7 @@ export function DashboardJobsSection({
 
               {/* Sticky pagination footer (always visible) */}
               {filteredJobs.length > 0 && (
-                <div className="sticky bottom-0 z-30 bg-white/90 backdrop-blur border-t border-[var(--color-border)]/60 px-4 py-2 flex items-center justify-between text-xs text-[var(--color-muted)]">
+                <div className="sticky bottom-[-1px] z-30 flex items-center justify-between gap-3 border-t border-[var(--color-border)]/40 bg-white/95 px-4 py-2 backdrop-blur text-xs text-[var(--color-muted)]">
                   <span>
                     Showing{" "}
                     {filteredJobs.length === 0

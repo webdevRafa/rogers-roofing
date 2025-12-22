@@ -205,8 +205,49 @@ function NewInvoiceModal({
     });
 
     setSavingMode(status);
-
     setSaving(true);
+
+    // ✅ helper: sleep
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    // ✅ helper: confirm delivery by polling invoice doc audit fields
+    async function confirmEmailDelivery(invoiceId: string): Promise<boolean> {
+      // Poll up to ~8 seconds (tweak if you want)
+      const maxAttempts = 8;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          const invSnap = await getDoc(doc(db, "invoices", invoiceId));
+          if (invSnap.exists()) {
+            const invData = invSnap.data() as any;
+
+            const resendId = invData?.lastEmailResendId ?? null;
+            const sentAt = invData?.lastEmailSentAt ?? null;
+
+            if (resendId) return true;
+
+            const sentMs =
+              sentAt?.toDate && typeof sentAt.toDate === "function"
+                ? sentAt.toDate().getTime()
+                : null;
+
+            // Consider confirmed if lastEmailSentAt exists and is recent-ish
+            if (
+              sentMs &&
+              Date.now() - sentMs >= 0 &&
+              Date.now() - sentMs < 10 * 60 * 1000
+            ) {
+              return true;
+            }
+          }
+        } catch {
+          // ignore transient read errors
+        }
+
+        // wait longer each time (small backoff)
+        await sleep(250 + attempt * 250);
+      }
+      return false;
+    }
 
     try {
       // Pre-generate invoice number
@@ -282,12 +323,10 @@ function NewInvoiceModal({
       await setDoc(docRef, invoice as any);
 
       // ✅ 2) If "sent", attempt email
-      // IMPORTANT: we no longer "silently succeed" if email fails — we toast it.
       if (status === "sent") {
         const email = customerEmail.trim();
 
         if (!email) {
-          // invoice saved as sent but we can't email anyone
           pushToast({
             status: "success",
             title: "Invoice saved",
@@ -301,11 +340,7 @@ function NewInvoiceModal({
               "sendInvoiceEmail"
             );
 
-            const res = await sendInvoiceEmail({
-              invoiceId: docRef.id,
-              email,
-            });
-
+            const res = await sendInvoiceEmail({ invoiceId: docRef.id, email });
             const data = res?.data as any;
 
             if (data?.skipped) {
@@ -326,49 +361,16 @@ function NewInvoiceModal({
             }
           } catch (emailErr: any) {
             // eslint-disable-next-line no-console
-            console.error("Failed to send invoice email:", emailErr);
+            console.error("sendInvoiceEmail callable threw:", emailErr);
 
-            // ✅ If the callable throws but the backend actually sent the email,
-            // confirm via the audit fields the function writes to the invoice doc.
-            let deliveryConfirmed = false;
+            // ✅ Robust confirmation: wait for server audit fields
+            const confirmed = await confirmEmailDelivery(docRef.id);
 
-            try {
-              const invSnap = await getDoc(doc(db, "invoices", docRef.id));
-              if (invSnap.exists()) {
-                const invData = invSnap.data() as any;
-
-                const resendId = invData?.lastEmailResendId ?? null;
-                const sentAt = invData?.lastEmailSentAt ?? null;
-
-                const sentMs =
-                  sentAt?.toDate && typeof sentAt.toDate === "function"
-                    ? sentAt.toDate().getTime()
-                    : null;
-
-                // Consider it "confirmed" if we have a resend id OR a very recent lastEmailSentAt.
-                if (resendId) deliveryConfirmed = true;
-                else if (
-                  sentMs &&
-                  Date.now() - sentMs >= 0 &&
-                  Date.now() - sentMs < 5 * 60 * 1000
-                ) {
-                  deliveryConfirmed = true;
-                }
-              }
-            } catch (verifyErr) {
-              // non-fatal; fall back to the original warning toast
-              // eslint-disable-next-line no-console
-              console.warn(
-                "Could not verify invoice email delivery via Firestore:",
-                verifyErr
-              );
-            }
-
-            if (deliveryConfirmed) {
+            if (confirmed) {
               pushToast({
                 status: "success",
                 title: "Invoice sent",
-                message: "Email was sent (confirmed by server audit fields).",
+                message: "Email was sent.",
               });
             } else {
               pushToast({
@@ -565,7 +567,7 @@ function NewInvoiceModal({
                   type="button"
                   onClick={addExtra}
                   disabled={saving}
-                  className="flex items-center gap-1 text-sm text-[var(--color-primary)] hover:underline disabled:opacity-60"
+                  className="flex items-center gap-1 text-sm text-[var(--color-muted)] hover:underline disabled:opacity-60"
                 >
                   <Plus className="h-4 w-4" /> Add
                 </button>
@@ -908,6 +910,10 @@ export default function InvoicesPage() {
   );
   const [markingPaid, setMarkingPaid] = useState(false);
 
+  // ---- Pagination (UI only) ----
+  const INVOICES_PER_PAGE = 10;
+  const [invoicesPage, setInvoicesPage] = useState<number>(1);
+
   // ---- Global toast (match JobDetailPage styling) ----
   type ToastStatus = "success" | "error" | "loading";
   type ToastState = {
@@ -1000,6 +1006,23 @@ export default function InvoicesPage() {
     }
     return list;
   }, [invoices, statusFilter, searchTerm]);
+
+  // ---- Pagination derived ----
+  const invoicesTotalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredInvoices.length / INVOICES_PER_PAGE));
+  }, [filteredInvoices.length]);
+
+  useEffect(() => {
+    // clamp page when filters/search change
+    setInvoicesPage((p: number) =>
+      Math.min(Math.max(1, p), invoicesTotalPages)
+    );
+  }, [invoicesTotalPages]);
+
+  const pagedInvoices = useMemo(() => {
+    const start = (invoicesPage - 1) * INVOICES_PER_PAGE;
+    return filteredInvoices.slice(start, start + INVOICES_PER_PAGE);
+  }, [filteredInvoices, invoicesPage]);
 
   // When previewing invoice, we need its associated job
   const selectedInvoiceJob = useMemo(() => {
@@ -1106,109 +1129,186 @@ export default function InvoicesPage() {
           <button
             type="button"
             onClick={() => setOpenForm(true)}
-            className="inline-flex items-center gap-1  bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] transition rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-white"
+            className="inline-flex items-center gap-1 max-w-[140px] bg-[var(--color-card)] hover:bg-[var(--color-card-hover)] transition ease-in-out duration-300  text-[var(--color-text)] cursor-pointer  rounded-md border border-[var(--color-border)]/30 px-2 py-2 text-xs "
           >
             <Plus className="h-4 w-4" /> New Invoice
           </button>
         </section>
         {/* Invoice list table */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-[var(--color-card)] text-[11px] uppercase tracking-wide text-[var(--color-muted)]">
-              <tr>
-                <th className="px-3 py-2 text-left">Number</th>
-                <th className="px-3 py-2 text-left">Job</th>
-                <th className="px-3 py-2 text-left">Customer</th>
-                <th className="px-3 py-2 text-left">Date</th>
-                <th className="px-3 py-2 text-left">Status</th>
-                <th className="px-3 py-2 text-right">Total</th>
-                <th className="px-3 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredInvoices.length === 0 && (
+        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
+          {/* IMPORTANT: scrolling must be on a wrapper div, not the section, for sticky header/footer */}
+          <div className="relative overflow-auto section-scroll-invoices">
+            <table className="min-w-full text-sm">
+              <thead className="sticky top-0 z-30 bg-[var(--color-card)] text-[11px] uppercase tracking-wide text-[var(--color-muted)] border-b border-[var(--color-border)]/40">
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="px-3 py-4 text-center text-[var(--color-muted)] text-sm"
-                  >
-                    No invoices found
-                  </td>
+                  <th className="px-3 py-2 text-left">Number</th>
+                  <th className="px-3 py-2 text-left">Job</th>
+                  <th className="px-3 py-2 text-left">Customer</th>
+                  <th className="px-3 py-2 text-left">Date</th>
+                  <th className="px-3 py-2 text-left">Status</th>
+                  <th className="px-3 py-2 text-right">Total</th>
+                  <th className="px-3 py-2 text-right">Actions</th>
                 </tr>
-              )}
-              {filteredInvoices.map((inv) => {
-                // find job address or use jobId
-                const job = jobs.find((j) => j.id === inv.jobId);
-                const address = job
-                  ? typeof job.address === "string"
-                    ? job.address
-                    : job.address.fullLine
-                  : inv.jobId;
-                // compute date string
-                let dateStr = "";
-                const dtAny = inv.createdAt as any;
-                if (dtAny?.toDate) {
-                  dateStr = dtAny.toDate().toLocaleDateString();
-                } else if (dtAny instanceof Date) {
-                  dateStr = dtAny.toLocaleDateString();
-                }
-                return (
-                  <tr
-                    key={inv.id}
-                    className="border-t border-[var(--color-border)]/40 hover:bg-[var(--color-card)]"
-                  >
-                    <td className="px-3 py-2 align-top">{inv.number}</td>
-                    <td className="px-3 py-2 align-top">
-                      <div className="font-medium text-[var(--color-text)]">
-                        {address}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 align-top">
-                      {inv.customer?.name || inv.customer?.email || "—"}
-                    </td>
-                    <td className="px-3 py-2 align-top">{dateStr}</td>
-                    <td className="px-3 py-2 align-top">
-                      <span
-                        className={
-                          inv.status === "paid"
-                            ? "inline-block rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800"
-                            : inv.status === "sent"
-                            ? "inline-block rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800"
-                            : inv.status === "draft"
-                            ? "inline-block rounded-full bg-gray-200 px-2 py-1 text-xs font-medium text-gray-700"
-                            : "inline-block rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800"
-                        }
-                      >
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 align-top text-right font-semibold">
-                      {money(inv.money?.totalCents)}
-                    </td>
-                    <td className="px-3 py-2 align-top text-right space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedInvoice(inv)}
-                        className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-100"
-                      >
-                        View
-                      </button>
-                      {inv.status !== "paid" && (
-                        <button
-                          type="button"
-                          onClick={() => markInvoicePaid(inv)}
-                          disabled={markingPaid}
-                          className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                        >
-                          {markingPaid ? "Updating…" : "Mark paid"}
-                        </button>
-                      )}
+              </thead>
+
+              <tbody>
+                {filteredInvoices.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-3 py-4 text-center text-[var(--color-muted)] text-sm"
+                    >
+                      No invoices found
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                )}
+
+                {pagedInvoices.map((inv) => {
+                  const job = jobs.find((j) => j.id === inv.jobId);
+                  const address = job
+                    ? typeof job.address === "string"
+                      ? job.address
+                      : job.address.fullLine
+                    : inv.jobId;
+
+                  let dateStr = "";
+                  const dtAny = inv.createdAt as any;
+                  if (dtAny?.toDate)
+                    dateStr = dtAny.toDate().toLocaleDateString();
+                  else if (dtAny instanceof Date)
+                    dateStr = dtAny.toLocaleDateString();
+
+                  return (
+                    <tr
+                      key={inv.id}
+                      className="border-t border-[var(--color-border)]/40 hover:bg-[var(--color-card)]"
+                    >
+                      <td className="px-3 py-2 align-top">{inv.number}</td>
+
+                      <td className="px-3 py-2 align-top">
+                        <div className="font-medium text-[var(--color-text)]">
+                          {address}
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-2 align-top">
+                        {inv.customer?.name || inv.customer?.email || "—"}
+                      </td>
+
+                      <td className="px-3 py-2 align-top">{dateStr}</td>
+
+                      <td className="px-3 py-2 align-top">
+                        <span
+                          className={
+                            inv.status === "paid"
+                              ? "inline-block rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800"
+                              : inv.status === "sent"
+                              ? "inline-block rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800"
+                              : inv.status === "draft"
+                              ? "inline-block rounded-full bg-gray-200 px-2 py-1 text-xs font-medium text-gray-700"
+                              : "inline-block rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800"
+                          }
+                        >
+                          {inv.status}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-2 align-top text-right font-semibold">
+                        {money(inv.money?.totalCents)}
+                      </td>
+
+                      <td className="px-3 py-2 align-top text-right space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvoice(inv)}
+                          className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-100"
+                        >
+                          View
+                        </button>
+
+                        {inv.status !== "paid" && (
+                          <button
+                            type="button"
+                            onClick={() => markInvoicePaid(inv)}
+                            disabled={markingPaid}
+                            className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                          >
+                            {markingPaid ? "Updating…" : "Mark paid"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* spacer so last row doesn't hide behind sticky footer */}
+                <tr aria-hidden="true">
+                  <td colSpan={7} className="h-14" />
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Sticky pagination footer */}
+            <div className="sticky bottom-0 z-30 flex items-center justify-between gap-3 border-t border-[var(--color-border)]/40 bg-white/95 px-3 py-2 backdrop-blur">
+              <div className="text-xs text-[var(--color-muted)]">
+                {filteredInvoices.length === 0 ? (
+                  "0 results"
+                ) : (
+                  <>
+                    Showing{" "}
+                    <span className="font-semibold text-[var(--color-text)]">
+                      {(invoicesPage - 1) * INVOICES_PER_PAGE + 1}
+                    </span>
+                    {"–"}
+                    <span className="font-semibold text-[var(--color-text)]">
+                      {Math.min(
+                        invoicesPage * INVOICES_PER_PAGE,
+                        filteredInvoices.length
+                      )}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-semibold text-[var(--color-text)]">
+                      {filteredInvoices.length}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={invoicesPage <= 1}
+                  onClick={() =>
+                    setInvoicesPage((p: number) => Math.max(1, p - 1))
+                  }
+                  className="rounded-md border border-[var(--color-border)]/50 bg-white px-2 py-1 text-[11px] font-medium text-[var(--color-text)] hover:bg-[var(--color-card-hover)] disabled:opacity-50"
+                >
+                  Prev
+                </button>
+
+                <div className="text-[11px] text-[var(--color-muted)]">
+                  Page{" "}
+                  <span className="font-semibold text-[var(--color-text)]">
+                    {invoicesPage}
+                  </span>{" "}
+                  / {invoicesTotalPages}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={invoicesPage >= invoicesTotalPages}
+                  onClick={() =>
+                    setInvoicesPage((p: number) =>
+                      Math.min(invoicesTotalPages, p + 1)
+                    )
+                  }
+                  className="rounded-md border border-[var(--color-border)]/50 bg-white px-2 py-1 text-[11px] font-medium text-[var(--color-text)] hover:bg-[var(--color-card-hover)] disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
       {/* Create invoice modal */}
