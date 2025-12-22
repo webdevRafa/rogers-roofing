@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
   orderBy,
@@ -327,12 +328,56 @@ function NewInvoiceModal({
             // eslint-disable-next-line no-console
             console.error("Failed to send invoice email:", emailErr);
 
-            pushToast({
-              status: "error",
-              title: "Invoice saved — delivery not confirmed",
-              message:
-                "The invoice was created, but we couldn’t confirm the email delivery. The customer may still have received it. If needed, open the invoice and resend.",
-            });
+            // ✅ If the callable throws but the backend actually sent the email,
+            // confirm via the audit fields the function writes to the invoice doc.
+            let deliveryConfirmed = false;
+
+            try {
+              const invSnap = await getDoc(doc(db, "invoices", docRef.id));
+              if (invSnap.exists()) {
+                const invData = invSnap.data() as any;
+
+                const resendId = invData?.lastEmailResendId ?? null;
+                const sentAt = invData?.lastEmailSentAt ?? null;
+
+                const sentMs =
+                  sentAt?.toDate && typeof sentAt.toDate === "function"
+                    ? sentAt.toDate().getTime()
+                    : null;
+
+                // Consider it "confirmed" if we have a resend id OR a very recent lastEmailSentAt.
+                if (resendId) deliveryConfirmed = true;
+                else if (
+                  sentMs &&
+                  Date.now() - sentMs >= 0 &&
+                  Date.now() - sentMs < 5 * 60 * 1000
+                ) {
+                  deliveryConfirmed = true;
+                }
+              }
+            } catch (verifyErr) {
+              // non-fatal; fall back to the original warning toast
+              // eslint-disable-next-line no-console
+              console.warn(
+                "Could not verify invoice email delivery via Firestore:",
+                verifyErr
+              );
+            }
+
+            if (deliveryConfirmed) {
+              pushToast({
+                status: "success",
+                title: "Invoice sent",
+                message: "Email was sent (confirmed by server audit fields).",
+              });
+            } else {
+              pushToast({
+                status: "error",
+                title: "Invoice saved — delivery not confirmed",
+                message:
+                  "The invoice was created, but we couldn’t confirm the email delivery. The customer may still have received it. If needed, open the invoice and resend.",
+              });
+            }
           }
         }
       } else {
