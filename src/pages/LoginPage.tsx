@@ -75,21 +75,23 @@ const LoginPage = () => {
 
   return (
     <>
-      <div className="w-full h-[100vh] flex items-center justify-center relative px-4 bg-gradient-to-tr from-[var(--color-logo)]/95 via-[var(--color-brown)]/95 to-[var(--color-logo)]/95">
+      <div className="w-full h-[100vh] flex items-center justify-center relative px-4 bg-gradient-to-tr from-[var(--color-logo)]/99 via-[var(--color-brown)]/95 to-[var(--color-logo)]/80">
         {/* login box */}
-        <div className="bg-white w-full max-w-[380px] pb-6  border-2 border-[var(--color-brown)] select-none ">
-          <img
-            className="max-h-[300px] mx-auto  mb-0 bg-white  "
-            src={logo}
-            alt="Rogers Roofing"
-          />
+        <div className="bg-white w-full max-w-[380px] md:max-w-[600px] pb-6  border-2 border-[var(--color-brown)] select-none flex flex-col md:flex-row items-center">
+          <div>
+            <img
+              className="max-h-[300px] mx-auto  mb-0 bg-white  "
+              src={logo}
+              alt="Rogers Roofing"
+            />
 
-          {/* Error */}
-          {err && (
-            <div className="mx-5 mb-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 px-3 py-2 text-sm">
-              {err}
-            </div>
-          )}
+            {/* Error */}
+            {err && (
+              <div className="mx-5 mb-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 px-3 py-2 text-sm">
+                {err}
+              </div>
+            )}
+          </div>
 
           {/* Email / Password */}
           <form onSubmit={handleEmailLogin} className="px-5 space-y-3">
@@ -160,7 +162,7 @@ const LoginPage = () => {
         </div>
 
         {/* Background image */}
-        <div className="w-full  h-[80vh] absolute top-0 left-0 z-[-1] overflow-hidden blur-xs opacity-50">
+        <div className="w-full  h-[60vh] md:h-[100vh] absolute top-0 left-0 z-[-1] overflow-hidden blur-[5px] opacity-50">
           <img
             className="w-full h-full object-cover"
             src={roofing}
