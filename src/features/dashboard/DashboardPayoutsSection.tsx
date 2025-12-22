@@ -250,196 +250,202 @@ export function DashboardPayoutsSection({
 
       {/* Collapsible content */}
       {payoutsOpen && (
-        <div className="mt-2 section-scroll space-y-3 max-h-[420px] overflow-y-auto relative">
-          {/* Create stub CTA (pending only, single employee only) */}
-          {payoutFilter === "pending" && selectedPayoutIds.length > 0 && (
-            <div className="bg-white sticky top-0 z-20 mb-1 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
-              {selectedEmployeeIds.length > 1 && (
-                <p className="text-xs text-red-700">
-                  Please select payouts for a single employee to create a stub.
-                </p>
-              )}
-
-              <div className="flex flex-wrap items-center gap-2">
-                {canCreateStub && (
-                  <button
-                    type="button"
-                    onClick={() => setStubOpen(true)}
-                    className="rounded-lg bg-emerald-800 hover:bg-emerald-700 transition duration-300 ease-in-out px-3 py-1.5 text-xs font-semibold text-white"
-                  >
-                    Create stub ({selectedPayoutIds.length})
-                  </button>
+        <div className="mt-2 relative overflow-auto section-scroll max-h-[420px]">
+          {/* Inner content spacing/stack */}
+          <div className="space-y-3">
+            {/* Create stub CTA (pending only, single employee only) */}
+            {payoutFilter === "pending" && selectedPayoutIds.length > 0 && (
+              <div className="bg-white sticky top-0 z-20 mb-1 flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-between">
+                {selectedEmployeeIds.length > 1 && (
+                  <p className="text-xs text-red-700">
+                    Please select payouts for a single employee to create a
+                    stub.
+                  </p>
                 )}
 
-                <button
-                  type="button"
-                  onClick={clearSelectedPayouts}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-primary-600)] hover:bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-white "
-                >
-                  Clear all
-                </button>
-              </div>
-            </div>
-          )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {canCreateStub && (
+                    <button
+                      type="button"
+                      onClick={() => setStubOpen(true)}
+                      className="rounded-lg bg-emerald-800 hover:bg-emerald-700 transition duration-300 ease-in-out px-3 py-1.5 text-xs font-semibold text-white"
+                    >
+                      Create stub ({selectedPayoutIds.length})
+                    </button>
+                  )}
 
-          {/* States */}
-          {payoutsLoading && (
-            <p className="text-sm text-[var(--color-muted)]">
-              Loading payouts…
-            </p>
-          )}
-          {payoutsError && (
-            <p className="text-sm text-red-600">{payoutsError}</p>
-          )}
-          {!payoutsLoading && !payoutsError && pagedPayouts.length === 0 && (
-            <p className="text-sm text-[var(--color-muted)]">
-              No payouts match the current filters.
-            </p>
-          )}
-
-          {/* List */}
-          {!payoutsLoading && !payoutsError && pagedPayouts.length > 0 && (
-            <motion.ul
-              className="divide-y divide-[var(--color-border)] rounded-xl bg-white/70"
-              variants={staggerParent}
-              initial="initial"
-              animate="animate"
-            >
-              {pagedPayouts.map((p) => {
-                const a = addr((p as any).jobAddressSnapshot as any);
-                const employeeName = payoutEmployeeName(p);
-                const isPending = !p.paidAt;
-                const isSelected = selectedPayoutIds.includes(p.id);
-                const amountCents = (p as any).amountCents ?? 0;
-                const jobId = (p as any).jobId as string | undefined;
-
-                const sqft = p.sqft;
-                const ratePerSqFt = p.ratePerSqFt;
-                const category = p.category;
-
-                const hasSqft = typeof sqft === "number" && !Number.isNaN(sqft);
-                const hasRate =
-                  typeof ratePerSqFt === "number" && !Number.isNaN(ratePerSqFt);
-
-                const categoryLabel =
-                  category === "shingles"
-                    ? "Shingles labor"
-                    : category === "felt"
-                    ? "Felt labor"
-                    : category === "technician"
-                    ? "Technician"
-                    : undefined;
-
-                return (
-                  <motion.li
-                    key={p.id}
-                    variants={item}
-                    className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  <button
+                    type="button"
+                    onClick={clearSelectedPayouts}
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-primary-600)] hover:bg-[var(--color-primary)] px-3 py-1.5 text-xs font-medium text-white "
                   >
-                    <div>
-                      <div className="text-sm font-medium text-[var(--color-text)]">
-                        {employeeName || "Unknown employee"}
+                    Clear all
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* States */}
+            {payoutsLoading && (
+              <p className="text-sm text-[var(--color-muted)]">
+                Loading payouts…
+              </p>
+            )}
+            {payoutsError && (
+              <p className="text-sm text-red-600">{payoutsError}</p>
+            )}
+            {!payoutsLoading && !payoutsError && pagedPayouts.length === 0 && (
+              <p className="text-sm text-[var(--color-muted)]">
+                No payouts match the current filters.
+              </p>
+            )}
+
+            {/* List */}
+            {!payoutsLoading && !payoutsError && pagedPayouts.length > 0 && (
+              <motion.ul
+                className="divide-y divide-[var(--color-border)] rounded-xl bg-white/70"
+                variants={staggerParent}
+                initial="initial"
+                animate="animate"
+              >
+                {pagedPayouts.map((p) => {
+                  const a = addr((p as any).jobAddressSnapshot as any);
+                  const employeeName = payoutEmployeeName(p);
+                  const isPending = !p.paidAt;
+                  const isSelected = selectedPayoutIds.includes(p.id);
+                  const amountCents = (p as any).amountCents ?? 0;
+                  const jobId = (p as any).jobId as string | undefined;
+
+                  const sqft = p.sqft;
+                  const ratePerSqFt = p.ratePerSqFt;
+                  const category = p.category;
+
+                  const hasSqft =
+                    typeof sqft === "number" && !Number.isNaN(sqft);
+                  const hasRate =
+                    typeof ratePerSqFt === "number" &&
+                    !Number.isNaN(ratePerSqFt);
+
+                  const categoryLabel =
+                    category === "shingles"
+                      ? "Shingles labor"
+                      : category === "felt"
+                      ? "Felt labor"
+                      : category === "technician"
+                      ? "Technician"
+                      : undefined;
+
+                  return (
+                    <motion.li
+                      key={p.id}
+                      variants={item}
+                      className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <div className="text-sm font-medium text-[var(--color-text)]">
+                          {employeeName || "Unknown employee"}
+                        </div>
+
+                        <div className="text-xs text-[var(--color-muted)]">
+                          {a.display || "—"}
+                        </div>
+
+                        {(a.city || a.state || a.zip) && (
+                          <div className="text-[11px] text-[var(--color-muted)]">
+                            {[a.city, a.state, a.zip]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </div>
+                        )}
+
+                        {(categoryLabel || hasSqft || hasRate) && (
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--color-muted)]">
+                            {categoryLabel && (
+                              <span className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                                {categoryLabel}
+                              </span>
+                            )}
+
+                            {hasSqft && (
+                              <span>{sqft!.toLocaleString()} sq ft</span>
+                            )}
+                            {hasSqft && hasRate && <span>•</span>}
+                            {hasRate && (
+                              <span>
+                                @{" "}
+                                {ratePerSqFt!.toLocaleString(undefined, {
+                                  style: "currency",
+                                  currency: "USD",
+                                })}
+                                /sq ft
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="mt-1 text-[11px] text-[var(--color-muted)]">
+                          Created {fmtDateTime(p.createdAt)}{" "}
+                          {p.paidAt
+                            ? `• Paid ${fmtDateTime(p.paidAt)}`
+                            : "• Pending"}
+                        </div>
                       </div>
 
-                      <div className="text-xs text-[var(--color-muted)]">
-                        {a.display || "—"}
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-[11px] text-[var(--color-muted)]">
+                            Amount
+                          </div>
+                          <div className="text-sm font-semibold text-[var(--color-text)]">
+                            {money(amountCents)}
+                          </div>
+                        </div>
+
+                        {jobId && (
+                          <button
+                            type="button"
+                            onClick={() => onViewJob(jobId)}
+                            className="rounded-md border border-[var(--color-border)] px-3 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                          >
+                            View Job
+                          </button>
+                        )}
+
+                        {isPending ? (
+                          <span className="rounded-full bg-yellow-100 px-2 py-1 text-[10px] font-semibold uppercase text-yellow-800">
+                            Pending
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-700">
+                            Paid
+                          </span>
+                        )}
+
+                        {payoutFilter === "pending" && (
+                          <label className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-accent)]"
+                              checked={isSelected}
+                              onChange={() => togglePayoutSelected(p.id)}
+                            />
+                            Select
+                          </label>
+                        )}
                       </div>
+                    </motion.li>
+                  );
+                })}
+              </motion.ul>
+            )}
 
-                      {(a.city || a.state || a.zip) && (
-                        <div className="text-[11px] text-[var(--color-muted)]">
-                          {[a.city, a.state, a.zip].filter(Boolean).join(", ")}
-                        </div>
-                      )}
+            {/* Spacer so last item can scroll above sticky footer */}
+            <div aria-hidden className="h-12" />
+          </div>
 
-                      {(categoryLabel || hasSqft || hasRate) && (
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--color-muted)]">
-                          {categoryLabel && (
-                            <span className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-                              {categoryLabel}
-                            </span>
-                          )}
-
-                          {hasSqft && (
-                            <span>{sqft!.toLocaleString()} sq ft</span>
-                          )}
-
-                          {hasSqft && hasRate && <span>•</span>}
-
-                          {hasRate && (
-                            <span>
-                              @{" "}
-                              {ratePerSqFt!.toLocaleString(undefined, {
-                                style: "currency",
-                                currency: "USD",
-                              })}
-                              /sq ft
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="mt-1 text-[11px] text-[var(--color-muted)]">
-                        Created {fmtDateTime(p.createdAt)}{" "}
-                        {p.paidAt
-                          ? `• Paid ${fmtDateTime(p.paidAt)}`
-                          : "• Pending"}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="text-[11px] text-[var(--color-muted)]">
-                          Amount
-                        </div>
-                        <div className="text-sm font-semibold text-[var(--color-text)]">
-                          {money(amountCents)}
-                        </div>
-                      </div>
-
-                      {/* View Job button (if payout has a jobId) */}
-                      {jobId && (
-                        <button
-                          type="button"
-                          onClick={() => onViewJob(jobId)}
-                          className="rounded-md border border-[var(--color-border)] px-3 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
-                        >
-                          View Job
-                        </button>
-                      )}
-
-                      {/* Status pill on the right */}
-                      {isPending ? (
-                        <span className="rounded-full bg-yellow-100 px-2 py-1 text-[10px] font-semibold uppercase text-yellow-800">
-                          Pending
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-700">
-                          Paid
-                        </span>
-                      )}
-
-                      {/* Checkbox only on Pending tab */}
-                      {payoutFilter === "pending" && (
-                        <label className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-accent)]"
-                            checked={isSelected}
-                            onChange={() => togglePayoutSelected(p.id)}
-                          />
-                          Select
-                        </label>
-                      )}
-                    </div>
-                  </motion.li>
-                );
-              })}
-            </motion.ul>
-          )}
-
-          {/* Payouts pagination controls */}
+          {/* Sticky pagination footer (always visible) */}
           {filteredPayoutsCount > 0 && (
-            <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-muted)]">
+            <div className="sticky bottom-[-1px] z-30 flex items-center justify-between gap-3 border-t border-[var(--color-border)]/40 bg-white/95 px-4 py-2 backdrop-blur text-xs text-[var(--color-muted)]">
               <span>
                 Showing{" "}
                 {filteredPayoutsCount === 0
@@ -449,6 +455,7 @@ export function DashboardPayoutsSection({
                 {Math.min(payoutsPage * PAYOUTS_PER_PAGE, filteredPayoutsCount)}{" "}
                 of {filteredPayoutsCount} payouts
               </span>
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
