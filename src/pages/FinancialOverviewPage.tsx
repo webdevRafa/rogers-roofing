@@ -900,9 +900,9 @@ export default function FinancialOverviewPage() {
               key={opt.value}
               onClick={() => setRangeOption(opt.value)}
               className={
-                " px-3 py-1 border text-xs transition " +
+                " px-3 py-1 border text-xs transition duration-300 ease-in-out cursor-pointer " +
                 (rangeOption === opt.value
-                  ? "bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown-hover)] text-white"
+                  ? "bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] text-white"
                   : "bg-white/50 border-[var(--color-border)] text-[var(--color-text)] hover:bg-white")
               }
             >
