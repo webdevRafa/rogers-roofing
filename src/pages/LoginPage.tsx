@@ -75,12 +75,13 @@ const LoginPage = () => {
 
   return (
     <>
-      <div className="w-full h-[100vh] flex items-center justify-center relative px-4 bg-gradient-to-tr from-[var(--color-logo)]/99 via-[var(--color-brown)]/95 to-[var(--color-logo)]/80">
+      <div className="w-full h-[100vh] flex flex-col  items-center justify-center relative">
+        <div className="bg-gradient-to-tr from-[var(--color-brown-hover)] via-[var(--color-brown)] to-[var(--color-logo)]   w-full h-full "></div>
         {/* login box */}
-        <div className="bg-white w-full max-w-[380px] md:max-w-[600px] pb-6  border-2 border-[var(--color-brown)] select-none flex flex-col md:flex-row items-center">
+        <div className="bg-white  w-full max-w-[600px] h-[800px] pb-6  select-none flex flex-col md:flex-row items-center justify-center">
           <div>
             <img
-              className="max-h-[300px] mx-auto  mb-0 bg-white  "
+              className="max-h-[300px] mx-auto  mb-0 bg-white"
               src={logo}
               alt="Rogers Roofing"
             />
@@ -162,7 +163,7 @@ const LoginPage = () => {
         </div>
 
         {/* Background image */}
-        <div className="w-full  h-[60vh] md:h-[100vh] absolute top-0 left-0 z-[-1] overflow-hidden blur-[5px] opacity-50">
+        <div className="w-full  h-[60vh] md:h-[100vh] absolute top-0 left-0 z-[-1] overflow-hidden blur-[5px] hidden">
           <img
             className="w-full h-full object-cover"
             src={roofing}
