@@ -341,9 +341,9 @@ export function DashboardJobsSection({
               key={f}
               onClick={() => setStatusFilter(f)}
               className={[
-                "whitespace-nowrap px-3 py-2 text-xs uppercase tracking-wide transition-colors select-none",
+                "whitespace-nowrap px-3 py-1 text-xs uppercase tracking-wide  select-none transition duration-300 ease-in-out cursor-pointer",
                 statusFilter === f
-                  ? "bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] border-transparent text-white shadow-sm"
+                  ? "bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] border-transparent text-white shadow-sm"
                   : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-card-hover)]",
               ].join(" ")}
             >

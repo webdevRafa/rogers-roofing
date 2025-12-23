@@ -661,7 +661,7 @@ function NewInvoiceModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+            className="transition duration-300 ease-in-out cursor-pointer border border-gray-300 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-60"
           >
             Cancel
           </button>
@@ -670,7 +670,7 @@ function NewInvoiceModal({
               type="button"
               onClick={() => submit("draft")}
               disabled={saving}
-              className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300 disabled:opacity-60"
+              className=" bg-gray-200 px-4 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-300 disabled:opacity-60 cursor-pointer transition duration-300 ease-in-out"
             >
               {saving && savingMode === "draft" ? "Saving…" : "Save draft"}
             </button>
@@ -678,7 +678,7 @@ function NewInvoiceModal({
               type="button"
               onClick={() => submit("sent")}
               disabled={saving}
-              className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+              className=" bg-[var(--color-brown-hover)] cursor-pointer transition duration-300 ease-in-out hover:bg-[var(--color-brown)] px-4 py-1.5 text-sm font-semibold text-white  disabled:opacity-60"
             >
               {saving && savingMode === "sent" ? "Sending…" : "Save & Send"}
             </button>
@@ -1129,7 +1129,7 @@ export default function InvoicesPage() {
           <button
             type="button"
             onClick={() => setOpenForm(true)}
-            className="inline-flex items-center gap-1 max-w-[140px] bg-[var(--color-card)] hover:bg-[var(--color-card-hover)] transition ease-in-out duration-300  text-[var(--color-text)] cursor-pointer  rounded-md border border-[var(--color-border)]/30 px-2 py-2 text-xs "
+            className="inline-flex items-center gap-1 max-w-[140px] bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] transition ease-in-out duration-300  text-white cursor-pointer   border border-[var(--color-border)]/30 px-2 py-1.5 text-xs "
           >
             <Plus className="h-4 w-4" /> New Invoice
           </button>
