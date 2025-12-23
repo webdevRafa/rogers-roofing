@@ -147,7 +147,7 @@ export function DashboardProgressSection({
           <button
             type="button"
             onClick={() => setUpcomingOpen((v) => !v)}
-            className="inline-flex max-w-[120px] items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
+            className="inline-flex max-w-[120px] items-center  border border-[var(--color-border)] bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown-hover)] px-3 py-1 text-xs font-medium text-white"
           >
             <ChevronDown
               className={`mr-1 h-4 w-4 transition-transform ${

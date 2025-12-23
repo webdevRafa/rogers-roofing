@@ -629,7 +629,7 @@ export default function EmployeeDetailPage() {
               <button
                 type="button"
                 onClick={() => setPayoutsOpen((v) => !v)}
-                className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] transition duration-300 ease-in-out px-3 py-1 text-xs font-medium text-white"
+                className="inline-flex items-center  border border-[var(--color-border)] bg-[var(--color-brown-hover)] cursor-pointer hover:bg-[var(--color-brown)] transition duration-300 ease-in-out px-3 py-1 text-xs font-medium text-white"
               >
                 <ChevronDown
                   className={`mr-1 h-4 w-4 transition-transform ${

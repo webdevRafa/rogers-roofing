@@ -289,7 +289,7 @@ export default function EmployeesPage() {
               <button
                 onClick={createEmployee}
                 disabled={creating || !name.trim()}
-                className="rounded-lg bg-gradient-to-b from-[var(--color-brown)] to-[var(--color-logo)] px-4 py-1.5 text-xs text-white disabled:opacity-60 transition duration-300 ease-in-out"
+                className="bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] px-4 py-1.5 text-xs text-white cursor-pointer transition duration-300 ease-in-out"
               >
                 {creating ? "Saving…" : "Add"}
               </button>

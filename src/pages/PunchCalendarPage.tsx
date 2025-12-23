@@ -136,9 +136,9 @@ export default function PunchCalendarPage() {
       </div>
 
       {/* Page content */}
-      <div className="mx-auto w-[min(1100px,94vw)] space-y-4 py-0">
+      <div className="mx-auto w-[min(1400px,94vw)] space-y-4 py-0">
         {/* Month controls */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
+        <section className=" border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm bg-gradient-to-tr from-[var(--color-brown-hover)] via-[var(--color-brown)] to-[var(--color-logo)]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/80">

@@ -54,7 +54,7 @@ export default function AdminLayout() {
     <div className="min-h-screen ">
       {/* Global Navbar */}
       <header className="sticky top-0 z-40 select-none">
-        <div className="bg-gradient-to-tr from-[var(--color-logo)] via-[var(--color-brown)] to-[var(--color-logo)]">
+        <div className="bg-gradient-to-tr from-[var(--color-brown-hover)] via-[var(--color-brown)] to-[var(--color-logo)]">
           <div className="mx-auto w-[min(1200px,94vw)] py-8">
             <div className="flex items-center justify-between gap-3">
               {/* Brand */}

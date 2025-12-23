@@ -256,7 +256,7 @@ export function DashboardJobsSection({
           <button
             type="button"
             onClick={() => setJobsOpen((v) => !v)}
-            className={`inline-flex bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-xs text-white `}
+            className={`inline-flex bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] items-center  border border-[var(--color-border)] px-2 py-1 text-xs text-white transition duration-300 ease-in-out cursor-pointer `}
           >
             <ChevronDown
               className={`h-4 w-4 transition-transform ${

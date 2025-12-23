@@ -193,7 +193,7 @@ export function DashboardPayoutsSection({
               <button
                 type="button"
                 onClick={() => setPayoutsOpen((v) => !v)}
-                className="ml-1 inline-flex items-center text-xs rounded-full border border-[var(--color-border)] bg-[var(--color-brown)] hover:bg-[var(--color-brown-hover)] transition duration-300 ease-in-out px-2 py-0 text-white "
+                className="ml-1 inline-flex items-center text-xs  border border-[var(--color-border)] bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown-hover)] transition duration-300 ease-in-out px-2 py-0 text-white "
               >
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${
