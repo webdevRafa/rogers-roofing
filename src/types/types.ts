@@ -76,6 +76,7 @@ export type EmployeeInviteStatus =
 export type EmployeeInviteMeta = {
   status: EmployeeInviteStatus;
 
+  inviteDocId?: ID | null;
   /** Email that invite was sent to (can differ from employee.email if edited) */
   email?: string | null;
 
