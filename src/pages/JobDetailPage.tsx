@@ -2838,7 +2838,7 @@ export default function JobDetailPage({
               e.preventDefault();
               await handleAddMaterialSubmit();
             }}
-            className="grid gap-2 max-w-full sm:grid-cols-2 md:grid-cols-[minmax(0,1fr)_140px_110px_110px] items-stretch"
+            className=""
           >
             <select
               ref={materialRef}
@@ -2849,7 +2849,7 @@ export default function JobDetailPage({
                   category: e.target.value as MaterialCategory,
                 }))
               }
-              className={UI.select}
+              className="bg-neutral-50 p-2 mb-2"
               title="Material category"
             >
               <option value="coilNails">Coil Nails (per box)</option>
@@ -2865,35 +2865,39 @@ export default function JobDetailPage({
               </option>
             </select>
 
-            <input
-              value={material.unitPrice}
-              onChange={(e) =>
-                setMaterial((s) => ({ ...s, unitPrice: e.target.value }))
-              }
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Unit price $"
-              className={UI.input}
-            />
+            <div className="flex gap-2 mb-2">
+              <input
+                value={material.unitPrice}
+                onChange={(e) =>
+                  setMaterial((s) => ({ ...s, unitPrice: e.target.value }))
+                }
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Unit price $"
+                className={UI.input}
+              />
 
-            <input
-              value={material.quantity}
-              onChange={(e) =>
-                setMaterial((s) => ({ ...s, quantity: e.target.value }))
-              }
-              type="number"
-              min={0}
-              step="1"
-              placeholder="Qty"
-              className={UI.input}
-            />
+              <input
+                value={material.quantity}
+                onChange={(e) =>
+                  setMaterial((s) => ({ ...s, quantity: e.target.value }))
+                }
+                type="number"
+                min={0}
+                step="1"
+                placeholder="Qty"
+                className={UI.input}
+              />
+            </div>
 
-            <button
-              className={`${UI.btnPrimary} w-full shrink-0 sm:col-span-2 md:col-auto`}
-            >
-              Add
-            </button>
+            <div className="w-full flex justify-end">
+              <button
+                className={`w-full shrink-0 sm:col-span-2 md:col-auto bg-[var(--color-brown-hover)] max-w-[80px] text-white text-sm py-1 px-1`}
+              >
+                Add
+              </button>
+            </div>
           </form>
         </ModalShell>
         <ModalShell
@@ -3117,7 +3121,7 @@ function ModalShell({
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[var(--color-text)]">
+          <h2 className="text-lg font-semibold text-[var(--color-text)]">
             {title}
           </h2>
           <button
