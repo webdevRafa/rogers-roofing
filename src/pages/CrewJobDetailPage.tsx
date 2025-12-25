@@ -33,12 +33,13 @@ import { useCurrentEmployee } from "../hooks/useCurrentEmployee";
 import type { Job, Note } from "../types/types";
 
 /**
- * CrewJobDetailPage shows a simplified job detail view for crew members and
- * managers. It displays address and task schedules/completion status.
- * Crew can mark tasks as completed and add notes. A photos section allows
- * crew to view and upload job photos. All updates use Firestore timestamps
- * where appropriate. Photos are stored in Cloud Storage and surfaced via a
- * Cloud Function which writes to the jobPhotos collection.
+ * Updated CrewJobDetailPage
+ *
+ * Restricts the ability to mark tasks complete to supervisors and
+ * technicians, in addition to managers and admins. Roofers, laborers,
+ * foremen and readOnly users cannot complete tasks. All other
+ * functionality (notes, photos) remains as before. See types.ts for
+ * definitions of access and crew roles.
  */
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -162,7 +163,7 @@ export default function CrewJobDetailPage() {
   const [photoCaption, setPhotoCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  // Generic toast (same UX/UI as JobDetailPage)
+  // Generic toast
   type ToastStatus = "success" | "error";
   type ToastState = {
     status: ToastStatus;
@@ -298,14 +299,12 @@ export default function CrewJobDetailPage() {
         createdBy: employee?.id || null,
         createdAt: Timestamp.now() as any,
       };
-      // Append the note using arrayUnion (serverTimestamp cannot be inside arrayUnion)
       await updateDoc(ref, { notes: arrayUnion(newNote) });
       setToast({
         status: "success",
         title: "Note added",
         message: "Your note was saved to the job.",
       });
-
       setNoteText("");
     } catch (err) {
       console.error(err);
@@ -435,21 +434,18 @@ export default function CrewJobDetailPage() {
    * We restrict certain actions based on the employee's access role and crew role.
    *
    * Access roles (admin, manager, crew, readOnly) and crew roles (supervisor,
-   * technician, foreman, etc.) are defined in `types.ts`【736888808946205†L38-L59】.
-   * According to the proposed permission model, marking tasks complete should
-   * only be possible for supervisors, technicians, foremen, managers, or admins.
-   * Adding notes/photos is allowed for any role except read‑only. Deleting
-   * photos follows the same restrictions as marking tasks complete.
+   * technician, foreman, etc.) are defined in `types.ts`.
+   * According to the updated permission model, marking tasks complete should
+   * only be possible for supervisors and technicians (field QA roles), as
+   * well as managers and admins. Foremen, roofers, laborers and read-only
+   * users cannot complete tasks.
    */
   const canCompleteTasks = Boolean(
     employee &&
       (employee.accessRole === "admin" ||
         employee.accessRole === "manager" ||
-        // only specific crew roles can mark tasks complete
-        ["supervisor", "technician", "foreman"].includes(
-          // cast to any since TypeScript union not imported here
-          (employee.role as any) ?? ""
-        ))
+        // only supervisor or technician crew roles can mark tasks complete
+        ["supervisor", "technician"].includes((employee.role as any) ?? ""))
   );
   const canAddNotes = Boolean(employee && employee.accessRole !== "readOnly");
   // Photo upload requires the same permissions as adding notes
@@ -767,7 +763,7 @@ export default function CrewJobDetailPage() {
         </form>
       </ModalShell>
 
-      {/* ===== Global Toast (same as JobDetailPage) ===== */}
+      {/* ===== Global Toast ===== */}
       {toast && (
         <div className="fixed right-4 top-20 z-50">
           <div className="flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-white/95 px-4 py-3 text-sm shadow-lg">
@@ -778,7 +774,6 @@ export default function CrewJobDetailPage() {
                 <AlertTriangle className="h-5 w-5 text-red-500" />
               )}
             </div>
-
             <div className="flex-1">
               <div
                 className={
@@ -794,7 +789,6 @@ export default function CrewJobDetailPage() {
                 {toast.message}
               </div>
             </div>
-
             <button
               type="button"
               onClick={() => setToast(null)}

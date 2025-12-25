@@ -5,6 +5,7 @@ import {
   orderBy,
   query,
   where,
+  QueryConstraint,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import {
@@ -20,16 +21,17 @@ import { useCurrentEmployee } from "../hooks/useCurrentEmployee";
 import type { Job, PayoutStubDoc } from "../types/types";
 
 /**
- * CrewDashboardPage
- * - Crew: sees jobs assigned to them + their payout history.
- * - Manager (crew portal): sees all jobs + their own payout history.
+ * Updated CrewDashboardPage
  *
- * UI matches the "admin" dashboard styling patterns:
- * - soft glass cards (bg-white/60 → bg-white)
- * - collapsible sections
- * - quick summary cards
- * - search + filters
- * - clean empty states
+ * This page is used by crew members (roofers, laborers, technicians, supervisors, etc.)
+ * as well as managers/admins. Crew members should only ever see jobs that are
+ * explicitly assigned to them and payout stubs that belong to them. To prevent
+ * information leaks between organizations, all Firestore queries are scoped by
+ * both the employeeId and orgId. In addition, crew members do **not** see
+ * jobs that are in the "invoiced" or "draft" statuses – these indicate
+ * financial states that are irrelevant for field crews. Managers and admins
+ * retain visibility into all job statuses. See types.ts for definitions of
+ * access and crew roles.
  */
 
 // ---------- small utils ----------
@@ -67,6 +69,16 @@ function fmtDateTime(v: unknown): string {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+  });
+}
+function fmtDate(v: unknown): string {
+  const ms = toMillis(v);
+  if (ms == null) return "—";
+  const d = new Date(ms);
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 }
 
@@ -211,12 +223,15 @@ export default function CrewDashboardPage() {
   const [stubsPage, setStubsPage] = useState(1);
   const STUBS_PER_PAGE = 10;
 
+  // Determine roles and IDs
   const accessRole = (employee as any)?.accessRole as
+    | "admin"
     | "manager"
     | "crew"
     | "readOnly"
     | undefined;
   const employeeId = (employee as any)?.id as string | undefined;
+  const orgId = (employee as any)?.orgId as string | undefined;
 
   // ---------- Jobs subscription ----------
   useEffect(() => {
@@ -230,15 +245,18 @@ export default function CrewDashboardPage() {
     setJobsLoading(true);
     setJobsError(null);
 
-    // Managers: all jobs; Crew/readOnly: jobs assigned to them
-    const jobsQ =
-      accessRole === "manager"
-        ? query(collection(db, "jobs"), orderBy("createdAt", "desc"))
-        : query(
-            collection(db, "jobs"),
-            where("assignedEmployeeIds", "array-contains", employeeId),
-            orderBy("createdAt", "desc")
-          );
+    // Build a dynamic query: always scope by orgId when available to avoid
+    // leaking data across organizations. Managers/admins see all jobs in the org;
+    // crew/readOnly see only their assigned jobs.
+    const constraints: QueryConstraint[] = [];
+    if (orgId) constraints.push(where("orgId", "==", orgId));
+    if (accessRole !== "admin" && accessRole !== "manager") {
+      constraints.push(
+        where("assignedEmployeeIds", "array-contains", employeeId)
+      );
+    }
+    constraints.push(orderBy("createdAt", "desc"));
+    const jobsQ = query(collection(db, "jobs"), ...constraints);
 
     const unsub = onSnapshot(
       jobsQ,
@@ -259,7 +277,7 @@ export default function CrewDashboardPage() {
     );
 
     return () => unsub();
-  }, [accessRole, employeeId, loading]);
+  }, [accessRole, employeeId, loading, orgId]);
 
   // ---------- Payout stubs subscription ----------
   useEffect(() => {
@@ -273,11 +291,11 @@ export default function CrewDashboardPage() {
     setStubsLoading(true);
     setStubsError(null);
 
-    const stubsQ = query(
-      collection(db, "payoutStubs"),
-      where("employeeId", "==", employeeId),
-      orderBy("createdAt", "desc")
-    );
+    const constraints: QueryConstraint[] = [];
+    if (orgId) constraints.push(where("orgId", "==", orgId));
+    constraints.push(where("employeeId", "==", employeeId));
+    constraints.push(orderBy("createdAt", "desc"));
+    const stubsQ = query(collection(db, "payoutStubs"), ...constraints);
 
     const unsub = onSnapshot(
       stubsQ,
@@ -298,7 +316,7 @@ export default function CrewDashboardPage() {
     );
 
     return () => unsub();
-  }, [employeeId, loading]);
+  }, [employeeId, loading, orgId]);
 
   // ---------- derived data ----------
 
@@ -310,19 +328,36 @@ export default function CrewDashboardPage() {
     });
   }, [jobs]);
 
-  const activeStatuses = new Set(["active", "pending", "invoiced", "draft"]);
-  const completedStatuses = new Set(["paid", "completed", "closed"]);
+  // Determine status sets based on role. Managers/admins see invoiced & draft jobs,
+  // whereas crew/readOnly do not.
+  const isManager = accessRole === "admin" || accessRole === "manager";
+  const activeStatuses = useMemo(() => {
+    return new Set(
+      isManager
+        ? ["active", "pending", "invoiced", "draft"]
+        : ["active", "pending"]
+    );
+  }, [isManager]);
+  const completedStatuses = useMemo(() => {
+    return new Set(["paid", "completed", "closed"]);
+  }, []);
+  const disallowedStatuses = useMemo(() => {
+    // For crew roles, hide invoiced/draft. Managers see all.
+    return new Set(isManager ? [] : ["invoiced", "draft"]);
+  }, [isManager]);
 
   const filteredJobs = useMemo(() => {
     const term = jobSearch.trim().toLowerCase();
 
     return sortedJobs.filter((j) => {
+      // Skip disallowed statuses
+      if (disallowedStatuses.has(j.status)) return false;
+
       const isActive = activeStatuses.has(j.status);
       const isCompleted = completedStatuses.has(j.status);
 
       const tabOk =
         jobTab === "all" ? true : jobTab === "active" ? isActive : isCompleted;
-
       if (!tabOk) return false;
 
       if (!term) return true;
@@ -330,7 +365,14 @@ export default function CrewDashboardPage() {
       const hay = [a.display, j.status, String(j.id)].join(" ").toLowerCase();
       return hay.includes(term);
     });
-  }, [jobSearch, jobTab, sortedJobs]);
+  }, [
+    jobSearch,
+    jobTab,
+    sortedJobs,
+    activeStatuses,
+    completedStatuses,
+    disallowedStatuses,
+  ]);
 
   const jobsTotalPages = Math.max(
     1,
@@ -362,16 +404,26 @@ export default function CrewDashboardPage() {
   }, [filteredStubs, stubsPage]);
 
   const counts = useMemo(() => {
-    const active = sortedJobs.filter((j) =>
+    // Exclude disallowed statuses when computing counts
+    const visibleJobs = sortedJobs.filter(
+      (j) => !disallowedStatuses.has(j.status)
+    );
+    const active = visibleJobs.filter((j) =>
       activeStatuses.has(j.status)
     ).length;
-    const completed = sortedJobs.filter((j) =>
+    const completed = visibleJobs.filter((j) =>
       completedStatuses.has(j.status)
     ).length;
     const pendingPayoutStubs = stubs.filter((s) => s.status === "draft").length;
     const paidPayoutStubs = stubs.filter((s) => s.status === "paid").length;
     return { active, completed, pendingPayoutStubs, paidPayoutStubs };
-  }, [sortedJobs, stubs]);
+  }, [
+    sortedJobs,
+    stubs,
+    activeStatuses,
+    completedStatuses,
+    disallowedStatuses,
+  ]);
 
   // Reset pagination when filters/search change
   useEffect(() => setJobsPage(1), [jobTab, jobSearch]);
@@ -434,7 +486,7 @@ export default function CrewDashboardPage() {
           value={counts.completed}
           className="bg-emerald-50"
         />
-        <StatCard label="Draft stubs" value={counts.pendingPayoutStubs} />
+
         <StatCard label="Paid stubs" value={counts.paidPayoutStubs} />
       </motion.section>
 
@@ -450,7 +502,7 @@ export default function CrewDashboardPage() {
                 My Jobs
               </h2>
               <p className="mt-1 text-xs text-[var(--color-muted)]">
-                {accessRole === "manager"
+                {isManager
                   ? "Showing all jobs (manager view)."
                   : "Showing jobs assigned to you."}
               </p>
@@ -487,9 +539,9 @@ export default function CrewDashboardPage() {
                   type="button"
                   onClick={() => setJobTab(key)}
                   className={
-                    "px-3 py-1 rounded-full transition " +
+                    "px-3 py-1 rounded-full transition duration-300 ease-in-out " +
                     (jobTab === key
-                      ? "bg-cyan-800 text-white"
+                      ? "bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] text-white"
                       : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
                   }
                 >
@@ -560,19 +612,29 @@ export default function CrewDashboardPage() {
                           {pagedJobs.map((job, idx) => {
                             const a = addr(job.address);
                             const felt = (job as any).feltCompletedAt
-                              ? "Done"
+                              ? `Done ${fmtDate((job as any).feltCompletedAt)}`
                               : (job as any).feltScheduledFor
-                              ? "Scheduled"
+                              ? `Scheduled ${fmtDate(
+                                  (job as any).feltScheduledFor
+                                )}`
                               : "—";
+
                             const shingles = (job as any).shinglesCompletedAt
-                              ? "Done"
+                              ? `Done ${fmtDate(
+                                  (job as any).shinglesCompletedAt
+                                )}`
                               : (job as any).shinglesScheduledFor
-                              ? "Scheduled"
+                              ? `Scheduled ${fmtDate(
+                                  (job as any).shinglesScheduledFor
+                                )}`
                               : "—";
+
                             const punch = (job as any).punchedAt
-                              ? "Done"
+                              ? `Done ${fmtDate((job as any).punchedAt)}`
                               : (job as any).punchScheduledFor
-                              ? "Scheduled"
+                              ? `Scheduled ${fmtDate(
+                                  (job as any).punchScheduledFor
+                                )}`
                               : "—";
 
                             return (
@@ -689,19 +751,23 @@ export default function CrewDashboardPage() {
                     {pagedJobs.map((job) => {
                       const a = addr(job.address);
                       const felt = (job as any).feltCompletedAt
-                        ? "Done"
+                        ? `Done ${fmtDate((job as any).feltCompletedAt)}`
                         : (job as any).feltScheduledFor
-                        ? "Scheduled"
+                        ? `Scheduled ${fmtDate((job as any).feltScheduledFor)}`
                         : "—";
+
                       const shingles = (job as any).shinglesCompletedAt
-                        ? "Done"
+                        ? `Done ${fmtDate((job as any).shinglesCompletedAt)}`
                         : (job as any).shinglesScheduledFor
-                        ? "Scheduled"
+                        ? `Scheduled ${fmtDate(
+                            (job as any).shinglesScheduledFor
+                          )}`
                         : "—";
+
                       const punch = (job as any).punchedAt
-                        ? "Done"
+                        ? `Done ${fmtDate((job as any).punchedAt)}`
                         : (job as any).punchScheduledFor
-                        ? "Scheduled"
+                        ? `Scheduled ${fmtDate((job as any).punchScheduledFor)}`
                         : "—";
 
                       return (

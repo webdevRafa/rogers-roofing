@@ -673,9 +673,9 @@ export default function EmployeeDetailPage() {
                   type="button"
                   onClick={() => setPayoutFilter(f)}
                   className={
-                    "px-3 py-1 rounded-full capitalize " +
+                    "px-3 py-1 rounded-full capitalize transition duraiton-300 ease-in-out " +
                     (payoutFilter === f
-                      ? "bg-cyan-800 text-white"
+                      ? "bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] text-white"
                       : "text-gray-700 hover:bg-gray-100")
                   }
                 >

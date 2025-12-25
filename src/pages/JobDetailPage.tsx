@@ -2809,7 +2809,11 @@ export default function JobDetailPage({
               </>
             )}
 
-            <button className={`${UI.btnPrimary} w-full shrink-0`}>Add</button>
+            <button
+              className={`bg-[var(--color-brown-hover)] text-white py-0 text-sm h-[30px] w-full shrink-0`}
+            >
+              Add
+            </button>
           </form>
 
           <div className="mt-2 text-xs text-[var(--color-muted)]">

@@ -218,12 +218,12 @@ export function DashboardPayoutsSection({
             value={payoutSearch}
             onChange={(e) => setPayoutSearch(e.target.value)}
             placeholder="Search by address or employee…"
-            className="w-full sm:w-72 max-w-[200px] rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="w-full sm:w-72 max-w-[200px] border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
           <button
             type="button"
             onClick={onOpenPayTechnician}
-            className="rounded-lg bg-cyan-700 hover:bg-cyan-600 transition duration-300 ease-in-out px-3 py-2 text-xs font-semibold w-[100px] text-white"
+            className=" bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] transition duration-300 ease-in-out px-1 py-1 text-xs font-semibold w-[70px] text-white"
           >
             Pay tech
           </button>
@@ -235,9 +235,9 @@ export function DashboardPayoutsSection({
                 type="button"
                 onClick={() => setPayoutFilter(f)}
                 className={
-                  "px-3 py-1 rounded-full capitalize " +
+                  "px-3 py-1 rounded-full capitalize transition duration-300 ease-in-out " +
                   (payoutFilter === f
-                    ? "bg-cyan-800 text-white"
+                    ? "bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] text-white"
                     : "text-[var(--color-text)] hover:bg-[var(--color-card-hover)]")
                 }
               >
