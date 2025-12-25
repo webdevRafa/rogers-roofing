@@ -165,6 +165,29 @@ function toYMD(x: unknown): string {
   const d = new Date(ms);
   return d.toISOString().slice(0, 10);
 }
+type MaterialDraft = {
+  category: MaterialCategory;
+  unitPrice: string; // dollars typed in input
+  quantity: string; // quantity typed in input
+  vendor?: string;
+};
+
+const blankMaterial = (): MaterialDraft => ({
+  category: "coilNails",
+  unitPrice: "",
+  quantity: "",
+  vendor: "",
+});
+
+function materialLineTotal(d: MaterialDraft) {
+  const unit = Number(d.unitPrice) || 0;
+  const qty = Number(d.quantity) || 0;
+  return unit * qty;
+}
+
+function materialLineCanSubmit(d: MaterialDraft) {
+  return (Number(d.unitPrice) || 0) > 0 && (Number(d.quantity) || 0) > 0;
+}
 
 type JobDetailPageProps = {
   /**
@@ -236,7 +259,26 @@ export default function JobDetailPage({
   const [flashingUnitPrice, setFlashingUnitPrice] = useState("0"); // dollars per unit
   const [flashingModalOpen, setFlashingModalOpen] = useState(false);
 
+  const [materialDrafts, setMaterialDrafts] = useState<MaterialDraft[]>([
+    blankMaterial(),
+  ]);
+
+  const anyMaterialValid = useMemo(
+    () => materialDrafts.some(materialLineCanSubmit),
+    [materialDrafts]
+  );
+
+  const materialsGrandTotal = useMemo(
+    () => materialDrafts.reduce((sum, d) => sum + materialLineTotal(d), 0),
+    [materialDrafts]
+  );
+
   const { orgId, loading: orgLoading } = useOrg();
+  // ✅ Global job doc ref (usable by any function)
+  const jobDocRef = useMemo(() => {
+    if (!resolvedJobId) return null;
+    return doc(collection(db, "jobs"), resolvedJobId);
+  }, [resolvedJobId]);
 
   // When mounted as a modal/component, jobId may be passed via props.
   // When used as a route page, routeJobId comes from the URL.
@@ -278,14 +320,19 @@ export default function JobDetailPage({
     input:
       "h-10 w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none " +
       "focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm",
+    textarea:
+      "w-full min-w-0 rounded-xl border border-[var(--color-border)] bg-white/80 px-4 py-3 text-sm leading-6 " +
+      "outline-none shadow-sm focus:ring-2 focus:ring-[var(--color-accent)] " +
+      "placeholder:text-[var(--color-muted)] resize-none",
+
     select:
       "h-10 w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 text-sm outline-none " +
       "focus:ring-2 focus:ring-[var(--color-accent)] shadow-sm",
     btnPrimary:
-      "h-8 inline-flex items-center justify-center rounded-md bg-cyan-800 px-4 text-sm font-medium " +
+      "h-8 inline-flex items-center justify-center rounded-md bg-cyan-800 px-2 text-xs font-medium " +
       "text-[var(--btn-text)] shadow-sm hover:bg-cyan-700 transition disabled:opacity-60 disabled:cursor-not-allowed",
     btnSoft:
-      "h-10 inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-4 text-sm " +
+      "h-8 inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-2 text-xs " +
       "font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)] transition",
     btnDangerSm:
       "rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs text-[var(--color-muted)] " +
@@ -312,6 +359,29 @@ export default function JobDetailPage({
   function nextPhoto() {
     if (photos.length === 0) return;
     setViewerIndex((i) => (i + 1) % photos.length);
+  }
+  function addLineToList() {
+    setMaterialDrafts((s) => [...s, blankMaterial()]);
+  }
+
+  function updateLine<K extends keyof MaterialDraft>(
+    idx: number,
+    key: K,
+    value: MaterialDraft[K]
+  ) {
+    setMaterialDrafts((s) =>
+      s.map((row, i) => (i === idx ? { ...row, [key]: value } : row))
+    );
+  }
+
+  function removeLineFromList(idx: number) {
+    setMaterialDrafts((s) =>
+      s.length === 1 ? [blankMaterial()] : s.filter((_, i) => i !== idx)
+    );
+  }
+
+  function clearLines() {
+    setMaterialDrafts([blankMaterial()]);
   }
 
   async function saveFlashingPay() {
@@ -529,6 +599,12 @@ export default function JobDetailPage({
     return () => unsub();
   }, [resolvedJobId]);
 
+  useEffect(() => {
+    if (materialModalOpen) {
+      setMaterialDrafts([blankMaterial()]);
+    }
+  }, [materialModalOpen]);
+
   // Keyboard handlers (ESC / Left / Right)
   useEffect(() => {
     if (!viewerOpen) return;
@@ -567,19 +643,6 @@ export default function JobDetailPage({
     const flashingPayCents = job?.earnings?.flashingPay?.amountCents ?? 0;
     return base + flashingPayCents;
   }, [sqft, rate, job?.earnings?.flashingPay?.amountCents]);
-
-  // --- Material form state (category + unit price + quantity)
-  const [material, setMaterial] = useState<{
-    category: MaterialCategory;
-    unitPrice: string;
-    quantity: string;
-    vendor?: string;
-  }>({
-    category: "coilNails",
-    unitPrice: "",
-    quantity: "",
-    vendor: "",
-  });
 
   const [noteText, setNoteText] = useState("");
 
@@ -626,8 +689,7 @@ export default function JobDetailPage({
   type PayoutTab = "shingles" | "felt" | "technician";
   const [payoutTab, setPayoutTab] = useState<PayoutTab>("shingles");
   const payeeRef = useRef<HTMLInputElement | null>(null);
-  const materialRef = useRef<HTMLSelectElement | null>(null);
-  const noteRef = useRef<HTMLInputElement | null>(null);
+  const noteRef = useRef<HTMLTextAreaElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -763,6 +825,33 @@ export default function JobDetailPage({
     const rate = Number(activePayout.rate) || 0;
     return Math.round(Math.max(0, sqft * rate) * 100);
   }, [payoutTab, activePayout.amount, activePayout.sqft, activePayout.rate]);
+  function toPosNumber(v: string) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  const payoutCanSubmit = useMemo(() => {
+    const hasEmployee = !!activePayout.employeeId;
+
+    if (!hasEmployee) return false;
+
+    if (payoutTab === "technician") {
+      const amt = toPosNumber(activePayout.amount);
+      return Number.isFinite(amt) && amt > 0;
+    }
+
+    const sqft = toPosNumber(activePayout.sqft);
+    const rate = toPosNumber(activePayout.rate);
+    return (
+      Number.isFinite(sqft) && sqft > 0 && Number.isFinite(rate) && rate > 0
+    );
+  }, [
+    payoutTab,
+    activePayout.employeeId,
+    activePayout.amount,
+    activePayout.sqft,
+    activePayout.rate,
+  ]);
 
   // Load job + its photos (real-time)
   useEffect(() => {
@@ -1051,46 +1140,6 @@ export default function JobDetailPage({
     (payeeRef.current as any)?.focus?.();
   }
 
-  async function addMaterial() {
-    if (!job) return;
-
-    const qty = Number(material.quantity);
-    const unit = Number(material.unitPrice);
-    if (!Number.isFinite(qty) || !Number.isFinite(unit) || qty <= 0 || unit < 0)
-      return;
-
-    const vendor = material.vendor?.trim();
-
-    const entry: MaterialExpense = {
-      id: crypto.randomUUID(),
-      category: material.category,
-      unitPriceCents: toCents(unit),
-      quantity: Math.floor(qty),
-      ...(vendor ? { vendor } : {}),
-      createdAt: Timestamp.now(),
-      amountCents: toCents(unit * qty),
-    };
-
-    const currentMaterials = job.expenses?.materials ?? [];
-    const updated: Job = {
-      ...job,
-      expenses: {
-        ...(job.expenses ?? {}),
-        materials: [...currentMaterials, entry],
-      },
-    };
-
-    await saveJob(updated);
-
-    setMaterial({
-      category: "coilNails",
-      unitPrice: "",
-      quantity: "",
-      vendor: "",
-    });
-    materialRef.current?.focus();
-  }
-
   async function addNote() {
     if (!job || !noteText.trim()) return;
     const entry: Note = {
@@ -1105,6 +1154,7 @@ export default function JobDetailPage({
   }
 
   async function handleAddPayoutSubmit() {
+    if (!payoutCanSubmit) return; // ✅ don’t close modal, don’t toast
     await addPayout();
     setPayoutModalOpen(false);
     setToast({
@@ -1114,13 +1164,44 @@ export default function JobDetailPage({
     });
   }
 
-  async function handleAddMaterialSubmit() {
-    await addMaterial();
+  async function handleAddMaterialsSubmit() {
+    if (!job || !jobDocRef) return;
+
+    const valid = materialDrafts.filter(materialLineCanSubmit);
+    if (!valid.length) return;
+
+    const materialItems: MaterialExpense[] = valid.map((m) => {
+      const qty = Math.floor(Number(m.quantity) || 0);
+      const unitCents = toCents(Number(m.unitPrice) || 0);
+      const vendor = (m.vendor || "").trim();
+
+      return {
+        id: crypto.randomUUID(),
+        category: m.category,
+        unitPriceCents: unitCents,
+        quantity: qty,
+        amountCents: unitCents * qty,
+        ...(vendor ? { vendor } : {}),
+        createdAt: Timestamp.now(),
+      };
+    });
+
+    // ✅ save through saveJob so recompute + totals stay consistent
+    await saveJob({
+      ...job,
+      expenses: {
+        ...(job.expenses ?? {}),
+        materials: [...(job.expenses?.materials ?? []), ...materialItems],
+      },
+    });
+
     setMaterialModalOpen(false);
+    setMaterialDrafts([blankMaterial()]);
+
     setToast({
       status: "success",
-      title: "Material added",
-      message: "Material expense saved successfully.",
+      title: "Materials added",
+      message: "Material items were saved successfully.",
     });
   }
 
@@ -2810,7 +2891,13 @@ export default function JobDetailPage({
             )}
 
             <button
-              className={`bg-[var(--color-brown-hover)] text-white py-0 text-sm h-[30px] w-full shrink-0`}
+              type="submit"
+              disabled={!payoutCanSubmit}
+              className={[
+                UI.btnPrimary,
+                "text-white py-0 text-sm w-full shrink-0",
+                !payoutCanSubmit ? "opacity-60 cursor-not-allowed" : "",
+              ].join(" ")}
             >
               Add
             </button>
@@ -2830,98 +2917,303 @@ export default function JobDetailPage({
         </ModalShell>
         <ModalShell
           open={materialModalOpen}
-          title="Add material"
+          title="Add materials"
           onClose={() => setMaterialModalOpen(false)}
         >
           <form
+            className="grid gap-3"
             onSubmit={async (e) => {
               e.preventDefault();
-              await handleAddMaterialSubmit();
+              await handleAddMaterialsSubmit();
             }}
-            className=""
           >
-            <select
-              ref={materialRef}
-              value={material.category}
-              onChange={(e) =>
-                setMaterial((s) => ({
-                  ...s,
-                  category: e.target.value as MaterialCategory,
-                }))
-              }
-              className="bg-neutral-50 p-2 mb-2"
-              title="Material category"
-            >
-              <option value="coilNails">Coil Nails (per box)</option>
-              <option value="tinCaps">Tin Caps (per box)</option>
-              <option value="plasticJacks">Plastic Jacks (per unit)</option>
-              <option value="np1Seal">NP1 Seal (per unit)</option>
-              <option value="counterFlashing">
-                Flashing — Counter (per unit)
-              </option>
-              <option value="jFlashing">Flashing — J/L (per unit)</option>
-              <option value="rainDiverter">
-                Flashing — Rain Diverter (per unit)
-              </option>
-            </select>
+            {/* Scrollable list */}
+            <div className="section-scroll rounded-xl border border-[var(--color-border)] bg-white p-3">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div>
+                  <div className="text-sm font-medium text-[var(--color-text)]">
+                    Material items
+                  </div>
+                  <div className="text-xs text-[var(--color-muted)]">
+                    Add one or more items, then submit once.
+                  </div>
+                </div>
 
-            <div className="flex gap-2 mb-2">
-              <input
-                value={material.unitPrice}
-                onChange={(e) =>
-                  setMaterial((s) => ({ ...s, unitPrice: e.target.value }))
-                }
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="Unit price $"
-                className={UI.input}
-              />
+                <button
+                  type="button"
+                  onClick={addLineToList}
+                  className={`${UI.btnSoft} h-8 px-3 inline-flex`}
+                  title="Add another material"
+                >
+                  + Add item
+                </button>
+              </div>
 
-              <input
-                value={material.quantity}
-                onChange={(e) =>
-                  setMaterial((s) => ({ ...s, quantity: e.target.value }))
-                }
-                type="number"
-                min={0}
-                step="1"
-                placeholder="Qty"
-                className={UI.input}
-              />
+              <div className="grid gap-3">
+                {materialDrafts.map((m, idx) => {
+                  const lineTotal = materialLineTotal(m);
+                  const canSubmitLine = materialLineCanSubmit(m);
+
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-xs text-[var(--color-muted)]">
+                            Item {idx + 1}
+                          </div>
+                          <div className="text-xs text-[var(--color-muted)]">
+                            Total:{" "}
+                            <span className="font-medium text-[var(--color-text)]">
+                              ${lineTotal.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeLineFromList(idx)}
+                          className={`${UI.btnSoft} h-8 px-3 inline-flex`}
+                          title="Remove item"
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <div className="mt-3 grid gap-3">
+                        <div>
+                          <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                            Category
+                          </label>
+                          <select
+                            value={m.category}
+                            onChange={(e) =>
+                              updateLine(
+                                idx,
+                                "category",
+                                e.target.value as MaterialCategory
+                              )
+                            }
+                            className={UI.select}
+                          >
+                            <option value="coilNails">
+                              Coil Nails (per box)
+                            </option>
+                            <option value="tinCaps">Tin Caps (per box)</option>
+                            <option value="plasticJacks">
+                              Plastic Jacks (per unit)
+                            </option>
+                            <option value="np1Seal">NP1 Seal (per unit)</option>
+                            <option value="counterFlashing">
+                              Flashing — Counter (per unit)
+                            </option>
+                            <option value="jFlashing">
+                              Flashing — J/L (per unit)
+                            </option>
+                            <option value="rainDiverter">
+                              Flashing — Rain Diverter (per unit)
+                            </option>
+                          </select>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div>
+                            <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                              Unit price ($)
+                            </label>
+                            <input
+                              value={m.unitPrice}
+                              onChange={(e) =>
+                                updateLine(idx, "unitPrice", e.target.value)
+                              }
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              placeholder="0.00"
+                              className={UI.input}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                              Quantity
+                            </label>
+                            <input
+                              value={m.quantity}
+                              onChange={(e) =>
+                                updateLine(idx, "quantity", e.target.value)
+                              }
+                              type="number"
+                              min={0}
+                              step="1"
+                              placeholder="1"
+                              className={UI.input}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div>
+                            <label className="mb-1 block text-xs text-[var(--color-muted)]">
+                              Vendor (optional)
+                            </label>
+                            <input
+                              value={m.vendor || ""}
+                              onChange={(e) =>
+                                updateLine(idx, "vendor", e.target.value)
+                              }
+                              placeholder="e.g., ABC Supply"
+                              className={UI.input}
+                            />
+                          </div>
+
+                          <div className="flex items-end justify-between rounded-xl bg-[var(--color-surface)] px-3 py-2">
+                            <div className="text-xs text-[var(--color-muted)]">
+                              Line status
+                            </div>
+                            <div
+                              className={`text-xs font-medium ${
+                                canSubmitLine
+                                  ? "text-emerald-700"
+                                  : "text-[var(--color-muted)]"
+                              }`}
+                            >
+                              {canSubmitLine ? "Ready" : "Missing price/qty"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="w-full flex justify-end">
+            {/* Footer summary + actions */}
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
               <button
-                className={`w-full shrink-0 sm:col-span-2 md:col-auto bg-[var(--color-brown-hover)] max-w-[80px] text-white text-sm py-1 px-1`}
+                type="button"
+                onClick={() => setMaterialModalOpen(false)}
+                className={`${UI.btnSoft} h-8 px-4 inline-flex`}
               >
-                Add
+                Cancel
               </button>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <div className="text-xs text-[var(--color-muted)] mr-2">
+                  Total:{" "}
+                  <span className="font-medium text-[var(--color-text)]">
+                    ${materialsGrandTotal.toFixed(2)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={clearLines}
+                  disabled={
+                    !materialDrafts.some(
+                      (d) => d.unitPrice || d.quantity || d.vendor
+                    )
+                  }
+                  className={`${UI.btnSoft} h-8 px-4 inline-flex`}
+                  title="Reset all items"
+                >
+                  Clear
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={!anyMaterialValid}
+                  className={`${UI.btnPrimary} h-8 px-5 inline-flex ${
+                    !anyMaterialValid ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
+                >
+                  Add materials
+                </button>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-[var(--color-muted)]">
+              Tip: you can add multiple items here and save once. The list area
+              scrolls when it gets long.
             </div>
           </form>
         </ModalShell>
+
         <ModalShell
           open={noteModalOpen}
           title="Add note"
           onClose={() => setNoteModalOpen(false)}
         >
           <form
-            className="grid gap-2 max-w-full sm:grid-cols-[minmax(0,1fr)_110px]"
+            className="grid gap-3"
             onSubmit={async (e) => {
               e.preventDefault();
               await handleAddNoteSubmit();
             }}
           >
-            <input
+            {/* Label + helper */}
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-[var(--color-text)]">
+                  Note
+                </div>
+              </div>
+
+              <div className="text-[11px] text-[var(--color-muted)] tabular-nums">
+                {noteText?.length ?? 0}/600
+              </div>
+            </div>
+
+            {/* Textarea "writing surface" */}
+            <textarea
               ref={noteRef}
               value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Add a note"
-              className={UI.input}
+              onChange={(e) => {
+                // simple max length guard (optional)
+                const next = e.target.value;
+                setNoteText(next.length > 600 ? next.slice(0, 600) : next);
+              }}
+              placeholder="Type your note…"
+              rows={7}
+              className={`${(UI as any).textarea ?? UI.input} min-h-[180px]`}
             />
-            <button className={`${UI.btnPrimary} w-full sm:w-[110px] shrink-0`}>
-              Add
-            </button>
+
+            {/* Footer actions (mobile-friendly) */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  setNoteText("");
+                  setNoteModalOpen(false);
+                }}
+                className={`${UI.btnSoft} h-8 px-4 inline-flex`}
+              >
+                Cancel
+              </button>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setNoteText("")}
+                  className={`${UI.btnSoft} h-8 px-4 inline-flex`}
+                  disabled={!noteText.trim()}
+                  title="Clear note"
+                >
+                  Clear
+                </button>
+
+                <button
+                  type="submit"
+                  className={`${UI.btnPrimary} h-8 px-5 inline-flex`}
+                  disabled={!noteText.trim()}
+                >
+                  Add note
+                </button>
+              </div>
+            </div>
           </form>
         </ModalShell>
 
@@ -2935,7 +3227,7 @@ export default function JobDetailPage({
           }}
         >
           <form
-            className="grid w-full max-w-full grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px] sm:items-end"
+            className="grid gap-4"
             onSubmit={async (e) => {
               e.preventDefault();
               await handleUploadPhotoSubmit();
@@ -2966,62 +3258,185 @@ export default function JobDetailPage({
               className="sr-only"
             />
 
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
-                >
-                  <Camera className="h-4 w-4 text-[var(--color-primary)]" />
-                  <span>Camera</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => galleryInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-text)] shadow-sm hover:bg-[var(--color-card-hover)]"
-                >
-                  <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
-                  <span>Gallery</span>
-                </button>
-              </div>
-
-              <div className="text-xs text-[var(--color-muted)] truncate max-w-full">
-                {photoFile
-                  ? `Selected: ${photoFile.name}`
-                  : "Snap a picture or choose one from your gallery."}
-              </div>
-
-              {previewUrl && (
-                <div>
-                  <div className="mb-1 text-xs text-[var(--color-muted)]">
-                    Preview
+            {/* Picker / Dropzone card */}
+            <div className="rounded-2xl border border-[var(--color-border)] bg-white shadow-sm">
+              <div className="flex flex-col gap-3 p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-[var(--color-text)]">
+                      Photo
+                    </div>
+                    <div className="text-xs text-[var(--color-muted)]">
+                      Take a picture on-site or choose one from your gallery.
+                    </div>
                   </div>
-                  <img
-                    src={previewUrl}
-                    alt="Selected preview"
-                    className="h-28 w-full rounded-xl object-cover ring-1 ring-black/5"
-                  />
-                </div>
-              )}
 
-              <input
+                  {photoFile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhotoFile(null);
+                        setPhotoCaption("");
+                      }}
+                      className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                      title="Remove selected photo"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {/* Empty vs Selected state */}
+                {!previewUrl ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="group relative flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-[var(--color-border)] bg-white p-4 text-left transition hover:bg-[var(--color-card-hover)]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-black/5">
+                          <Camera className="h-5 w-5 text-[var(--color-primary)]" />
+                        </span>
+                        <div>
+                          <div className="text-sm font-semibold text-[var(--color-text)]">
+                            Use camera
+                          </div>
+                          <div className="text-xs text-[var(--color-muted)]">
+                            Best for job-site photos
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="group relative flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-[var(--color-border)] bg-white p-4 text-left transition hover:bg-[var(--color-card-hover)]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-black/5">
+                          <ImageIcon className="h-5 w-5 text-[var(--color-primary)]" />
+                        </span>
+                        <div>
+                          <div className="text-sm font-semibold text-[var(--color-text)]">
+                            Choose from gallery
+                          </div>
+                          <div className="text-xs text-[var(--color-muted)]">
+                            Select an existing photo
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:items-start">
+                    <img
+                      src={previewUrl}
+                      alt="Selected preview"
+                      className="h-36 w-full rounded-xl object-cover ring-1 ring-black/5 sm:h-28"
+                    />
+
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-[var(--color-muted)]">
+                        Selected
+                      </div>
+
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <div className="min-w-0 text-sm font-semibold text-[var(--color-text)] truncate">
+                          {photoFile?.name ?? "Photo selected"}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => galleryInputRef.current?.click()}
+                          className="shrink-0 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-card-hover)]"
+                          title="Pick a different file"
+                        >
+                          Change
+                        </button>
+                      </div>
+
+                      <div className="mt-1 text-xs text-[var(--color-muted)]">
+                        Add a caption below if needed (optional).
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Caption */}
+            <div className="space-y-2">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-[var(--color-text)]">
+                    Caption
+                  </div>
+                  <div className="text-xs text-[var(--color-muted)]">
+                    Optional — helps identify what the photo shows.
+                  </div>
+                </div>
+                <div className="text-[11px] text-[var(--color-muted)] tabular-nums">
+                  {photoCaption?.length ?? 0}/200
+                </div>
+              </div>
+
+              <textarea
                 value={photoCaption}
-                onChange={(e) => setPhotoCaption(e.target.value)}
-                placeholder="Optional caption"
-                className={UI.input}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setPhotoCaption(
+                    next.length > 200 ? next.slice(0, 200) : next
+                  );
+                }}
+                placeholder="e.g., ‘Rear valley before install’, ‘Warranty shingle batch label’, ‘Deck damage’…"
+                rows={4}
+                className={`${UI.input} min-h-[110px] resize-none py-3 leading-6`}
               />
             </div>
 
-            <div className="max-w-[80px] sm:w-auto">
+            {/* Footer actions */}
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
               <button
-                type="submit"
-                disabled={uploading || !photoFile}
-                className={`${UI.btnPrimary} py-0! w-full`}
+                type="button"
+                onClick={() => {
+                  setPhotoModalOpen(false);
+                  setPhotoFile(null);
+                  setPhotoCaption("");
+                }}
+                className={`${UI.btnSoft} h-8 px-4 inline-flex`}
               >
-                {uploading ? "Uploading…" : "Upload"}
+                Cancel
               </button>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoFile(null);
+                    setPhotoCaption("");
+                  }}
+                  disabled={!photoFile && !photoCaption}
+                  className={`${UI.btnSoft} h-8 px-4 inline-flex`}
+                  title="Reset form"
+                >
+                  Clear
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={uploading || !photoFile}
+                  className={`${UI.btnPrimary} h-8 px-5 inline-flex`}
+                >
+                  {uploading ? "Uploading…" : "Upload photo"}
+                </button>
+              </div>
+            </div>
+
+            {/* Micro helper */}
+            <div className="text-[11px] text-[var(--color-muted)]">
+              Tip: photos get attached to this job and can be used in warranty
+              packets later.
             </div>
           </form>
         </ModalShell>
@@ -3115,26 +3530,82 @@ function ModalShell({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-md bg-white p-4 md:py-6 md:px-8 shadow-xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[var(--color-text)]">
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-sm p-1 text-gray-500 hover:bg-gray-100"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <div
+      className="fixed inset-0 z-40"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
 
-        {children}
+      {/* Sheet / Modal */}
+      <div className="absolute inset-x-0 bottom-0 top-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
+        <div
+          className={[
+            // Mobile: bottom sheet
+            "w-full sm:w-full",
+            "rounded-t-2xl sm:rounded-2xl",
+            "bg-white shadow-2xl ring-1 ring-black/10",
+            // Height behavior
+            "max-h-[92vh] sm:max-h-[85vh]",
+            // Width cap on larger screens
+            "sm:max-w-lg",
+            // Prevent layout overflow
+            "overflow-hidden",
+          ].join(" ")}
+          onClick={(e) => e.stopPropagation()} // prevent backdrop close when clicking inside
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 border-b border-black/5 px-4 py-3 sm:px-6 sm:py-4">
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold text-[var(--color-text)] sm:text-lg">
+                {title}
+              </h2>
+              {/* Optional subtle helper line that makes it feel “premium” */}
+              <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                Keep it short and specific for future you.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-black/5"
+              aria-label="Close"
+              title="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Body (scrollable) */}
+          <div className="max-h-[calc(92vh-64px)] overflow-y-auto px-4 py-4 sm:max-h-[calc(85vh-72px)] sm:px-6 sm:py-5">
+            {children}
+          </div>
+
+          {/* Mobile grab handle (nice touch) */}
+          <div className="sm:hidden pb-3">
+            <div className="mx-auto h-1 w-10 rounded-full bg-black/10" />
+          </div>
+        </div>
       </div>
     </div>
   );
