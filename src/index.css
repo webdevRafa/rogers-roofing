@@ -406,51 +406,6 @@ img {
   color: white;
 }
 
-.public-hero-note {
-  position: absolute;
-  z-index: 2;
-  right: clamp(24px, 7vw, 130px);
-  bottom: clamp(44px, 7vh, 92px);
-  display: flex;
-  width: min(330px, 26vw);
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-  border: 1px solid rgb(255 255 255 / 28%);
-  background: rgb(14 14 12 / 58%);
-  color: white;
-  backdrop-filter: blur(14px);
-}
-
-.public-note-icon {
-  display: grid;
-  flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  background: var(--red);
-}
-
-.public-hero-note div {
-  display: grid;
-  gap: 4px;
-}
-
-.public-hero-note small {
-  color: #f3d7a6;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.115em;
-  text-transform: uppercase;
-}
-
-.public-hero-note strong {
-  font-family: var(--public-font-display);
-  font-size: 18px;
-  font-weight: 400;
-  line-height: 1.25;
-}
-
 .public-content-shell {
   position: relative;
   z-index: 2;
@@ -618,12 +573,18 @@ img {
   position: relative;
   min-height: 650px;
   overflow: hidden;
+  background-color: #302b24;
+  background-image: url("./assets/AdobeStock_217480947.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
 }
 
-.public-story-image-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+@supports (-webkit-touch-callout: none) {
+  .public-story-image-wrap {
+    background-attachment: scroll;
+  }
 }
 
 .public-image-caption {
@@ -4938,10 +4899,6 @@ img {
     font-size: 12.5px;
   }
 
-  .public-hero-note {
-    display: none;
-  }
-
   .public-hero-content {
     width: min(900px, 90vw);
   }
@@ -5608,6 +5565,10 @@ img {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .public-story-image-wrap {
+    background-attachment: scroll;
   }
 
   *,

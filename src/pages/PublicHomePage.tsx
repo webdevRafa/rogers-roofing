@@ -26,7 +26,6 @@ import Reveal from "../components/Reveal";
 import { functions } from "../firebase/firebaseConfig";
 import logo from "../assets/rogers-roofing.webp";
 import finishedRoof from "../assets/AdobeStock_102630327.webp";
-import roofInstallation from "../assets/AdobeStock_217480947.webp";
 import roofWorksite from "../assets/AdobeStock_356783144.webp";
 
 type LeadFormState = {
@@ -271,22 +270,6 @@ export default function PublicHomePage() {
             </motion.div>
           </div>
 
-          <motion.aside
-            className="public-hero-note"
-            initial={{ opacity: 0, x: 28 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.35 }}
-          >
-            <span className="public-note-icon">
-              <ShieldCheck size={20} />
-            </span>
-            <div>
-              <small>You will know what comes next</small>
-              <strong>
-                Clear updates from inspection through final cleanup.
-              </strong>
-            </div>
-          </motion.aside>
         </section>
 
         <div className="public-content-shell">
@@ -349,15 +332,15 @@ export default function PublicHomePage() {
           </section>
 
           <section className="public-story" id="approach">
-          <Reveal className="public-story-image-wrap">
-            <img
-              src={roofInstallation}
-              alt="Roofing professional installing architectural shingles"
-            />
+          <div
+            className="public-story-image-wrap"
+            role="img"
+            aria-label="Roofing professional installing architectural shingles"
+          >
             <span className="public-image-caption">
               Careful workmanship at every course
             </span>
-          </Reveal>
+          </div>
           <Reveal className="public-story-copy" delay={0.1}>
             <span className="public-eyebrow public-eyebrow-light">
               Built as a complete system
