@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { httpsCallable } from "firebase/functions";
@@ -20,7 +20,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import Reveal from "../components/Reveal";
 import { functions } from "../firebase/firebaseConfig";
@@ -118,13 +118,128 @@ const processSteps = [
   },
 ];
 
+const publicNavItems = [
+  { href: "#services", label: "Services" },
+  { href: "#approach", label: "Our approach" },
+  { href: "#process", label: "Process" },
+  { href: "#estimate", label: "Free estimate" },
+];
+
 export default function PublicHomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
   const [lead, setLead] = useState(initialLead);
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] =
     useState<EstimateRequestConfirmation | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const menuOpenRef = useRef(menuOpen);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    menuOpenRef.current = menuOpen;
+    if (menuOpen) {
+      setHeaderVisible(true);
+    }
+  }, [menuOpen]);
+
+  useEffect(() => {
+    const topRevealBoundary = 24;
+    const minimumHidePosition = 120;
+    const downwardIntentDistance = 48;
+    const upwardIntentDistance = 72;
+    const jitterTolerance = 2;
+
+    let lastScrollY = Math.max(window.scrollY, 0);
+    let directionStartY = lastScrollY;
+    let direction: "up" | "down" | null = null;
+    let animationFrame = 0;
+
+    const updateHeader = () => {
+      animationFrame = 0;
+      const currentScrollY = Math.max(window.scrollY, 0);
+      const delta = currentScrollY - lastScrollY;
+
+      if (menuOpenRef.current || currentScrollY <= topRevealBoundary) {
+        setHeaderVisible(true);
+        direction = null;
+        directionStartY = currentScrollY;
+        lastScrollY = currentScrollY;
+        return;
+      }
+
+      if (Math.abs(delta) < jitterTolerance) {
+        return;
+      }
+
+      const nextDirection = delta > 0 ? "down" : "up";
+      if (nextDirection !== direction) {
+        direction = nextDirection;
+        directionStartY = lastScrollY;
+      }
+
+      const intentionalTravel = Math.abs(currentScrollY - directionStartY);
+
+      if (
+        nextDirection === "down" &&
+        currentScrollY >= minimumHidePosition &&
+        intentionalTravel >= downwardIntentDistance
+      ) {
+        setHeaderVisible(false);
+      }
+
+      if (
+        nextDirection === "up" &&
+        intentionalTravel >= upwardIntentDistance
+      ) {
+        setHeaderVisible(true);
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    const handleScroll = () => {
+      if (!animationFrame) {
+        animationFrame = window.requestAnimationFrame(updateHeader);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    const handleResize = () => {
+      if (window.innerWidth > 840) {
+        setMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [menuOpen]);
+
   function updateLead<K extends keyof LeadFormState>(
     key: K,
     value: LeadFormState[K]
@@ -170,7 +285,11 @@ export default function PublicHomePage() {
 
   return (
     <div className="public-site">
-      <header className="public-header">
+      <header
+        className="public-header"
+        data-visibility={headerVisible ? "visible" : "hidden"}
+        onFocusCapture={() => setHeaderVisible(true)}
+      >
         <a className="public-brand" href="#top" aria-label="Rogers Roofing home">
           <img src={logo} alt="" />
           <span>
@@ -179,19 +298,15 @@ export default function PublicHomePage() {
           </span>
         </a>
 
-        <nav className={menuOpen ? "public-nav is-open" : "public-nav"}>
-          <a href="#services" onClick={() => setMenuOpen(false)}>
-            Services
-          </a>
-          <a href="#approach" onClick={() => setMenuOpen(false)}>
-            Our approach
-          </a>
-          <a href="#process" onClick={() => setMenuOpen(false)}>
-            Process
-          </a>
-          <a href="#estimate" onClick={() => setMenuOpen(false)}>
-            Free estimate
-          </a>
+        <nav
+          className="public-nav public-nav-desktop"
+          aria-label="Primary navigation"
+        >
+          {publicNavItems.map((item) => (
+            <a href={item.href} key={item.href}>
+              {item.label}
+            </a>
+          ))}
           <Link className="public-nav-login" to="/login">
             Admin sign in
           </Link>
@@ -208,10 +323,69 @@ export default function PublicHomePage() {
             onClick={() => setMenuOpen((value) => !value)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
+            aria-controls="public-mobile-navigation"
           >
-            {menuOpen ? <X /> : <Menu />}
+            <motion.span
+              animate={{ rotate: menuOpen ? 90 : 0 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.28, ease: [0.22, 1, 0.36, 1] }
+              }
+            >
+              {menuOpen ? <X /> : <Menu />}
+            </motion.span>
           </button>
         </div>
+
+        <AnimatePresence initial={false}>
+          {menuOpen && (
+            <motion.nav
+              id="public-mobile-navigation"
+              className="public-mobile-nav"
+              aria-label="Mobile navigation"
+              initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
+              }
+            >
+              <motion.div
+                className="public-mobile-nav-inner"
+                initial={reduceMotion ? false : { y: -12 }}
+                animate={{ y: 0 }}
+                exit={{ y: -8 }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }
+                }
+              >
+                {publicNavItems.map((item) => (
+                  <a
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {item.label}
+                    <ArrowRight size={15} />
+                  </a>
+                ))}
+                <Link
+                  className="public-nav-login"
+                  to="/login"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Admin sign in
+                  <ArrowRight size={15} />
+                </Link>
+              </motion.div>
+            </motion.nav>
+          )}
+        </AnimatePresence>
       </header>
 
       <main>
