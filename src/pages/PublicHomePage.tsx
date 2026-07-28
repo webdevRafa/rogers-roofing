@@ -20,7 +20,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 
 import Reveal from "../components/Reveal";
 import { functions } from "../firebase/firebaseConfig";
@@ -126,9 +126,6 @@ export default function PublicHomePage() {
   const [confirmation, setConfirmation] =
     useState<EstimateRequestConfirmation | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const { scrollYProgress } = useScroll();
-  const heroY = useTransform(scrollYProgress, [0, 0.28], ["0%", "12%"]);
-
   function updateLead<K extends keyof LeadFormState>(
     key: K,
     value: LeadFormState[K]
@@ -220,13 +217,14 @@ export default function PublicHomePage() {
 
       <main>
         <section className="public-hero" id="top">
-          <motion.img
-            className="public-hero-image"
-            src={finishedRoof}
-            alt="Finished architectural shingle roof"
-            style={{ y: heroY }}
-          />
-          <div className="public-hero-shade" />
+          <div className="public-hero-media" aria-hidden="true">
+            <img
+              className="public-hero-image"
+              src={finishedRoof}
+              alt=""
+            />
+            <div className="public-hero-shade" />
+          </div>
           <div className="public-hero-content">
             <motion.div
               className="public-eyebrow public-eyebrow-light"
@@ -289,7 +287,8 @@ export default function PublicHomePage() {
           </motion.aside>
         </section>
 
-        <section className="public-trust-strip" aria-label="Service qualities">
+        <div className="public-content-shell">
+          <section className="public-trust-strip" aria-label="Service qualities">
           <span>
             <Check size={16} /> Detailed written scopes
           </span>
@@ -302,9 +301,9 @@ export default function PublicHomePage() {
           <span>
             <Check size={16} /> Professional closeout
           </span>
-        </section>
+          </section>
 
-        <section className="public-section public-services" id="services">
+          <section className="public-section public-services" id="services">
           <Reveal className="public-section-heading">
             <div>
               <span className="public-eyebrow">Built for South Texas homes</span>
@@ -339,9 +338,9 @@ export default function PublicHomePage() {
               );
             })}
           </div>
-        </section>
+          </section>
 
-        <section className="public-story" id="approach">
+          <section className="public-story" id="approach">
           <Reveal className="public-story-image-wrap">
             <img
               src={roofInstallation}
@@ -380,9 +379,9 @@ export default function PublicHomePage() {
               See how the process works <ArrowRight size={16} />
             </a>
           </Reveal>
-        </section>
+          </section>
 
-        <section className="public-section public-process" id="process">
+          <section className="public-section public-process" id="process">
           <Reveal className="public-section-heading public-section-heading-narrow">
             <div>
               <span className="public-eyebrow">A calmer project experience</span>
@@ -412,9 +411,9 @@ export default function PublicHomePage() {
               </div>
             </Reveal>
           </div>
-        </section>
+          </section>
 
-        <section className="public-proof">
+          <section className="public-proof">
           <Reveal className="public-proof-heading">
             <span className="public-eyebrow public-eyebrow-light">
               What you can expect
@@ -447,9 +446,9 @@ export default function PublicHomePage() {
               </p>
             </Reveal>
           </div>
-        </section>
+          </section>
 
-        <section className="public-estimate" id="estimate">
+          <section className="public-estimate" id="estimate">
           <Reveal className="public-estimate-intro">
             <span className="public-eyebrow">Start with a free estimate</span>
             <h2>Tell us about your roof.</h2>
@@ -672,7 +671,8 @@ export default function PublicHomePage() {
               </form>
             )}
           </Reveal>
-        </section>
+          </section>
+        </div>
       </main>
 
       <footer className="public-footer">
