@@ -1,191 +1,269 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  CalendarDays,
+  Filter,
+  MapPin,
+  Plus,
+  Search,
+} from "lucide-react";
 import {
   collection,
   doc,
   onSnapshot,
-  orderBy,
-  where,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 import type { FieldValue } from "firebase/firestore";
-import { db } from "../firebase/firebaseConfig";
-import type { Job, JobStatus, Employee } from "../types/types";
-import { jobConverter } from "../types/types";
-import { recomputeJob, makeAddress } from "../utils/calc";
+
 import { useOrg } from "../contexts/OrgContext";
-import { DashboardJobsSection } from "../features/dashboard/DashboardJobsSection";
+import { db } from "../firebase/firebaseConfig";
+import type { Employee, Job, JobStatus } from "../types/types";
+import { jobConverter } from "../types/types";
+import { makeAddress, recomputeJob } from "../utils/calc";
 
-// Chart.js imports for summary visualisations
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Title as ChartTitle,
-  Tooltip as ChartTooltip,
-  Legend as ChartLegend,
-  type ChartData,
-  type ChartOptions,
-  type TooltipItem,
-} from "chart.js";
-import { Bar, Pie } from "react-chartjs-2";
+type ProjectType = NonNullable<Job["projectType"]>;
+type Priority = NonNullable<Job["priority"]>;
 
-// Register chart modules
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  ChartTitle,
-  ChartTooltip,
-  ChartLegend
-);
+type JobForm = {
+  address: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  projectType: ProjectType;
+  priority: Priority;
+  feltDate: string;
+  installDate: string;
+  punchDate: string;
+  assignedEmployeeIds: string[];
+};
 
-/* Small helpers matching DashboardPage */
-type FsTimestampLike = { toDate: () => Date };
-function isFsTimestamp(x: unknown): x is FsTimestampLike {
-  return typeof (x as FsTimestampLike)?.toDate === "function";
-}
-function toMillis(x: unknown): number | null {
-  if (x == null) return null;
-  if (x instanceof Date) return x.getTime();
-  if (typeof x === "number") return x;
-  if (isFsTimestamp(x)) return x.toDate().getTime();
-  if (typeof x === "string") {
-    const d = new Date(x);
-    return Number.isNaN(d.getTime()) ? null : d.getTime();
+const initialForm: JobForm = {
+  address: "",
+  customerName: "",
+  email: "",
+  phone: "",
+  projectType: "replacement",
+  priority: "normal",
+  feltDate: "",
+  installDate: "",
+  punchDate: "",
+  assignedEmployeeIds: [],
+};
+
+type TimestampLike = { toDate?: () => Date; seconds?: number };
+
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const timestamp = value as TimestampLike;
+  if (typeof timestamp.toDate === "function") return timestamp.toDate();
+  if (typeof timestamp.seconds === "number") {
+    return new Date(timestamp.seconds * 1000);
   }
   return null;
 }
-const toYMD = (d: Date): string => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-function formatYmdForChip(ymd: string | ""): string {
-  if (!ymd) return "…";
-  const [yearStr, monthStr, dayStr] = ymd.split("-");
-  const year = Number(yearStr);
-  const monthIndex = Number(monthStr) - 1;
-  const day = Number(dayStr);
-  const date = new Date(year, monthIndex, day);
-  if (Number.isNaN(date.getTime())) return "…";
-  return date.toLocaleDateString(undefined, {
+
+function formatDate(value: unknown): string {
+  const date = toDate(value);
+  if (!date) return "—";
+  return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 }
 
-type StatusFilter = "all" | JobStatus;
-
-/** Format cents into dollar string (e.g. $1,234.56). */
-function formatCurrency(cents: number | null | undefined): string {
-  const value = (cents ?? 0) / 100;
-  return `$${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+function money(cents: number): string {
+  return (cents / 100).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 }
 
-/** Pick a displayable address line from a Job's address. */
-function pickAddressLine(a: Job["address"]): string {
-  if (typeof a === "string") return a;
-  return a?.fullLine ?? "";
+function addressLine(job: Job): string {
+  if (typeof job.address === "string") return job.address;
+  return job.address?.fullLine || "Address not added";
 }
 
-/* Main page component */
+function projectLabel(projectType?: Job["projectType"]): string {
+  const labels: Record<ProjectType, string> = {
+    replacement: "Roof replacement",
+    repair: "Roof repair",
+    storm_restoration: "Storm restoration",
+    new_install: "New installation",
+    commercial: "Commercial roofing",
+    maintenance: "Maintenance",
+  };
+  return projectType ? labels[projectType] : "Roofing project";
+}
+
 export default function JobsPage() {
-  const { orgId, loading: membershipLoading } = useOrg();
-
-  // Jobs & employees
+  const { orgId, loading: orgLoading } = useOrg();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  // Form & creation state
-  const [openForm, setOpenForm] = useState(false);
-  const [address, setAddress] = useState("");
-  const [newFeltDate, setNewFeltDate] = useState("");
-  const [newShinglesDate, setNewShinglesDate] = useState("");
-  const [newPunchDate, setNewPunchDate] = useState("");
-  const [assignedEmployeeIds, setAssignedEmployeeIds] = useState<string[]>([]);
-  const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<JobStatus | "all">("all");
+  const [projectType, setProjectType] = useState<ProjectType | "all">("all");
+  const [form, setForm] = useState<JobForm>(initialForm);
+  const [formOpen, setFormOpen] = useState(searchParams.get("create") === "1");
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Search & filter state
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
-  const [datePreset, setDatePreset] = useState<
-    "custom" | "last7" | "thisMonth" | "ytd"
-  >("custom");
+  useEffect(() => {
+    setFormOpen(searchParams.get("create") === "1");
+  }, [searchParams]);
 
-  // Sort option state
-  const [sortOption, setSortOption] = useState<"recent" | "netDesc" | "netAsc">(
-    "recent"
+  useEffect(() => {
+    if (!orgId) {
+      setLoading(false);
+      return;
+    }
+
+    let ready = 0;
+    const markReady = () => {
+      ready += 1;
+      if (ready >= 2) setLoading(false);
+    };
+    const jobsQuery = query(
+      collection(db, "jobs").withConverter(jobConverter),
+      where("orgId", "==", orgId)
+    );
+    const employeeQuery = query(
+      collection(db, "employees"),
+      where("orgId", "==", orgId)
+    );
+
+    const unsubscribeJobs = onSnapshot(
+      jobsQuery,
+      (snapshot) => {
+        setJobs(snapshot.docs.map((document) => document.data()));
+        markReady();
+      },
+      (snapshotError) => {
+        setError(snapshotError.message);
+        markReady();
+      }
+    );
+    const unsubscribeEmployees = onSnapshot(
+      employeeQuery,
+      (snapshot) => {
+        setEmployees(
+          snapshot.docs.map((document) => ({
+            id: document.id,
+            ...(document.data() as Omit<Employee, "id">),
+          }))
+        );
+        markReady();
+      },
+      (snapshotError) => {
+        setError(snapshotError.message);
+        markReady();
+      }
+    );
+
+    return () => {
+      unsubscribeJobs();
+      unsubscribeEmployees();
+    };
+  }, [orgId]);
+
+  const filteredJobs = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return [...jobs]
+      .filter((job) => status === "all" || job.status === status)
+      .filter(
+        (job) => projectType === "all" || job.projectType === projectType
+      )
+      .filter((job) => {
+        if (!term) return true;
+        return [
+          addressLine(job),
+          job.customer?.name,
+          job.customer?.email,
+          job.customer?.phone,
+          projectLabel(job.projectType),
+          job.status,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(term);
+      })
+      .sort(
+        (a, b) =>
+          (toDate(b.updatedAt ?? b.createdAt)?.getTime() ?? 0) -
+          (toDate(a.updatedAt ?? a.createdAt)?.getTime() ?? 0)
+      );
+  }, [jobs, projectType, search, status]);
+
+  const totals = useMemo(
+    () => ({
+      active: jobs.filter(
+        (job) => !["closed", "completed", "archived"].includes(job.status)
+      ).length,
+      scheduled: jobs.filter(
+        (job) =>
+          toDate(job.feltScheduledFor) ||
+          toDate(job.shinglesScheduledFor) ||
+          toDate(job.punchScheduledFor)
+      ).length,
+      revenue: jobs.reduce(
+        (sum, job) => sum + (job.earnings?.totalEarningsCents ?? 0),
+        0
+      ),
+      profit: jobs.reduce(
+        (sum, job) => sum + (job.computed?.netProfitCents ?? 0),
+        0
+      ),
+    }),
+    [jobs]
   );
 
-  // Pagination
-  const [jobsPage, setJobsPage] = useState(1);
-  const JOBS_PER_PAGE = 20;
-  const [jobsOpen, setJobsOpen] = useState(true);
-
-  // Load jobs from Firestore
-  useEffect(() => {
-    if (!orgId) return;
-    const q = query(
-      collection(db, "jobs").withConverter(jobConverter),
-      where("orgId", "==", orgId),
-      orderBy("updatedAt", "desc")
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setJobs(snap.docs.map((d) => d.data()));
+  function closeForm() {
+    setFormOpen(false);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("create");
+      return next;
     });
-    return () => unsub();
-  }, [orgId]);
+  }
 
-  // Load active employees for assignment list
-  useEffect(() => {
+  async function createJob(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (!orgId) return;
-    const q = query(
-      collection(db, "employees"),
-      where("orgId", "==", orgId),
-      where("isActive", "==", true)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setEmployees(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Employee, "id">),
-        }))
-      );
-    });
-    return () => unsub();
-  }, [orgId]);
 
-  // Create a new job
-  async function createJob() {
-    if (!orgId) return;
-    setCreating(true);
+    setSaving(true);
     setError(null);
     try {
-      if (!address.trim()) {
-        throw new Error("Please enter a job address.");
-      }
       const newRef = doc(collection(db, "jobs"));
-      let job: Job = {
+      const draft: Job = {
         id: newRef.id,
         orgId,
         status: "pending",
-        address: makeAddress(address),
-        assignedEmployeeIds,
-        earnings: { totalEarningsCents: 0, entries: [], currency: "USD" },
+        projectType: form.projectType,
+        priority: form.priority,
+        address: makeAddress(form.address),
+        customer: {
+          name: form.customerName.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+        },
+        assignedEmployeeIds: form.assignedEmployeeIds,
+        earnings: {
+          totalEarningsCents: 0,
+          entries: [],
+          currency: "USD",
+        },
         expenses: {
           totalPayoutsCents: 0,
           totalMaterialsCents: 0,
@@ -195,492 +273,545 @@ export default function JobsPage() {
         },
         summaryNotes: "",
         attachments: [],
+        ...(form.feltDate
+          ? { feltScheduledFor: new Date(`${form.feltDate}T12:00:00`) }
+          : {}),
+        ...(form.installDate
+          ? { shinglesScheduledFor: new Date(`${form.installDate}T12:00:00`) }
+          : {}),
+        ...(form.punchDate
+          ? { punchScheduledFor: new Date(`${form.punchDate}T12:00:00`) }
+          : {}),
         createdAt: serverTimestamp() as unknown as FieldValue,
         updatedAt: serverTimestamp() as unknown as FieldValue,
-        computed: { totalExpensesCents: 0, netProfitCents: 0 },
+        computed: {
+          totalExpensesCents: 0,
+          netProfitCents: 0,
+        },
       };
-      if (newFeltDate)
-        job.feltScheduledFor = new Date(newFeltDate + "T00:00:00");
-      if (newShinglesDate)
-        job.shinglesScheduledFor = new Date(newShinglesDate + "T00:00:00");
-      if (newPunchDate)
-        job.punchScheduledFor = new Date(newPunchDate + "T00:00:00");
-      job = recomputeJob(job);
-      await setDoc(newRef.withConverter(jobConverter), job);
-      // reset form
-      setAddress("");
-      setAssignedEmployeeIds([]);
-      setNewFeltDate("");
-      setNewShinglesDate("");
-      setNewPunchDate("");
-      setOpenForm(false);
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
+      await setDoc(newRef.withConverter(jobConverter), recomputeJob(draft));
+      setForm(initialForm);
+      closeForm();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
-      setCreating(false);
+      setSaving(false);
     }
   }
 
-  // Filtered jobs based on search, status & dates
-  const filteredJobs = useMemo(() => {
-    const hasStart = Boolean(startDate);
-    const hasEnd = Boolean(endDate);
-    const startMs = hasStart
-      ? new Date(startDate + "T00:00:00").getTime()
-      : null;
-    const endMs = hasEnd ? new Date(endDate + "T23:59:59.999").getTime() : null;
-    const term = searchTerm.trim().toLowerCase();
-    return jobs.filter((j) => {
-      if (statusFilter !== "all" && j.status !== statusFilter) return false;
-      const reference = j.updatedAt ?? j.createdAt ?? null;
-      const ts = toMillis(reference);
-      if (ts == null) return false;
-      if (startMs != null && ts < startMs) return false;
-      if (endMs != null && ts > endMs) return false;
-      if (term.length > 0) {
-        const addressStr = [j.address?.toString() ?? ""]
-          .join(" ")
-          .toLowerCase();
-        if (!addressStr.includes(term)) return false;
-      }
-      return true;
-    });
-  }, [jobs, statusFilter, startDate, endDate, searchTerm]);
-
-  // Sort filtered jobs based on selected option
-  const sortedJobs = useMemo(() => {
-    const arr = [...filteredJobs];
-    if (sortOption === "netDesc") {
-      return arr.sort(
-        (a, b) =>
-          (b.computed?.netProfitCents ?? 0) - (a.computed?.netProfitCents ?? 0)
-      );
-    } else if (sortOption === "netAsc") {
-      return arr.sort(
-        (a, b) =>
-          (a.computed?.netProfitCents ?? 0) - (b.computed?.netProfitCents ?? 0)
-      );
-    } else {
-      // default: most recent updatedAt
-      return arr.sort((a, b) => {
-        const aTs = toMillis(a.updatedAt ?? a.createdAt) ?? 0;
-        const bTs = toMillis(b.updatedAt ?? b.createdAt) ?? 0;
-        return bTs - aTs;
+  async function changeStatus(job: Job, nextStatus: JobStatus) {
+    setError(null);
+    try {
+      await updateDoc(doc(db, "jobs", job.id), {
+        status: nextStatus,
+        updatedAt: serverTimestamp(),
       });
-    }
-  }, [filteredJobs, sortOption]);
-
-  // Pagination & totals based on sorted jobs
-  const jobsTotalPages = Math.max(
-    1,
-    Math.ceil(sortedJobs.length / JOBS_PER_PAGE)
-  );
-  const pagedJobs = useMemo(() => {
-    const start = (jobsPage - 1) * JOBS_PER_PAGE;
-    return sortedJobs.slice(start, start + JOBS_PER_PAGE);
-  }, [sortedJobs, jobsPage]);
-  const totalNet = useMemo(
-    () =>
-      sortedJobs.reduce((acc, j) => acc + (j.computed?.netProfitCents ?? 0), 0),
-    [sortedJobs]
-  );
-  const totalEarnings = useMemo(
-    () =>
-      sortedJobs.reduce(
-        (acc, j) => acc + (j.earnings?.totalEarningsCents ?? 0),
-        0
-      ),
-    [sortedJobs]
-  );
-  const totalExpenses = useMemo(
-    () =>
-      sortedJobs.reduce(
-        (acc, j) => acc + (j.computed?.totalExpensesCents ?? 0),
-        0
-      ),
-    [sortedJobs]
-  );
-  const averageProfit = useMemo(
-    () => (sortedJobs.length > 0 ? totalNet / sortedJobs.length : 0),
-    [totalNet, sortedJobs.length]
-  );
-  const highestProfit = useMemo(() => {
-    let max = 0;
-    sortedJobs.forEach((j) => {
-      const n = j.computed?.netProfitCents ?? 0;
-      if (n > max) max = n;
-    });
-    return max;
-  }, [sortedJobs]);
-
-  // Build filters dynamically from statuses present
-  const dynamicStatusOptions: JobStatus[] = useMemo(() => {
-    const set = new Set<JobStatus>();
-    jobs.forEach((j) => set.add(j.status));
-    return Array.from(set);
-  }, [jobs]);
-  const filters: StatusFilter[] = ["all", ...dynamicStatusOptions];
-
-  // Date preset helpers
-  function recomputeDates(p: typeof datePreset, now = new Date()) {
-    if (p === "last7") {
-      const end = now;
-      const start = new Date(end);
-      start.setDate(end.getDate() - 6);
-      setStartDate(toYMD(start));
-      setEndDate(toYMD(end));
-    } else if (p === "thisMonth") {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      setStartDate(toYMD(start));
-      setEndDate(toYMD(end));
-    } else if (p === "ytd") {
-      const start = new Date(now.getFullYear(), 0, 1);
-      setStartDate(toYMD(start));
-      setEndDate(toYMD(now));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
     }
   }
-  function applyPreset(p: typeof datePreset) {
-    setDatePreset(p);
-    if (p !== "custom") recomputeDates(p);
-  }
-  function msUntilNextMidnight() {
-    const now = new Date();
-    const next = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1,
-      0,
-      0,
-      0,
-      50
-    );
-    return next.getTime() - now.getTime();
-  }
-  useEffect(() => {
-    if (datePreset === "custom") return;
-    recomputeDates(datePreset);
-    let timer = setTimeout(function tick() {
-      recomputeDates(datePreset);
-      timer = setTimeout(tick, msUntilNextMidnight());
-    }, msUntilNextMidnight());
-    return () => clearTimeout(timer);
-  }, [datePreset]);
 
-  // Determine active date filter label
-  const hasActiveDateFilter =
-    datePreset !== "custom" || Boolean(startDate || endDate);
-  const presetLabel =
-    datePreset === "last7"
-      ? "Last 7 days"
-      : datePreset === "thisMonth"
-      ? "This month"
-      : datePreset === "ytd"
-      ? "Year to date"
-      : null;
-  const rangeLabel =
-    presetLabel ??
-    (startDate || endDate
-      ? `${formatYmdForChip(startDate)} → ${formatYmdForChip(endDate)}`
-      : null);
-
-  // Compute status counts across all jobs (unfiltered) for summary
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    jobs.forEach((j) => {
-      counts[j.status] = (counts[j.status] ?? 0) + 1;
-    });
-    return counts;
-  }, [jobs]);
-
-  // Chart: status distribution
-  const statusLabels = useMemo(() => Object.keys(statusCounts), [statusCounts]);
-  const statusValues = useMemo(
-    () => statusLabels.map((l) => statusCounts[l] ?? 0),
-    [statusLabels, statusCounts]
-  );
-  const statusColors = useMemo(() => {
-    // simple palette; cycle through if more statuses
-    const palette = [
-      "#fbbf24",
-      "#34d399",
-      "#60a5fa",
-      "#c084fc",
-      "#f87171",
-      "#facc15",
-      "#818cf8",
-      "#f472b6",
-    ];
-    return statusLabels.map((_, idx) => palette[idx % palette.length]);
-  }, [statusLabels]);
-  const statusChartData: ChartData<"pie", number[], string> = {
-    labels: statusLabels,
-    datasets: [
-      {
-        label: "Jobs by Status",
-        data: statusValues,
-        backgroundColor: statusColors,
-        borderWidth: 1,
-      },
-    ],
-  };
-  const statusChartOptions: ChartOptions<"pie"> = {
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: {
-          boxWidth: 12,
-          font: { size: 10 },
-          color: "#333",
-        },
-      },
-      title: { display: false },
-      tooltip: {},
-    },
-  };
-
-  // Chart: top jobs by net profit
-  const topJobs = useMemo(() => {
-    const arr = [...sortedJobs];
-    arr.sort(
-      (a, b) =>
-        (b.computed?.netProfitCents ?? 0) - (a.computed?.netProfitCents ?? 0)
-    );
-    return arr.slice(0, 5);
-  }, [sortedJobs]);
-  const topJobLabels = topJobs.map((j) => {
-    const line = pickAddressLine(j.address);
-    return line.length > 30 ? line.slice(0, 27) + "…" : line;
-  });
-  const topJobValues = topJobs.map(
-    (j) => (j.computed?.netProfitCents ?? 0) / 100
-  );
-  const topJobsData: ChartData<"bar", number[], string> = {
-    labels: topJobLabels,
-    datasets: [
-      {
-        label: "Net Profit ($)",
-        data: topJobValues,
-        backgroundColor: "#0e7490",
-        borderColor: "#0e7490",
-        borderWidth: 1,
-      },
-    ],
-  };
-  const topJobsOptions: ChartOptions<"bar"> = {
-    indexAxis: "y",
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          label: (context: TooltipItem<"bar">) => {
-            const value = context.parsed.x;
-            return `$${Number(value).toFixed(2)}`;
-          },
-        },
-      },
-      title: { display: false },
-    },
-    scales: {
-      x: {
-        beginAtZero: true,
-        ticks: {
-          callback: (value) => `$${value}`,
-        },
-      },
-      y: {
-        ticks: {
-          autoSkip: false,
-        },
-      },
-    },
-  };
-
-  // Guard: show loading or no org message
-  const isBusy = membershipLoading;
-  const hasOrg = Boolean(orgId);
-  if (isBusy) return <div className="p-6 text-sm">Loading organization…</div>;
-  if (!hasOrg)
+  if (loading || orgLoading) {
     return (
-      <div className="p-6 text-sm">
-        You are not linked to an organization. Please contact your admin.
+      <div className="admin-loading">
+        <div>
+          <span />
+          Loading jobs…
+        </div>
       </div>
     );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b ">
-      {/* Main content */}
-      <div className="mx-auto w-[min(1100px,94vw)] space-y-8 py-8">
-        {/* Jobs overview section */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-[var(--color-text)]">
-            Jobs Overview
-          </h2>
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {/* Total jobs */}
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
-              <div className="text-xl font-semibold text-[var(--color-text)]">
-                {sortedJobs.length}
-              </div>
-              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Total Jobs
-              </div>
-            </div>
-            {/* Total earnings */}
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
-              <div className="text-xl font-semibold text-[var(--color-text)]">
-                {formatCurrency(totalEarnings)}
-              </div>
-              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Total Earnings
-              </div>
-            </div>
-            {/* Total expenses */}
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
-              <div className="text-xl font-semibold text-[var(--color-text)]">
-                {formatCurrency(totalExpenses)}
-              </div>
-              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Total Expenses
-              </div>
-            </div>
-            {/* Net profit */}
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
-              <div className="text-xl font-semibold text-[var(--color-text)]">
-                {formatCurrency(totalNet)}
-              </div>
-              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Net Profit
-              </div>
-            </div>
-            {/* Avg. profit */}
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
-              <div className="text-xl font-semibold text-[var(--color-text)]">
-                {formatCurrency(Math.round(averageProfit))}
-              </div>
-              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Avg. Profit/Job
-              </div>
-            </div>
-            {/* Highest profit */}
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
-              <div className="text-xl font-semibold text-[var(--color-text)]">
-                {formatCurrency(highestProfit)}
-              </div>
-              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Highest Profit
-              </div>
-            </div>
+    <main className="admin-page jobs-page">
+      <div className="admin-content-width">
+        <header className="admin-page-header">
+          <div>
+            <span className="admin-kicker">Project operations</span>
+            <h1>Jobs</h1>
+            <p>
+              Search every property, understand job health at a glance, and open
+              a dedicated workspace for production, documents, costs, and
+              closeout.
+            </p>
           </div>
-          {/* Charts row */}
-          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
-              <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
-                Job Status Distribution
-              </h3>
-              <div className="relative h-64 w-full">
-                <Pie data={statusChartData} options={statusChartOptions} />
-              </div>
-            </div>
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
-              <h3 className="mb-2 text-sm font-semibold text-[var(--color-text)]">
-                Top Jobs by Profit
-              </h3>
-              <div className="relative h-64 w-full">
-                <Bar data={topJobsData} options={topJobsOptions} />
-              </div>
-            </div>
-          </div>
+          <button
+            className="admin-primary-button"
+            type="button"
+            onClick={() => {
+              setFormOpen(true);
+              setSearchParams((current) => {
+                const next = new URLSearchParams(current);
+                next.set("create", "1");
+                return next;
+              });
+            }}
+          >
+            <Plus size={16} />
+            Add job
+          </button>
+        </header>
+
+        <section className="jobs-metrics">
+          <article>
+            <BriefcaseBusiness />
+            <span>Active jobs</span>
+            <strong>{totals.active}</strong>
+          </article>
+          <article>
+            <CalendarDays />
+            <span>Scheduled</span>
+            <strong>{totals.scheduled}</strong>
+          </article>
+          <article>
+            <span>Recorded revenue</span>
+            <strong>{money(totals.revenue)}</strong>
+          </article>
+          <article>
+            <span>Net profit</span>
+            <strong>{money(totals.profit)}</strong>
+          </article>
         </section>
 
-        {/* Job status summary */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-[var(--color-text)]">
-            Job Status Summary
-          </h2>
-          <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {Object.entries(statusCounts).map(([status, count]) => (
-              <div
-                key={status}
-                className="flex flex-col rounded-lg border border-[var(--color-border)] bg-white/70 p-3 shadow-sm"
-              >
-                <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)]">
-                  {status}
-                </span>
-                <span className="mt-1 text-xl font-bold text-[var(--color-text)]">
-                  {count}
-                </span>
-              </div>
-            ))}
+        <section className="admin-card jobs-workspace">
+          <div className="admin-toolbar">
+            <label className="admin-search-field">
+              <Search size={16} />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search address, customer, email, or phone"
+              />
+            </label>
+            <span className="jobs-filter-icon">
+              <Filter size={15} />
+            </span>
+            <select
+              className="admin-filter-select"
+              value={status}
+              onChange={(event) =>
+                setStatus(event.target.value as JobStatus | "all")
+              }
+            >
+              <option value="all">All statuses</option>
+              {[
+                "draft",
+                "pending",
+                "active",
+                "invoiced",
+                "paid",
+                "completed",
+                "closed",
+                "archived",
+              ].map((option) => (
+                <option value={option} key={option}>
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </option>
+              ))}
+            </select>
+            <select
+              className="admin-filter-select"
+              value={projectType}
+              onChange={(event) =>
+                setProjectType(event.target.value as ProjectType | "all")
+              }
+            >
+              <option value="all">All project types</option>
+              {[
+                "replacement",
+                "repair",
+                "storm_restoration",
+                "new_install",
+                "commercial",
+                "maintenance",
+              ].map((option) => (
+                <option value={option} key={option}>
+                  {projectLabel(option as ProjectType)}
+                </option>
+              ))}
+            </select>
+            <span className="admin-toolbar-count">
+              {filteredJobs.length} jobs
+            </span>
           </div>
-        </section>
-        {/* Sort options */}
-        <div className="rounded-xl border border-[var(--color-border)]/60 bg-white/90 p-3 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3">
-          <label className="text-sm font-medium text-[var(--color-text)]">
-            Sort by:
-          </label>
-          <select
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as any)}
-            className="rounded border border-[var(--color-border)] bg-white px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none"
-          >
-            <option value="recent">Most recent</option>
-            <option value="netDesc">Highest net profit</option>
-            <option value="netAsc">Lowest net profit</option>
-          </select>
-        </div>
-        {/* Jobs list section using existing DashboardJobsSection component */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
-          <DashboardJobsSection
-            jobsOpen={jobsOpen}
-            setJobsOpen={setJobsOpen}
-            showSearch={showSearch}
-            setShowSearch={setShowSearch}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            hasActiveDateFilter={hasActiveDateFilter}
-            rangeLabel={rangeLabel}
-            setDatePreset={setDatePreset}
-            startDate={startDate}
-            endDate={endDate}
-            setStartDate={setStartDate}
-            setEndDate={setEndDate}
-            applyPreset={applyPreset}
-            employees={employees}
-            assignedEmployeeIds={assignedEmployeeIds}
-            setAssignedEmployeeIds={setAssignedEmployeeIds}
-            filters={filters}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            newFeltDate={newFeltDate}
-            setNewFeltDate={setNewFeltDate}
-            newShinglesDate={newShinglesDate}
-            setNewShinglesDate={setNewShinglesDate}
-            newPunchDate={newPunchDate}
-            setNewPunchDate={setNewPunchDate}
-            openForm={openForm}
-            setOpenForm={setOpenForm}
-            address={address}
-            setAddress={setAddress}
-            createJob={createJob}
-            loading={creating}
-            error={error}
-            filteredJobs={sortedJobs}
-            pagedJobs={pagedJobs}
-            jobsPage={jobsPage}
-            jobsTotalPages={jobsTotalPages}
-            setJobsPage={setJobsPage}
-            JOBS_PER_PAGE={JOBS_PER_PAGE}
-            totalNet={totalNet}
-          />
+
+          {error && <div className="admin-inline-error">{error}</div>}
+
+          {filteredJobs.length === 0 ? (
+            <div className="admin-empty">
+              <div>
+                <BriefcaseBusiness size={34} />
+                <strong>No matching jobs</strong>
+                <p>
+                  Adjust the filters, create a new job, or convert a qualified
+                  customer lead.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="jobs-table-wrap">
+                <table className="admin-table jobs-table">
+                  <thead>
+                    <tr>
+                      <th>Job / property</th>
+                      <th>Customer</th>
+                      <th>Status</th>
+                      <th>Assigned</th>
+                      <th>Revenue</th>
+                      <th>Cost</th>
+                      <th>Profit</th>
+                      <th>Updated</th>
+                      <th aria-label="Open" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredJobs.map((job) => {
+                      const assigned = employees.filter((employee) =>
+                        job.assignedEmployeeIds?.includes(employee.id)
+                      );
+                      const revenue = job.earnings?.totalEarningsCents ?? 0;
+                      const costs = job.computed?.totalExpensesCents ?? 0;
+                      return (
+                        <tr key={job.id}>
+                          <td>
+                            <Link
+                              className="jobs-address-link"
+                              to={`/job/${job.id}`}
+                            >
+                              <span>
+                                <MapPin size={16} />
+                              </span>
+                              <div>
+                                <strong>{addressLine(job)}</strong>
+                                <small>{projectLabel(job.projectType)}</small>
+                              </div>
+                            </Link>
+                          </td>
+                          <td>
+                            <div className="admin-table-stack">
+                              <strong>
+                                {job.customer?.name || "Customer not linked"}
+                              </strong>
+                              <small>
+                                {job.customer?.phone || job.customer?.email || "—"}
+                              </small>
+                            </div>
+                          </td>
+                          <td>
+                            <select
+                              className={`admin-status status-${job.status}`}
+                              value={job.status}
+                              onChange={(event) =>
+                                changeStatus(job, event.target.value as JobStatus)
+                              }
+                            >
+                              {[
+                                "draft",
+                                "pending",
+                                "active",
+                                "invoiced",
+                                "paid",
+                                "completed",
+                                "closed",
+                                "archived",
+                              ].map((option) => (
+                                <option value={option} key={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <div className="jobs-assignees">
+                              {assigned.length ? (
+                                <>
+                                  <span>
+                                    {assigned
+                                      .slice(0, 2)
+                                      .map((employee) => employee.name.charAt(0))
+                                      .join("")}
+                                  </span>
+                                  <small>
+                                    {assigned.length === 1
+                                      ? assigned[0].name
+                                      : `${assigned.length} members`}
+                                  </small>
+                                </>
+                              ) : (
+                                <small>Unassigned</small>
+                              )}
+                            </div>
+                          </td>
+                          <td>{money(revenue)}</td>
+                          <td>{money(costs)}</td>
+                          <td>
+                            <strong
+                              className={
+                                (job.computed?.netProfitCents ?? 0) < 0
+                                  ? "jobs-profit is-negative"
+                                  : "jobs-profit"
+                              }
+                            >
+                              {money(job.computed?.netProfitCents ?? 0)}
+                            </strong>
+                          </td>
+                          <td>{formatDate(job.updatedAt ?? job.createdAt)}</td>
+                          <td>
+                            <Link
+                              className="admin-row-button"
+                              to={`/job/${job.id}`}
+                              aria-label={`Open ${addressLine(job)}`}
+                            >
+                              <ArrowRight size={16} />
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </section>
       </div>
-    </div>
+
+      {formOpen && (
+        <>
+          <button
+            className="admin-drawer-scrim"
+            type="button"
+            onClick={closeForm}
+            aria-label="Close new job form"
+          />
+          <aside className="admin-drawer job-form-drawer">
+            <div className="admin-drawer-header">
+              <div>
+                <span>New project</span>
+                <h2>Add a roofing job</h2>
+              </div>
+              <button type="button" onClick={closeForm}>
+                ×
+              </button>
+            </div>
+            <form onSubmit={createJob}>
+              <section className="drawer-form-section">
+                <div className="drawer-form-heading">
+                  <span>01</span>
+                  <div>
+                    <strong>Property and customer</strong>
+                    <small>Identify where the work will happen.</small>
+                  </div>
+                </div>
+                <label>
+                  Job address *
+                  <input
+                    required
+                    value={form.address}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        address: event.target.value,
+                      }))
+                    }
+                    placeholder="Street, city, state, ZIP"
+                  />
+                </label>
+                <label>
+                  Customer name
+                  <input
+                    value={form.customerName}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        customerName: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <div className="drawer-form-grid">
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          email: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    Phone
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          phone: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section className="drawer-form-section">
+                <div className="drawer-form-heading">
+                  <span>02</span>
+                  <div>
+                    <strong>Scope and priority</strong>
+                    <small>Classify the project for the operations view.</small>
+                  </div>
+                </div>
+                <div className="drawer-form-grid">
+                  <label>
+                    Project type
+                    <select
+                      value={form.projectType}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          projectType: event.target.value as ProjectType,
+                        }))
+                      }
+                    >
+                      {[
+                        "replacement",
+                        "repair",
+                        "storm_restoration",
+                        "new_install",
+                        "commercial",
+                        "maintenance",
+                      ].map((option) => (
+                        <option value={option} key={option}>
+                          {projectLabel(option as ProjectType)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Priority
+                    <select
+                      value={form.priority}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          priority: event.target.value as Priority,
+                        }))
+                      }
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+
+              <section className="drawer-form-section">
+                <div className="drawer-form-heading">
+                  <span>03</span>
+                  <div>
+                    <strong>Schedule and crew</strong>
+                    <small>Optional dates can be added or changed later.</small>
+                  </div>
+                </div>
+                <div className="drawer-form-grid drawer-form-grid-three">
+                  <label>
+                    Felt / dry-in
+                    <input
+                      type="date"
+                      value={form.feltDate}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          feltDate: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    Installation
+                    <input
+                      type="date"
+                      value={form.installDate}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          installDate: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label>
+                    Final punch
+                    <input
+                      type="date"
+                      value={form.punchDate}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          punchDate: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+                <fieldset className="drawer-member-picker">
+                  <legend>Assign members</legend>
+                  {employees.filter((employee) => employee.isActive !== false)
+                    .length === 0 ? (
+                    <p>No active members are available yet.</p>
+                  ) : (
+                    employees
+                      .filter((employee) => employee.isActive !== false)
+                      .map((employee) => (
+                        <label key={employee.id}>
+                          <input
+                            type="checkbox"
+                            checked={form.assignedEmployeeIds.includes(employee.id)}
+                            onChange={(event) =>
+                              setForm((current) => ({
+                                ...current,
+                                assignedEmployeeIds: event.target.checked
+                                  ? [
+                                      ...current.assignedEmployeeIds,
+                                      employee.id,
+                                    ]
+                                  : current.assignedEmployeeIds.filter(
+                                      (id) => id !== employee.id
+                                    ),
+                              }))
+                            }
+                          />
+                          <span>{employee.name}</span>
+                          <small>{employee.role || "member"}</small>
+                        </label>
+                      ))
+                  )}
+                </fieldset>
+              </section>
+
+              {error && <div className="admin-inline-error">{error}</div>}
+              <div className="admin-drawer-actions">
+                <button
+                  className="admin-primary-button"
+                  type="submit"
+                  disabled={saving}
+                >
+                  {saving ? "Creating job…" : "Create job workspace"}
+                  {!saving && <ArrowRight size={16} />}
+                </button>
+              </div>
+            </form>
+          </aside>
+        </>
+      )}
+    </main>
   );
 }

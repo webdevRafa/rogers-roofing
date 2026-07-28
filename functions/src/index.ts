@@ -21,6 +21,103 @@ const APP_BASE_URL = defineSecret("APP_BASE_URL");
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1", memory: "1GiB", timeoutSeconds: 540 });
 
+const allowedLeadServices = new Set([
+  "roof_replacement",
+  "roof_repair",
+  "storm_damage",
+  "new_construction",
+  "inspection",
+  "commercial_roofing",
+  "gutters",
+  "other",
+]);
+
+function cleanLeadText(value: unknown, maxLength: number): string {
+  return String(value ?? "").trim().slice(0, maxLength);
+}
+
+/**
+ * Public lead intake used by the client-facing website.
+ *
+ * The callable keeps anonymous visitors away from direct Firestore writes,
+ * validates the customer-facing payload, and creates a server-timestamped
+ * record for the admin lead pipeline.
+ */
+export const submitWebsiteLead = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const data = request.data ?? {};
+
+    // Honeypot field: real visitors never see or fill this input.
+    if (cleanLeadText(data.website, 200)) {
+      return { ok: true };
+    }
+
+    const firstName = cleanLeadText(data.firstName, 80);
+    const lastName = cleanLeadText(data.lastName, 80);
+    const email = cleanLeadText(data.email, 180).toLowerCase();
+    const phone = cleanLeadText(data.phone, 40);
+    const address = cleanLeadText(data.address, 240);
+    const message = cleanLeadText(data.message, 3000);
+    const service = cleanLeadText(data.service, 60);
+    const urgency = cleanLeadText(data.urgency, 40);
+    const preferredContact = cleanLeadText(data.preferredContact, 20);
+    const organizationId =
+      cleanLeadText(data.organizationId, 100) || "rogers-roofing";
+
+    if (!firstName || !lastName || !email || !phone || !address) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Name, email, phone, and property address are required."
+      );
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new HttpsError("invalid-argument", "Enter a valid email address.");
+    }
+    if (!allowedLeadServices.has(service)) {
+      throw new HttpsError("invalid-argument", "Select a valid service.");
+    }
+    if (data.consent !== true) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Contact consent is required."
+      );
+    }
+
+    const leadRef = admin.firestore().collection("leads").doc();
+    await leadRef.set({
+      organizationId,
+      status: "new",
+      firstName,
+      lastName,
+      email,
+      phone,
+      preferredContact: ["phone", "text", "email"].includes(preferredContact)
+        ? preferredContact
+        : "phone",
+      propertyAddress: {
+        fullLine: address,
+        country: "US",
+      },
+      service,
+      propertyType: cleanLeadText(data.propertyType, 40) || "residential",
+      urgency: ["emergency", "within_week", "within_month", "planning"].includes(
+        urgency
+      )
+        ? urgency
+        : "within_month",
+      message,
+      insuranceClaimStarted: Boolean(data.insuranceClaimStarted),
+      consentToContact: true,
+      source: "website",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { ok: true, leadId: leadRef.id };
+  }
+);
+
 /**
  * 1) Convert uploads at jobs/{jobId}/attachments/* to WEBP (q=90),
  *    write a doc in jobPhotos, bump counters on the job, delete original.

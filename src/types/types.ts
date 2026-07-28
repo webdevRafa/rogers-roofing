@@ -605,6 +605,21 @@ export type Job = {
   status: JobStatus;
   pricing?: JobPricing;
   address: Address;
+  customer?: {
+    id?: ID | null;
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
+  projectType?:
+    | "replacement"
+    | "repair"
+    | "storm_restoration"
+    | "new_install"
+    | "commercial"
+    | "maintenance";
+  sourceLeadId?: ID | null;
+  priority?: "normal" | "high" | "urgent";
 
   /** Final punch information (walkthrough / completion). */
   punchedAt?: Timestamp | Date | FieldValue | null;

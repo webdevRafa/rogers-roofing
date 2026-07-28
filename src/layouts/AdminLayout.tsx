@@ -1,37 +1,66 @@
-// src/layouts/AdminLayout.tsx
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import {
+  BarChart3,
+  BriefcaseBusiness,
   CalendarDays,
+  ChevronDown,
+  FileStack,
+  HandCoins,
   LayoutDashboard,
-  Users,
-  FileText,
   LogOut,
   Menu,
-  BarChart3,
+  PackageSearch,
+  Search,
+  Users,
+  UserRoundSearch,
   X,
 } from "lucide-react";
-import { useMembership } from "../hooks/useMembership";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
 import { OrgProvider } from "../contexts/OrgContext";
+import { useCurrentEmployee } from "../hooks/useCurrentEmployee";
+import { useMembership } from "../hooks/useMembership";
+import logo from "../assets/rogers-roofing.webp";
 
-import logo from "../assets/rogers-roofing.webp"; // adjust if needed
+const navigation = [
+  { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { to: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
+  { to: "/leads", label: "Leads", icon: UserRoundSearch },
+  { to: "/invoices-page", label: "Documents", icon: FileStack },
+  { to: "/payouts", label: "Payouts", icon: HandCoins },
+  { to: "/employees", label: "Members", icon: Users },
+  { to: "/materials", label: "Materials", icon: PackageSearch },
+  { to: "/schedule", label: "Schedule", icon: CalendarDays },
+  { to: "/financial-overview", label: "Reports", icon: BarChart3 },
+];
 
-function navLinkBase(isActive: boolean) {
-  return (
-    "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition " +
-    (isActive
-      ? "bg-white/20 text-white"
-      : "text-white/85 hover:bg-white/10 hover:text-white")
-  );
-}
+const routeLabels: Record<string, string> = {
+  dashboard: "Overview",
+  jobs: "Jobs",
+  job: "Job workspace",
+  leads: "Leads",
+  "invoices-page": "Documents",
+  invoices: "Invoice",
+  payouts: "Payouts",
+  employees: "Members",
+  materials: "Materials",
+  schedule: "Schedule",
+  "financial-overview": "Reports",
+};
 
 export default function AdminLayout() {
   const navigate = useNavigate();
-
-  const [signingOut, setSigningOut] = useState(false);
+  const location = useLocation();
+  const { employee } = useCurrentEmployee();
   const [mobileOpen, setMobileOpen] = useState(false);
-
+  const [signingOut, setSigningOut] = useState(false);
   const {
     memberships,
     orgId: activeOrgId,
@@ -40,200 +69,150 @@ export default function AdminLayout() {
     loading: membershipLoading,
   } = useMembership();
 
+  const currentLabel = useMemo(() => {
+    const firstPart = location.pathname.split("/").filter(Boolean)[0] ?? "";
+    return routeLabels[firstPart] ?? "Workspace";
+  }, [location.pathname]);
+
   async function handleLogout() {
+    setSigningOut(true);
     try {
-      setSigningOut(true);
       await signOut(getAuth());
-      navigate("/");
+      navigate("/login", { replace: true });
     } finally {
       setSigningOut(false);
     }
   }
 
   return (
-    <div className="min-h-screen ">
-      {/* Global Navbar */}
-      <header className="sticky top-0 z-40 select-none">
-        <div className="bg-gradient-to-tr from-[var(--color-brown-hover)] via-[var(--color-brown)] to-[var(--color-logo)]">
-          <div className="mx-auto w-[min(1200px,94vw)] py-8">
-            <div className="flex items-center justify-between gap-3">
-              {/* Brand */}
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => navigate("/dashboard")}
-                  className="flex items-center gap-3 text-left"
-                >
-                  <img
-                    src={logo}
-                    alt="Roger's Roofing logo"
-                    className="h-10 w-10 rounded-xl shadow-md"
-                  />
-                  <div className="hidden sm:block">
-                    <div className="text-sm font-semibold text-white leading-4">
-                      Roger&apos;s Roofing
-                    </div>
-                    <div className="text-[11px] text-white/75">
-                      Jobs • Scheduling • Payouts
-                    </div>
+    <div className="admin-shell">
+      {mobileOpen && (
+        <button
+          type="button"
+          className="admin-mobile-scrim"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close navigation"
+        />
+      )}
 
-                    {/* ✅ Org switcher */}
-                    {!membershipLoading && memberships.length > 1 && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-wide text-white/75">
-                          Org
-                        </span>
-
-                        <select
-                          value={activeOrgId ?? ""}
-                          onChange={(e) => setActiveOrgId(e.target.value)}
-                          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-[11px] text-white outline-none hover:bg-white/15"
-                        >
-                          {memberships.map((m) => (
-                            <option
-                              key={m.id}
-                              value={m.orgId}
-                              className="text-black"
-                            >
-                              {m.orgId}
-                            </option>
-                          ))}
-                        </select>
-
-                        {activeOrgName && (
-                          <span className="text-[11px] text-white/70 truncate max-w-[160px]">
-                            {activeOrgName}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              </div>
-
-              {/* Desktop Nav */}
-              <nav className="hidden md:flex items-center gap-2">
-                <NavLink
-                  to="/dashboard"
-                  className={({ isActive }) => navLinkBase(isActive)}
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </NavLink>
-                <NavLink
-                  to="/schedule"
-                  className={({ isActive }) => navLinkBase(isActive)}
-                >
-                  <CalendarDays className="h-4 w-4" />
-                  Schedule
-                </NavLink>
-                <NavLink
-                  to="/employees"
-                  className={({ isActive }) => navLinkBase(isActive)}
-                >
-                  <Users className="h-4 w-4" />
-                  Employees
-                </NavLink>
-
-                {/* Optional route (keep if you want invoices in global nav) */}
-                <NavLink
-                  to="/invoices-page"
-                  className={({ isActive }) => navLinkBase(isActive)}
-                >
-                  <FileText className="h-4 w-4" />
-                  Invoices
-                </NavLink>
-                <NavLink
-                  to="/financial-overview"
-                  className={({ isActive }) => navLinkBase(isActive)}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Financial Overview
-                </NavLink>
-              </nav>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                {/* Logout */}
-                <button
-                  onClick={handleLogout}
-                  disabled={signingOut}
-                  className="inline-flex items-center justify-center rounded-lg bg-red-800 px-3 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-60"
-                  aria-label="Sign out"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-
-                {/* Mobile menu */}
-                <button
-                  type="button"
-                  className="md:hidden inline-flex items-center justify-center rounded-lg bg-white/10 px-3 py-2 text-white hover:bg-white/20"
-                  onClick={() => setMobileOpen((v) => !v)}
-                  aria-label="Menu"
-                >
-                  {mobileOpen ? (
-                    <X className="h-4 w-4" />
-                  ) : (
-                    <Menu className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Mobile Nav Panel */}
-            {mobileOpen && (
-              <div className="md:hidden mt-3 rounded-2xl bg-white/10 p-2 backdrop-blur">
-                <div className="grid gap-1">
-                  <NavLink
-                    to="/dashboard"
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) => navLinkBase(isActive)}
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </NavLink>
-                  <NavLink
-                    to="/schedule"
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) => navLinkBase(isActive)}
-                  >
-                    <CalendarDays className="h-4 w-4" />
-                    Schedule
-                  </NavLink>
-                  <NavLink
-                    to="/employees"
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) => navLinkBase(isActive)}
-                  >
-                    <Users className="h-4 w-4" />
-                    Employees
-                  </NavLink>
-                  <NavLink
-                    to="/financial-overview"
-                    className={({ isActive }) => navLinkBase(isActive)}
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    Financial Overview
-                  </NavLink>
-                </div>
-              </div>
-            )}
-          </div>
+      <aside className={mobileOpen ? "admin-sidebar is-open" : "admin-sidebar"}>
+        <div className="admin-sidebar-brand">
+          <Link to="/dashboard" onClick={() => setMobileOpen(false)}>
+            <img src={logo} alt="" />
+            <span>
+              <strong>Roger&apos;s Roofing</strong>
+              <small>Operations workspace</small>
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation"
+          >
+            <X size={20} />
+          </button>
         </div>
-      </header>
 
-      <OrgProvider
-        value={{
-          orgId: activeOrgId,
-          orgName: activeOrgName ?? null,
-          memberships,
-          setOrgId: setActiveOrgId,
-          loading: membershipLoading,
-        }}
-      >
-        <main className="mx-auto w-full max-w-[1700px] py-6 sm:py-10">
+        <div className="admin-org-switcher">
+          <span>Active organization</span>
+          <label>
+            <select
+              value={activeOrgId ?? ""}
+              onChange={(event) => setActiveOrgId(event.target.value)}
+              disabled={membershipLoading}
+              aria-label="Active organization"
+            >
+              {memberships.length === 0 && (
+                <option value="">Roger&apos;s Roofing</option>
+              )}
+              {memberships.map((membership) => (
+                <option value={membership.orgId} key={membership.id}>
+                  {activeOrgName && membership.orgId === activeOrgId
+                    ? activeOrgName
+                    : membership.orgId}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={15} />
+          </label>
+        </div>
+
+        <nav className="admin-sidebar-nav">
+          <span className="admin-nav-label">Workspace</span>
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                to={item.to}
+                key={item.to}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  isActive ? "admin-nav-item is-active" : "admin-nav-item"
+                }
+              >
+                <Icon size={18} strokeWidth={1.8} />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <div className="admin-sidebar-footer">
+          <div className="admin-user-avatar">
+            {(employee?.name ?? "R").charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <strong>{employee?.name ?? "Roofing admin"}</strong>
+            <span>{employee?.accessRole ?? "administrator"}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={signingOut}
+            aria-label="Sign out"
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
+      </aside>
+
+      <div className="admin-main">
+        <header className="admin-topbar">
+          <div className="admin-topbar-title">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open navigation"
+            >
+              <Menu size={21} />
+            </button>
+            <span>Workspace</span>
+            <strong>{currentLabel}</strong>
+          </div>
+          <div className="admin-topbar-actions">
+            <Link to="/jobs" className="admin-command-search">
+              <Search size={16} />
+              <span>Search jobs and records</span>
+              <kbd>⌘ K</kbd>
+            </Link>
+            <Link className="admin-topbar-public" to="/">
+              View public site
+            </Link>
+          </div>
+        </header>
+
+        <OrgProvider
+          value={{
+            orgId: activeOrgId,
+            orgName: activeOrgName ?? null,
+            memberships,
+            setOrgId: setActiveOrgId,
+            loading: membershipLoading,
+          }}
+        >
           <Outlet />
-        </main>
-      </OrgProvider>
+        </OrgProvider>
+      </div>
     </div>
   );
 }

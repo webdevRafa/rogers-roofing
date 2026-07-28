@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 
 import LoginPage from "./pages/LoginPage";
+import PublicHomePage from "./pages/PublicHomePage";
 // Use our new role-based guards
 import AdminGuard from "../src/components/AdminGuard";
 import RoleGuard from "../src/components/RoleGuard";
@@ -13,7 +14,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import JobsPage from "./pages/JobsPage";
 import AdminLayout from "./layouts/AdminLayout";
 import FinancialOverviewPage from "./pages/FinancialOverviewPage";
-import DashboardPage from "./pages/DashboardPage";
+import AdminOverviewPage from "./pages/AdminOverviewPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import PunchCalendarPage from "./pages/PunchCalendarPage";
@@ -23,14 +24,19 @@ import InvoiceViewer from "./pages/InvoiceViewer";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
 import CompleteSignupPage from "./pages/CompleteSignupPage";
 import InvoicesPage from "./pages/InvoicesPage";
+import LeadsPage from "./pages/LeadsPage";
+import MaterialsPage from "./pages/MaterialsPage";
+import PayoutsPage from "./pages/PayoutsPage";
+import JobWorkspacePage from "./pages/JobWorkspacePage";
+import WarrantyPreviewPage from "./pages/WarrantyPreviewPage";
 
 export default function App() {
   return (
-    <div className="relative z-30 ">
+    <div>
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
-          <Route path="/" element={<LoginPage />} />
+          <Route path="/" element={<PublicHomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/complete-signup" element={<CompleteSignupPage />} />
@@ -44,7 +50,7 @@ export default function App() {
               </AdminGuard>
             }
           >
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<AdminOverviewPage />} />
             <Route path="/invoices-page" element={<InvoicesPage />} />
             <Route
               path="/financial-overview"
@@ -52,10 +58,18 @@ export default function App() {
             />
             <Route path="/schedule" element={<PunchCalendarPage />} />
             <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/leads" element={<LeadsPage />} />
+            <Route path="/materials" element={<MaterialsPage />} />
+            <Route path="/payouts" element={<PayoutsPage />} />
             <Route path="/schedule/:date" element={<PunchDayPage />} />
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/employees/:id" element={<EmployeeDetailPage />} />
-            <Route path="/job/:id" element={<JobDetailPage />} />
+            <Route path="/job/:id" element={<JobWorkspacePage />} />
+            <Route
+              path="/job/:id/warranty-preview"
+              element={<WarrantyPreviewPage />}
+            />
+            <Route path="/legacy-job/:id" element={<JobDetailPage />} />
             <Route path="/invoices/:id" element={<InvoiceViewer />} />
           </Route>
 

@@ -1,0 +1,376 @@
+import type { Address, FirestoreTime, ID } from "../types/types";
+
+export type LeadStatus =
+  | "new"
+  | "contacted"
+  | "inspection_scheduled"
+  | "estimate_in_progress"
+  | "estimate_sent"
+  | "won"
+  | "lost"
+  | "archived";
+
+export type RoofingService =
+  | "roof_replacement"
+  | "roof_repair"
+  | "storm_damage"
+  | "new_construction"
+  | "inspection"
+  | "commercial_roofing"
+  | "gutters"
+  | "other";
+
+export type CustomerLead = {
+  id: ID;
+  organizationId: ID;
+  status: LeadStatus;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  preferredContact: "phone" | "text" | "email";
+  propertyAddress: Address;
+  service: RoofingService;
+  propertyType: "residential" | "commercial" | "multifamily" | "other";
+  urgency: "emergency" | "within_week" | "within_month" | "planning";
+  message?: string;
+  insuranceClaimStarted?: boolean;
+  referralSource?: string;
+  consentToContact: boolean;
+  source: "website" | "phone" | "referral" | "walk_in" | "other";
+  assignedEmployeeId?: ID | null;
+  linkedCustomerId?: ID | null;
+  linkedJobId?: ID | null;
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
+  lastContactedAt?: FirestoreTime;
+};
+
+export type CustomerRecord = {
+  id: ID;
+  organizationId: ID;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  preferredContact?: "phone" | "text" | "email";
+  billingAddress?: Address;
+  propertyIds: ID[];
+  activeJobIds: ID[];
+  tags: string[];
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
+};
+
+export type ProjectType =
+  | "replacement"
+  | "repair"
+  | "storm_restoration"
+  | "new_install"
+  | "commercial"
+  | "maintenance";
+
+export type EstimateStatus =
+  | "lead_received"
+  | "inspection_scheduled"
+  | "inspection_complete"
+  | "draft"
+  | "internal_review"
+  | "ready_to_send"
+  | "sent"
+  | "viewed"
+  | "revising"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "cancelled"
+  | "converted_to_contract";
+
+export type RoofingUnit =
+  | "EA"
+  | "SQ"
+  | "SF"
+  | "LF"
+  | "HR"
+  | "DAY"
+  | "LS"
+  | "TON"
+  | "SHEET"
+  | "GAL"
+  | "ROLL"
+  | "BUNDLE"
+  | "OTHER";
+
+export type EstimateLineItem = {
+  id: ID;
+  code?: string | null;
+  category: string;
+  title: string;
+  customerDescription: string;
+  internalDescription?: string | null;
+  quantity: number;
+  unit: RoofingUnit;
+  unitCostCents?: number | null;
+  unitPriceCents: number;
+  lineTotalCents: number;
+  wastePercent?: number | null;
+  discountCents: number;
+  pricingMode:
+    | "fixed"
+    | "unit_price"
+    | "allowance"
+    | "time_and_material"
+    | "no_charge"
+    | "included";
+  selectionType:
+    | "base"
+    | "required"
+    | "optional"
+    | "alternate"
+    | "upgrade"
+    | "credit";
+  selected: boolean;
+  customerVisible: boolean;
+  taxable?: boolean | null;
+  source: "manual" | "template" | "measurement" | "carrier" | "catalog";
+};
+
+export type EstimateRecord = {
+  id: ID;
+  organizationId: ID;
+  jobId: ID;
+  customerId?: ID | null;
+  number: string;
+  version: number;
+  status: EstimateStatus;
+  documentType: "estimate" | "quote" | "proposal" | "bid";
+  validUntil?: string | null;
+  lineItems: EstimateLineItem[];
+  subtotalCents: number;
+  discountCents: number;
+  taxCents: number;
+  totalCents: number;
+  depositCents?: number;
+  assumptions: string[];
+  exclusions: string[];
+  acceptedAt?: FirestoreTime;
+  frozenSnapshotHash?: string | null;
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
+};
+
+export type InvoiceWorkflowStatus =
+  | "draft"
+  | "internal_review"
+  | "approved"
+  | "issued"
+  | "sent"
+  | "viewed"
+  | "partially_paid"
+  | "paid"
+  | "past_due"
+  | "disputed"
+  | "void"
+  | "refunded";
+
+export type WarrantyPacketType =
+  | "RESIDENTIAL_STANDARD_CLOSEOUT"
+  | "RESIDENTIAL_INSURANCE_CLOSEOUT"
+  | "RESIDENTIAL_REPAIR_WARRANTY"
+  | "COMMERCIAL_ROOF_CLOSEOUT"
+  | "NEW_CONSTRUCTION_ROOF_CLOSEOUT"
+  | "MANUFACTURER_ENHANCED_WARRANTY_PACKET"
+  | "WORKMANSHIP_ONLY_PACKET"
+  | "SERVICE_REPAIR_COMPLETION_PACKET"
+  | "CUSTOM_PACKET";
+
+export type WarrantyPacketSectionStatus =
+  | "ready"
+  | "missing"
+  | "not_applicable"
+  | "needs_review";
+
+export type WarrantyPacketSection = {
+  key: string;
+  title: string;
+  status: WarrantyPacketSectionStatus;
+  required: boolean;
+  documentIds: ID[];
+  note?: string;
+};
+
+export type WarrantyPacketRecord = {
+  id: ID;
+  organizationId: ID;
+  jobId: ID;
+  customerId?: ID | null;
+  type: WarrantyPacketType;
+  version: number;
+  status: "draft" | "internal_review" | "ready" | "delivered" | "superseded";
+  issueDate?: string | null;
+  completionDate?: string | null;
+  propertyAddressSnapshot: Address;
+  customerNameSnapshot: string;
+  sections: WarrantyPacketSection[];
+  workmanshipWarrantyId?: ID | null;
+  manufacturerWarrantyIds: ID[];
+  generatedFileId?: ID | null;
+  deliveredAt?: FirestoreTime;
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
+};
+
+export type RoofingMaterialCategory =
+  | "FIELD_ROOFING"
+  | "STARTER"
+  | "HIP_RIDGE_CAP"
+  | "UNDERLAYMENT"
+  | "LEAK_BARRIER"
+  | "DECKING"
+  | "STRUCTURAL_LUMBER"
+  | "INSULATION"
+  | "COVER_BOARD"
+  | "FLASHING"
+  | "EDGE_METAL"
+  | "SHEET_METAL"
+  | "PENETRATION_ACCESSORY"
+  | "VENTILATION"
+  | "FASTENER"
+  | "ADHESIVE"
+  | "SEALANT"
+  | "PRIMER"
+  | "CLEANER"
+  | "TAPE"
+  | "COATING"
+  | "DRAINAGE"
+  | "GUTTER"
+  | "SKYLIGHT"
+  | "ROOF_ACCESSORY"
+  | "TEMPORARY_PROTECTION"
+  | "SAFETY_CONSUMABLE"
+  | "CLEANUP_SUPPLY"
+  | "DELIVERY"
+  | "FREIGHT"
+  | "STOCKING"
+  | "DISPOSAL"
+  | "RENTAL"
+  | "WARRANTY_FEE"
+  | "PERMIT_FEE"
+  | "MISCELLANEOUS";
+
+export type MaterialCatalogItem = {
+  id: ID;
+  organizationId: ID;
+  active: boolean;
+  internalCode: string;
+  category: RoofingMaterialCategory;
+  genericName: string;
+  displayName: string;
+  manufacturer?: string | null;
+  productLine?: string | null;
+  sku?: string | null;
+  color?: string | null;
+  purchaseUnit: RoofingUnit;
+  usageUnit: RoofingUnit;
+  purchaseToUsageConversion?: number | null;
+  coverageQuantity?: number | null;
+  coverageUnit?: RoofingUnit | null;
+  roofSystemCompatibility: string[];
+  warrantyPrograms: string[];
+  requiredForWarranty: boolean;
+  returnableDefault?: boolean | null;
+  specialOrderDefault: boolean;
+  defaultWastePercent?: number | null;
+  preferredSupplierId?: ID | null;
+  defaultCostCents?: number | null;
+  defaultSellPriceCents?: number | null;
+  costUpdatedAt?: FirestoreTime;
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
+};
+
+export type JobMaterialActual = {
+  id: ID;
+  organizationId: ID;
+  jobId: ID;
+  catalogItemId?: ID | null;
+  descriptionSnapshot: string;
+  manufacturerSnapshot?: string | null;
+  productSnapshot?: string | null;
+  colorSnapshot?: string | null;
+  purchaseUnit: RoofingUnit;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  installedQuantity?: number | null;
+  returnedToSupplierQuantity: number;
+  returnedToInventoryQuantity: number;
+  wastedQuantity?: number | null;
+  grossPurchaseCostCents: number;
+  taxCents: number;
+  freightCents: number;
+  deliveryCents: number;
+  stockingCents: number;
+  surchargeCents: number;
+  restockingFeeCents: number;
+  supplierCreditsCents: number;
+  rebatesCents: number;
+  netActualCostCents: number;
+  supplierId?: ID | null;
+  supplierInvoiceId?: ID | null;
+  lotOrBatch?: string | null;
+  installedAt?: FirestoreTime;
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
+};
+
+export const MATERIAL_CATEGORY_LABELS: Record<RoofingMaterialCategory, string> = {
+  FIELD_ROOFING: "Field roofing",
+  STARTER: "Starter",
+  HIP_RIDGE_CAP: "Hip & ridge cap",
+  UNDERLAYMENT: "Underlayment",
+  LEAK_BARRIER: "Leak barrier",
+  DECKING: "Decking",
+  STRUCTURAL_LUMBER: "Structural lumber",
+  INSULATION: "Insulation",
+  COVER_BOARD: "Cover board",
+  FLASHING: "Flashing",
+  EDGE_METAL: "Edge metal",
+  SHEET_METAL: "Sheet metal",
+  PENETRATION_ACCESSORY: "Penetrations",
+  VENTILATION: "Ventilation",
+  FASTENER: "Fasteners",
+  ADHESIVE: "Adhesives",
+  SEALANT: "Sealants",
+  PRIMER: "Primer",
+  CLEANER: "Cleaner",
+  TAPE: "Tape",
+  COATING: "Coatings",
+  DRAINAGE: "Drainage",
+  GUTTER: "Gutters",
+  SKYLIGHT: "Skylights",
+  ROOF_ACCESSORY: "Roof accessories",
+  TEMPORARY_PROTECTION: "Temporary protection",
+  SAFETY_CONSUMABLE: "Safety consumables",
+  CLEANUP_SUPPLY: "Cleanup supplies",
+  DELIVERY: "Delivery",
+  FREIGHT: "Freight",
+  STOCKING: "Rooftop stocking",
+  DISPOSAL: "Disposal",
+  RENTAL: "Rental",
+  WARRANTY_FEE: "Warranty fee",
+  PERMIT_FEE: "Permit fee",
+  MISCELLANEOUS: "Miscellaneous",
+};
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  new: "New",
+  contacted: "Contacted",
+  inspection_scheduled: "Inspection scheduled",
+  estimate_in_progress: "Estimate in progress",
+  estimate_sent: "Estimate sent",
+  won: "Won",
+  lost: "Lost",
+  archived: "Archived",
+};

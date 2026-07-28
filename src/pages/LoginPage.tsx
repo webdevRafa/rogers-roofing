@@ -1,178 +1,177 @@
-// src/pages/LoginPage.tsx
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-
-import roofing from "../assets/roofing.webp";
-import logo from "../assets/rogers-roofing-logo-hero.png";
-import { Eye, EyeOff } from "lucide-react";
-
-// Assumes you export `auth` from ../firebase/firebaseConfig
-import { auth } from "../firebase/firebaseConfig";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
-import { db } from "../firebase/firebaseConfig";
+import { collection, getDocs, limit, query, where } from "firebase/firestore";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  ShieldCheck,
+} from "lucide-react";
 
-const LoginPage = () => {
+import { auth, db } from "../firebase/firebaseConfig";
+import logo from "../assets/rogers-roofing.webp";
+import worksite from "../assets/AdobeStock_356783144.webp";
+
+type EmployeeAccess = {
+  accessRole?: string;
+};
+
+function messageFromError(error: unknown): string {
+  const code =
+    typeof error === "object" && error && "code" in error
+      ? String(error.code)
+      : "";
+  if (code === "auth/invalid-credential") return "Invalid email or password.";
+  if (code === "auth/too-many-requests") {
+    return "Too many attempts. Please wait a moment and try again.";
+  }
+  return "We could not sign you in. Check your details and try again.";
+}
+
+export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleEmailLogin(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setErr(null);
+  async function handleEmailLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
     setSubmitting(true);
+
     try {
-      const cred = await signInWithEmailAndPassword(
+      const credential = await signInWithEmailAndPassword(
         auth,
         email.trim(),
         password
       );
-      const user = cred.user;
+      const employeeQuery = query(
+        collection(db, "employees"),
+        where("userId", "==", credential.user.uid),
+        limit(1)
+      );
+      const employeeSnapshot = await getDocs(employeeQuery);
+      const employee = employeeSnapshot.empty
+        ? null
+        : (employeeSnapshot.docs[0].data() as EmployeeAccess);
 
-      // Fetch employee record to determine access role
-      let accessRole: string | undefined;
-      try {
-        const q = query(
-          collection(db, "employees"),
-          where("userId", "==", user.uid),
-          limit(1)
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const data: any = snap.docs[0].data();
-          accessRole = data.accessRole;
-        }
-      } catch (e) {
-        // ignore errors and fall back to default
-        console.error("Failed to fetch employee record", e);
-      }
-
-      // ✅ redirect back to invite or to proper dashboard based on role
       if (redirect) {
         navigate(redirect, { replace: true });
-      } else if (accessRole === "admin" || accessRole === "manager") {
+      } else if (
+        employee?.accessRole === "admin" ||
+        employee?.accessRole === "manager"
+      ) {
         navigate("/dashboard", { replace: true });
       } else {
         navigate("/crew", { replace: true });
       }
-    } catch (error: any) {
-      const msg =
-        error?.code === "auth/invalid-credential"
-          ? "Invalid email or password."
-          : error?.message || "Login failed. Please try again.";
-      setErr(msg);
+    } catch (caught) {
+      setError(messageFromError(caught));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <>
-      <div className="w-full h-[100vh] flex flex-col  items-center justify-center relative">
-        <div className="bg-gradient-to-tr from-[var(--color-brown-hover)] via-[var(--color-brown)] to-[var(--color-logo)]   w-full h-full "></div>
-        {/* login box */}
-        <div className="bg-white  w-full max-w-[600px] h-[800px] pb-6  select-none flex flex-col md:flex-row items-center justify-center">
+    <main className="login-page">
+      <section className="login-visual">
+        <img src={worksite} alt="Aerial view of a roofing installation" />
+        <div className="login-visual-shade" />
+        <Link className="login-back-link" to="/">
+          <ArrowLeft size={16} />
+          Back to public website
+        </Link>
+        <div className="login-visual-copy">
+          <span>Roger&apos;s Roofing operations</span>
+          <h1>Every project detail, under one roof.</h1>
+          <p>
+            Manage leads, jobs, materials, crews, payouts, estimates, invoices,
+            and warranty closeout from one secure workspace.
+          </p>
           <div>
-            <img
-              className="max-h-[300px] mx-auto  mb-0 bg-white"
-              src={logo}
-              alt="Rogers Roofing"
-            />
+            <ShieldCheck size={18} />
+            Authorized team members only
+          </div>
+        </div>
+      </section>
 
-            {/* Error */}
-            {err && (
-              <div className="mx-5 mb-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 px-3 py-2 text-sm">
-                {err}
-              </div>
-            )}
+      <section className="login-panel">
+        <div className="login-form-wrap">
+          <div className="login-brand">
+            <img src={logo} alt="Roger's Roofing & Contracting LLC" />
+            <div>
+              <strong>Roger&apos;s Roofing</strong>
+              <span>&amp; Contracting LLC</span>
+            </div>
           </div>
 
-          {/* Email / Password */}
-          <form onSubmit={handleEmailLogin} className="px-5 space-y-3">
-            <div className="space-y-1.5">
-              <label
-                htmlFor="email"
-                className="text-xs uppercase tracking-wide "
-              >
-                Email
-              </label>
+          <div className="login-heading">
+            <span>Admin workspace</span>
+            <h2>Welcome back.</h2>
+            <p>Sign in with the account provided by your administrator.</p>
+          </div>
+
+          <form onSubmit={handleEmailLogin}>
+            <label>
+              Email address
               <input
-                id="email"
                 type="email"
                 autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg bg-neutral-100/60 border border-white/10 px-3 py-2 outline-none focus:border-white/30"
-                placeholder="you@example.com"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@company.com"
               />
-            </div>
+            </label>
 
-            <div className="space-y-1.5">
-              <label
-                htmlFor="password"
-                className="text-xs uppercase tracking-wide "
-              >
-                Password
-              </label>
-
-              {/* Wrapper so we can position the eye icon inside the input */}
-              <div className="relative">
+            <label>
+              Password
+              <span className="login-password-field">
                 <input
-                  id="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg bg-neutral-100/60 border border-white/10 px-3 py-2 pr-10 outline-none focus:border-white/30"
-                  placeholder="••••••••"
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Enter your password"
                 />
-
-                {/* Eye toggle button */}
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-500 hover:text-neutral-800 focus:outline-none"
+                  onClick={() => setShowPassword((value) => !value)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
-              </div>
-            </div>
+              </span>
+            </label>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="mt-2 mx-auto select-none cursor-pointer hover:scale-105 hover:drop-shadow-lg  rounded-xs block px-4 py-2.5 text-xs bg-[var(--color-brown)] text-white hover:bg-[var(--color-brown-hover)] transition duration-300 ease-in-out disabled:opacity-80 disabled:cursor-not-allowed"
-            >
-              {submitting ? "Signing in…" : "Sign in"}
+            {error && (
+              <div className="login-error" role="alert">
+                {error}
+              </div>
+            )}
+
+            <button className="login-submit" type="submit" disabled={submitting}>
+              <LockKeyhole size={17} />
+              {submitting ? "Signing in…" : "Sign in to workspace"}
+              {!submitting && <ArrowRight size={17} />}
             </button>
           </form>
-        </div>
 
-        {/* Background image */}
-        <div className="w-full  h-[60vh] md:h-[100vh] absolute top-0 left-0 z-[-1] overflow-hidden blur-[5px] hidden">
-          <img
-            className="w-full h-full object-cover"
-            src={roofing}
-            alt="Roofing"
-          />
+          <p className="login-help">
+            Need access? Ask an owner or administrator to invite you as a team
+            member.
+          </p>
         </div>
-      </div>
-    </>
+      </section>
+    </main>
   );
-};
-
-export default LoginPage;
+}
