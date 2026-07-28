@@ -67,55 +67,55 @@ const services = [
   {
     icon: Home,
     title: "Roof replacement",
-    copy: "A complete, clearly scoped replacement plan built around the home, roof system, and long-term performance.",
+    copy: "A straightforward replacement plan based on your roof's condition, your home, and the materials that fit the job.",
   },
   {
     icon: Wrench,
     title: "Roof repair",
-    copy: "Focused diagnostics and repair work for leaks, flashing, penetrations, storm damage, and isolated failures.",
+    copy: "Practical repairs for leaks, flashing, vents, storm damage, and other problem areas—without pushing work you do not need.",
   },
   {
     icon: ShieldCheck,
-    title: "Storm restoration",
-    copy: "Documented inspections, photo evidence, and a practical plan for restoring weather-damaged roofing systems.",
+    title: "Storm damage",
+    copy: "A careful inspection, helpful photos, and a clear repair plan after hail, wind, or severe weather.",
   },
   {
     icon: Ruler,
-    title: "New installation",
-    copy: "Roofing systems for additions and new construction, coordinated from material selection through closeout.",
+    title: "New roof installation",
+    copy: "Roofing for additions and new construction, coordinated from material selection through the final walkthrough.",
   },
   {
     icon: ClipboardCheck,
     title: "Roof inspections",
-    copy: "A thorough review of condition, ventilation, details, and visible risk areas before you make a decision.",
+    copy: "A thorough look at the roof, ventilation, flashing, and visible trouble spots so you can make an informed decision.",
   },
   {
     icon: HardHat,
     title: "Commercial roofing",
-    copy: "Organized project documentation and service planning for light-commercial and managed properties.",
+    copy: "Responsive roofing service and clear project planning for small commercial and managed properties.",
   },
 ];
 
 const processSteps = [
   {
     number: "01",
-    title: "Tell us what is happening",
-    copy: "Share the property address, the service you need, and any leak or storm details you already know.",
+    title: "Tell us what is going on",
+    copy: "Share the property address, what you have noticed, and whether a leak or recent storm is involved.",
   },
   {
     number: "02",
-    title: "We inspect and document",
-    copy: "The roof is evaluated, measurements and conditions are recorded, and the right scope is developed.",
+    title: "We inspect the roof",
+    copy: "We look at the roof's condition, take measurements and photos, and explain what we find.",
   },
   {
     number: "03",
-    title: "You receive a clear plan",
-    copy: "Your estimate explains the work, selected materials, options, assumptions, and next steps without guesswork.",
+    title: "Review your options",
+    copy: "You receive a clear estimate with the recommended work, materials, pricing, and next steps.",
   },
   {
     number: "04",
-    title: "We build and close out",
-    copy: "The project stays organized through installation, quality checks, final billing, and warranty documentation.",
+    title: "We complete the work",
+    copy: "We keep you informed through installation, cleanup, final review, billing, and warranty paperwork.",
   },
 ];
 
@@ -251,8 +251,8 @@ export default function PublicHomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.85, delay: 0.16 }}
             >
-              Thoughtful inspections, clear estimates, and organized project
-              delivery for roof replacements, repairs, and new installations.
+              Straightforward inspections, detailed estimates, and dependable
+              roofing work for repairs, replacements, and new construction.
             </motion.p>
             <motion.div
               className="public-hero-actions"
@@ -261,7 +261,7 @@ export default function PublicHomePage() {
               transition={{ duration: 0.85, delay: 0.24 }}
             >
               <a className="public-button" href="#estimate">
-                Schedule a free estimate
+                Request a free estimate
                 <ArrowRight size={18} />
               </a>
               <a className="public-text-link public-text-link-light" href="#services">
@@ -281,8 +281,10 @@ export default function PublicHomePage() {
               <ShieldCheck size={20} />
             </span>
             <div>
-              <small>A complete project record</small>
-              <strong>From first inspection to warranty closeout.</strong>
+              <small>You will know what comes next</small>
+              <strong>
+                Clear updates from inspection through final cleanup.
+              </strong>
             </div>
           </motion.aside>
         </section>
@@ -290,16 +292,16 @@ export default function PublicHomePage() {
         <div className="public-content-shell">
           <section className="public-trust-strip" aria-label="Service qualities">
           <span>
-            <Check size={16} /> Detailed written scopes
+            <Check size={16} /> Clear written estimates
           </span>
           <span>
-            <Check size={16} /> Material transparency
+            <Check size={16} /> Materials explained
           </span>
           <span>
-            <Check size={16} /> Photo documentation
+            <Check size={16} /> Progress photos
           </span>
           <span>
-            <Check size={16} /> Professional closeout
+            <Check size={16} /> Final walkthrough
           </span>
           </section>
 
@@ -307,12 +309,15 @@ export default function PublicHomePage() {
           <Reveal className="public-section-heading">
             <div>
               <span className="public-eyebrow">Built for South Texas homes</span>
-              <h2>The right roofing service, clearly explained.</h2>
+              <h2>
+                Roofing help that fits the problem—not a one-size-fits-all
+                pitch.
+              </h2>
             </div>
             <p>
-              Every property is different. We start with the condition in front
-              of us, then build the scope and material plan the roof actually
-              needs.
+              Every roof is different. We inspect the actual condition, explain
+              what we find, and recommend the work and materials that make sense
+              for your property.
             </p>
           </Reveal>
 
@@ -331,8 +336,11 @@ export default function PublicHomePage() {
                   <Icon size={26} strokeWidth={1.6} />
                   <h3>{service.title}</h3>
                   <p>{service.copy}</p>
-                  <a href="#estimate" aria-label={`Ask about ${service.title}`}>
-                    Ask about this service <ArrowUpRight size={15} />
+                  <a
+                    href="#estimate"
+                    aria-label={`Talk to us about ${service.title}`}
+                  >
+                    Talk to us about it <ArrowUpRight size={15} />
                   </a>
                 </Reveal>
               );
@@ -347,36 +355,38 @@ export default function PublicHomePage() {
               alt="Roofing professional installing architectural shingles"
             />
             <span className="public-image-caption">
-              Careful installation at every course
+              Careful workmanship at every course
             </span>
           </Reveal>
           <Reveal className="public-story-copy" delay={0.1}>
             <span className="public-eyebrow public-eyebrow-light">
-              More than a roof covering
+              Built as a complete system
             </span>
-            <h2>Details below the surface determine how a roof performs.</h2>
+            <h2>A roof performs best when every layer works together.</h2>
             <p>
-              A dependable roofing system is a coordinated assembly: decking,
-              leak barriers, underlayment, ventilation, flashing, fasteners,
-              shingles, and the workmanship that brings them together.
+              A dependable roof is more than shingles. Decking, underlayment,
+              leak barriers, ventilation, flashing, fasteners, and careful
+              installation all work together to protect the building below.
             </p>
             <ul>
               <li>
                 <span>01</span>
-                Existing conditions are documented before the scope is finalized.
+                We document the roof&apos;s current condition before recommending
+                work.
               </li>
               <li>
                 <span>02</span>
-                Materials and system components are identified, not reduced to a
-                single generic line item.
+                We explain the materials we recommend and why they belong in the
+                system.
               </li>
               <li>
                 <span>03</span>
-                Completion records support future service and warranty needs.
+                When the job is complete, you receive the records needed for
+                future service and warranty questions.
               </li>
             </ul>
             <a className="public-text-link public-text-link-light" href="#process">
-              See how the process works <ArrowRight size={16} />
+              See what working with us looks like <ArrowRight size={16} />
             </a>
           </Reveal>
           </section>
@@ -384,8 +394,8 @@ export default function PublicHomePage() {
           <section className="public-section public-process" id="process">
           <Reveal className="public-section-heading public-section-heading-narrow">
             <div>
-              <span className="public-eyebrow">A calmer project experience</span>
-              <h2>One clear path from question to completion.</h2>
+              <span className="public-eyebrow">What to expect</span>
+              <h2>A clear process from first call to final walkthrough.</h2>
             </div>
           </Reveal>
           <div className="public-process-layout">
@@ -405,8 +415,9 @@ export default function PublicHomePage() {
               <div>
                 <Sparkles size={18} />
                 <span>
-                  <small>Organized project delivery</small>
-                  Photos, materials, costs, documents, and closeout in one record.
+                  <small>The details stay organized</small>
+                  Photos, selections, pricing, and paperwork stay connected to
+                  your project.
                 </span>
               </div>
             </Reveal>
@@ -418,31 +429,31 @@ export default function PublicHomePage() {
             <span className="public-eyebrow public-eyebrow-light">
               What you can expect
             </span>
-            <h2>Professional communication at every stage.</h2>
+            <h2>Clear communication from start to finish.</h2>
           </Reveal>
           <div className="public-proof-grid">
             <Reveal>
               <FileCheck2 />
-              <h3>Clear documents</h3>
+              <h3>Straightforward paperwork</h3>
               <p>
-                Estimates and invoices are itemized, readable, and connected to
-                the job they describe.
+                Estimates and invoices are itemized, easy to read, and specific
+                to the work on your property.
               </p>
             </Reveal>
             <Reveal delay={0.06}>
               <CalendarCheck />
-              <h3>Visible next steps</h3>
+              <h3>No guessing about next steps</h3>
               <p>
-                Scheduling, selections, outstanding decisions, and closeout
-                requirements stay organized.
+                We explain timing, material choices, open questions, and what
+                needs to happen next.
               </p>
             </Reveal>
             <Reveal delay={0.12}>
               <Hammer />
-              <h3>Job-level accountability</h3>
+              <h3>Care from start to finish</h3>
               <p>
-                Work, materials, photos, costs, and warranty evidence remain
-                connected to the property.
+                The work, materials, photos, costs, and warranty information
+                stay tied to your project.
               </p>
             </Reveal>
           </div>
@@ -451,20 +462,22 @@ export default function PublicHomePage() {
           <section className="public-estimate" id="estimate">
           <Reveal className="public-estimate-intro">
             <span className="public-eyebrow">Start with a free estimate</span>
-            <h2>Tell us about your roof.</h2>
+            <h2>Tell us what is going on with your roof.</h2>
             <p>
-              Share a few details and our team can follow up to understand the
-              property, the urgency, and the right next step.
+              Share the address and a few details about what you have noticed.
+              We will review your request and follow up about the best next
+              step.
             </p>
             <div className="public-estimate-points">
               <span>
-                <Check /> No-cost estimate request
+                <Check /> Free, no-obligation estimate request
               </span>
               <span>
-                <Check /> Residential and commercial inquiries
+                <Check /> Homes and small commercial properties
               </span>
               <span>
-                <Check /> Repair, replacement, storm, and new-build work
+                <Check /> Repairs, replacements, storm damage, and new
+                construction
               </span>
             </div>
           </Reveal>
@@ -480,25 +493,24 @@ export default function PublicHomePage() {
                   <Check size={28} />
                 </span>
                 <small>Request {confirmation.requestNumber}</small>
-                <h3>Your estimate request is safely in our queue.</h3>
+                <h3>We received your estimate request.</h3>
                 <p>
-                  Thank you. A member of Roger&apos;s Roofing &amp; Contracting
-                  will review the details and follow up using your preferred
-                  contact method.
+                  Thank you. Our team will review the details and contact you
+                  using the method you selected.
                 </p>
                 <div className="public-success-timeline">
                   <div className="is-complete">
                     <strong>1</strong>
                     <span>
                       <b>Request received</b>
-                      Saved securely
+                      Details saved
                     </span>
                   </div>
                   <div>
                     <strong>2</strong>
                     <span>
                       <b>Team review</b>
-                      Scope and timing
+                      We look it over
                     </span>
                   </div>
                   <div>
@@ -514,7 +526,7 @@ export default function PublicHomePage() {
                   records.
                 </p>
                 <button type="button" onClick={() => setConfirmation(null)}>
-                  Submit another property
+                  Request an estimate for another property
                 </button>
               </div>
             ) : (
@@ -665,8 +677,8 @@ export default function PublicHomePage() {
                   {!submitting && <ArrowRight size={18} />}
                 </button>
                 <p className="public-form-note">
-                  Submitting a request does not create a contract or guarantee
-                  coverage, price, or appointment availability.
+                  Sending this form does not create a contract or guarantee
+                  pricing, coverage, or appointment availability.
                 </p>
               </form>
             )}
