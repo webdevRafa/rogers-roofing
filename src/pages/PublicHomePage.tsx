@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
 import { httpsCallable } from "firebase/functions";
 import {
   ArrowRight,
@@ -307,9 +306,6 @@ export default function PublicHomePage() {
               {item.label}
             </a>
           ))}
-          <Link className="public-nav-login" to="/login">
-            Admin sign in
-          </Link>
         </nav>
 
         <div className="public-header-actions">
@@ -374,14 +370,6 @@ export default function PublicHomePage() {
                     <ArrowRight size={15} />
                   </a>
                 ))}
-                <Link
-                  className="public-nav-login"
-                  to="/login"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Admin sign in
-                  <ArrowRight size={15} />
-                </Link>
               </motion.div>
             </motion.nav>
           )}
@@ -856,7 +844,6 @@ export default function PublicHomePage() {
           <a href="#services">Services</a>
           <a href="#process">Process</a>
           <a href="#estimate">Free estimate</a>
-          <Link to="/login">Admin sign in</Link>
         </div>
         <p>
           © {new Date().getFullYear()} Roger&apos;s Roofing &amp; Contracting

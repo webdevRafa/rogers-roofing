@@ -217,7 +217,7 @@ img {
   transition: color 180ms ease;
 }
 
-.public-nav a:not(.public-nav-login)::after {
+.public-nav a::after {
   position: absolute;
   right: 0;
   bottom: -7px;
@@ -235,10 +235,6 @@ img {
 
 .public-nav a:hover::after {
   transform: scaleX(1);
-}
-
-.public-nav-login {
-  display: none;
 }
 
 .public-mobile-nav {
@@ -5095,11 +5091,6 @@ img {
 
   .public-mobile-nav a:last-child {
     border-bottom: 0;
-  }
-
-  .public-mobile-nav .public-nav-login {
-    display: flex;
-    color: #f3d7a6;
   }
 
   .public-hero {
