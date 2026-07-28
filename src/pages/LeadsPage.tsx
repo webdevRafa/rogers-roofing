@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   CalendarPlus,
@@ -81,6 +81,7 @@ function projectTypeFromService(service: RoofingService): ProjectType {
 
 export default function LeadsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { orgId, loading: orgLoading } = useOrg();
   const [leads, setLeads] = useState<CustomerLead[]>([]);
   const [search, setSearch] = useState("");
@@ -116,6 +117,28 @@ export default function LeadsPage() {
       }
     );
   }, [orgId]);
+
+  const requestedLeadId = searchParams.get("request");
+
+  useEffect(() => {
+    if (!requestedLeadId) return;
+    const requestedLead = leads.find((lead) => lead.id === requestedLeadId);
+    if (requestedLead) setSelected(requestedLead);
+  }, [leads, requestedLeadId]);
+
+  function openRequest(lead: CustomerLead) {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("request", lead.id);
+    setSearchParams(nextParams, { replace: true });
+    setSelected(lead);
+  }
+
+  function closeRequest() {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("request");
+    setSearchParams(nextParams, { replace: true });
+    setSelected(null);
+  }
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -225,7 +248,7 @@ export default function LeadsPage() {
       <div className="admin-loading">
         <div>
           <span />
-          Loading leads…
+          Loading estimate requests…
         </div>
       </div>
     );
@@ -236,16 +259,17 @@ export default function LeadsPage() {
       <div className="admin-content-width">
         <header className="admin-page-header">
           <div>
-            <span className="admin-kicker">Lead pipeline</span>
-            <h1>Customer inquiries</h1>
+            <span className="admin-kicker">Estimate request pipeline</span>
+            <h1>Estimate requests</h1>
             <p>
-              Qualify website requests, document follow-up, schedule inspections,
-              and convert approved opportunities into jobs.
+              Every request from the public website is saved here in real time.
+              Qualify the project, schedule an inspection, and convert approved
+              opportunities into jobs.
             </p>
           </div>
           <div className="leads-summary">
             <span>{leads.filter((lead) => lead.status === "new").length}</span>
-            new inquiries
+            new requests
           </div>
         </header>
 
@@ -274,7 +298,8 @@ export default function LeadsPage() {
               ))}
             </select>
             <span className="admin-toolbar-count">
-              {filtered.length} {filtered.length === 1 ? "lead" : "leads"}
+              {filtered.length}{" "}
+              {filtered.length === 1 ? "request" : "requests"}
             </span>
           </div>
 
@@ -284,7 +309,7 @@ export default function LeadsPage() {
             <div className="admin-empty">
               <div>
                 <UserRoundSearch size={34} />
-                <strong>No matching leads</strong>
+                <strong>No matching estimate requests</strong>
                 <p>
                   New estimate requests submitted through the public website
                   will appear here.
@@ -311,7 +336,7 @@ export default function LeadsPage() {
                         <button
                           className="admin-table-primary"
                           type="button"
-                          onClick={() => setSelected(lead)}
+                          onClick={() => openRequest(lead)}
                         >
                           <span>
                             {lead.firstName.charAt(0)}
@@ -360,7 +385,7 @@ export default function LeadsPage() {
                         <button
                           className="admin-row-button"
                           type="button"
-                          onClick={() => setSelected(lead)}
+                          onClick={() => openRequest(lead)}
                           aria-label={`View ${lead.firstName} ${lead.lastName}`}
                         >
                           <ArrowRight size={16} />
@@ -380,18 +405,22 @@ export default function LeadsPage() {
           <button
             className="admin-drawer-scrim"
             type="button"
-            onClick={() => setSelected(null)}
-            aria-label="Close lead details"
+            onClick={closeRequest}
+            aria-label="Close estimate request details"
           />
           <aside className="admin-drawer leads-drawer">
             <div className="admin-drawer-header">
               <div>
-                <span>Lead details</span>
+                <span>
+                  {selected.requestNumber
+                    ? `Request ${selected.requestNumber}`
+                    : "Estimate request"}
+                </span>
                 <h2>
                   {selected.firstName} {selected.lastName}
                 </h2>
               </div>
-              <button type="button" onClick={() => setSelected(null)}>
+              <button type="button" onClick={closeRequest}>
                 ×
               </button>
             </div>
@@ -464,6 +493,10 @@ export default function LeadsPage() {
                 <div>
                   <dt>Source</dt>
                   <dd>{selected.source}</dd>
+                </div>
+                <div>
+                  <dt>Reference</dt>
+                  <dd>{selected.requestNumber || selected.id.slice(0, 8)}</dd>
                 </div>
                 <div>
                   <dt>Received</dt>

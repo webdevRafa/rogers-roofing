@@ -23,6 +23,9 @@ export type RoofingService =
 export type CustomerLead = {
   id: ID;
   organizationId: ID;
+  orgId?: ID;
+  requestNumber?: string;
+  requestType?: "estimate_request";
   status: LeadStatus;
   firstName: string;
   lastName: string;

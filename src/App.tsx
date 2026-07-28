@@ -1,5 +1,5 @@
 // src/App.tsx
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import "./index.css";
 
 import LoginPage from "./pages/LoginPage";
@@ -50,6 +50,7 @@ export default function App() {
               </AdminGuard>
             }
           >
+            <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<AdminOverviewPage />} />
             <Route path="/invoices-page" element={<InvoicesPage />} />
             <Route

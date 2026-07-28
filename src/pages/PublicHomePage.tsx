@@ -43,6 +43,12 @@ type LeadFormState = {
   website: string;
 };
 
+type EstimateRequestConfirmation = {
+  leadId: string;
+  requestNumber: string;
+  status: "new";
+};
+
 const initialLead: LeadFormState = {
   firstName: "",
   lastName: "",
@@ -117,7 +123,8 @@ export default function PublicHomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [lead, setLead] = useState(initialLead);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [confirmation, setConfirmation] =
+    useState<EstimateRequestConfirmation | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const { scrollYProgress } = useScroll();
   const heroY = useTransform(scrollYProgress, [0, 0.28], ["0%", "12%"]);
@@ -140,14 +147,20 @@ export default function PublicHomePage() {
 
     setSubmitting(true);
     try {
-      const submit = httpsCallable(functions, "submitWebsiteLead");
-      await submit({
-        organizationId: "rogers-roofing",
+      const submit = httpsCallable<
+        Omit<LeadFormState, "consent"> & {
+          consent: boolean;
+          propertyType: "residential";
+          source: "website";
+        },
+        EstimateRequestConfirmation & { ok: true }
+      >(functions, "submitWebsiteLead");
+      const response = await submit({
         ...lead,
         propertyType: "residential",
         source: "website",
       });
-      setSubmitted(true);
+      setConfirmation(response.data);
       setLead(initialLead);
     } catch (error) {
       console.error("Lead submission failed", error);
@@ -458,18 +471,50 @@ export default function PublicHomePage() {
           </Reveal>
 
           <Reveal className="public-estimate-card" delay={0.12}>
-            {submitted ? (
-              <div className="public-form-success" role="status">
+            {confirmation ? (
+              <div
+                className="public-form-success"
+                role="status"
+                aria-live="polite"
+              >
                 <span>
                   <Check size={28} />
                 </span>
-                <h3>Your request is in.</h3>
+                <small>Request {confirmation.requestNumber}</small>
+                <h3>Your estimate request is safely in our queue.</h3>
                 <p>
                   Thank you. A member of Roger&apos;s Roofing &amp; Contracting
                   will review the details and follow up using your preferred
                   contact method.
                 </p>
-                <button type="button" onClick={() => setSubmitted(false)}>
+                <div className="public-success-timeline">
+                  <div className="is-complete">
+                    <strong>1</strong>
+                    <span>
+                      <b>Request received</b>
+                      Saved securely
+                    </span>
+                  </div>
+                  <div>
+                    <strong>2</strong>
+                    <span>
+                      <b>Team review</b>
+                      Scope and timing
+                    </span>
+                  </div>
+                  <div>
+                    <strong>3</strong>
+                    <span>
+                      <b>Next step</b>
+                      Contact or inspection
+                    </span>
+                  </div>
+                </div>
+                <p className="public-success-reference">
+                  Keep <strong>{confirmation.requestNumber}</strong> for your
+                  records.
+                </p>
+                <button type="button" onClick={() => setConfirmation(null)}>
                   Submit another property
                 </button>
               </div>

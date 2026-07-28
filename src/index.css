@@ -1023,11 +1023,22 @@ img {
   color: white;
 }
 
+.public-form-success > small {
+  margin-top: 18px;
+  color: var(--red);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
 .public-form-success h3 {
-  margin: 26px 0 12px;
+  max-width: 600px;
+  margin: 12px 0;
   font-family: "griffon", Georgia, serif;
-  font-size: 42px;
+  font-size: clamp(34px, 5vw, 48px);
   font-weight: 500;
+  line-height: 1.02;
 }
 
 .public-form-success p {
@@ -1035,6 +1046,65 @@ img {
   margin: 0;
   color: var(--muted);
   line-height: 1.7;
+}
+
+.public-success-timeline {
+  display: grid;
+  width: min(590px, 100%);
+  grid-template-columns: repeat(3, 1fr);
+  margin: 30px 0 22px;
+  border: 1px solid var(--line);
+  background: white;
+  text-align: left;
+}
+
+.public-success-timeline > div {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 82px;
+  padding: 15px;
+  border-right: 1px solid var(--line);
+}
+
+.public-success-timeline > div:last-child {
+  border-right: 0;
+}
+
+.public-success-timeline > div > strong {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.public-success-timeline > div.is-complete > strong {
+  border-color: var(--green);
+  background: var(--green);
+  color: white;
+}
+
+.public-success-timeline span {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.public-success-timeline b {
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.public-form-success .public-success-reference {
+  color: var(--ink-soft);
+  font-size: 11px;
 }
 
 .public-form-success button {
@@ -2225,6 +2295,82 @@ img {
   letter-spacing: 0.07em;
   text-decoration: none;
   text-transform: uppercase;
+}
+
+.overview-requests-card {
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.overview-request-list {
+  display: grid;
+}
+
+.overview-request-list > a {
+  display: grid;
+  grid-template-columns:
+    minmax(132px, 0.48fr)
+    minmax(230px, 1.35fr)
+    minmax(170px, 0.8fr)
+    125px
+    105px
+    18px;
+  min-height: 76px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 22px;
+  border-bottom: 1px solid #ebe6dd;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 140ms ease;
+}
+
+.overview-request-list > a:last-child {
+  border-bottom: 0;
+}
+
+.overview-request-list > a:hover {
+  background: #faf7f1;
+}
+
+.overview-request-reference {
+  color: var(--red);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.overview-request-list > a > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.overview-request-list > a > div strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-request-list > a > div small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.overview-request-list time {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.overview-request-list > a > svg {
+  color: #999289;
 }
 
 .overview-job-list {
@@ -4703,6 +4849,15 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .overview-request-list > a {
+    grid-template-columns: minmax(220px, 1.35fr) minmax(170px, 0.8fr) 125px 18px;
+  }
+
+  .overview-request-reference,
+  .overview-request-list time {
+    display: none;
+  }
+
   .public-nav {
     gap: 19px;
   }
@@ -5195,6 +5350,16 @@ img {
     display: none;
   }
 
+  .overview-request-list > a {
+    grid-template-columns: minmax(0, 1fr) auto 18px;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .overview-request-list > a > div:nth-of-type(2) {
+    display: none;
+  }
+
   .overview-finance-values {
     grid-template-columns: 1fr;
   }
@@ -5327,6 +5492,20 @@ img {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
+  }
+
+  .public-success-timeline {
+    grid-template-columns: 1fr;
+  }
+
+  .public-success-timeline > div {
+    min-height: 68px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .public-success-timeline > div:last-child {
+    border-bottom: 0;
   }
 
   .public-footer {

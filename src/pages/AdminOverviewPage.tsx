@@ -70,6 +70,19 @@ function customerName(job: Job): string {
   return extended.customer?.name || "Customer not linked";
 }
 
+function requestServiceLabel(service: CustomerLead["service"]): string {
+  return {
+    roof_replacement: "Roof replacement",
+    roof_repair: "Roof repair",
+    storm_damage: "Storm damage",
+    new_construction: "New construction",
+    inspection: "Roof inspection",
+    commercial_roofing: "Commercial roofing",
+    gutters: "Gutters / drainage",
+    other: "Other service",
+  }[service];
+}
+
 export default function AdminOverviewPage() {
   const { orgId, orgName, loading: orgLoading } = useOrg();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -181,7 +194,7 @@ export default function AdminOverviewPage() {
     const activeJobs = jobs.filter(
       (job) => !["closed", "completed", "archived"].includes(job.status)
     ).length;
-    const openLeads = leads.filter(
+    const openRequests = leads.filter(
       (lead) => !["won", "lost", "archived"].includes(lead.status)
     ).length;
     const unpaidPayouts = payouts
@@ -193,7 +206,7 @@ export default function AdminOverviewPage() {
       netProfit,
       outstanding,
       activeJobs,
-      openLeads,
+      openRequests,
       unpaidPayouts,
     };
   }, [invoices, jobs, leads, payouts]);
@@ -208,6 +221,18 @@ export default function AdminOverviewPage() {
         )
         .slice(0, 6),
     [jobs]
+  );
+
+  const recentRequests = useMemo(
+    () =>
+      [...leads]
+        .sort(
+          (a, b) =>
+            (toDate(b.createdAt)?.getTime() ?? 0) -
+            (toDate(a.createdAt)?.getTime() ?? 0)
+        )
+        .slice(0, 5),
+    [leads]
   );
 
   const upcoming = useMemo(() => {
@@ -284,7 +309,7 @@ export default function AdminOverviewPage() {
           <div className="overview-header-actions">
             <Link className="admin-secondary-button" to="/leads">
               <UserRoundSearch size={16} />
-              Review leads
+              Review requests
             </Link>
             <Link className="admin-primary-button" to="/jobs?create=1">
               <Plus size={16} />
@@ -312,9 +337,9 @@ export default function AdminOverviewPage() {
           </article>
           <article className="overview-metric">
             <div>
-              <span>Open leads</span>
-              <strong>{metrics.openLeads}</strong>
-              <small>Need follow-up or estimating</small>
+              <span>Estimate requests</span>
+              <strong>{metrics.openRequests}</strong>
+              <small>Open and awaiting next steps</small>
             </div>
             <UserRoundSearch />
           </article>
@@ -326,6 +351,60 @@ export default function AdminOverviewPage() {
             </div>
             <FileCheck2 />
           </article>
+        </section>
+
+        <section className="admin-card overview-requests-card">
+          <div className="overview-card-heading">
+            <div>
+              <span>Incoming pipeline</span>
+              <h2>Recent estimate requests</h2>
+            </div>
+            <Link to="/leads">
+              View request queue <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {recentRequests.length === 0 ? (
+            <div className="admin-empty">
+              <div>
+                <UserRoundSearch size={32} />
+                <strong>No estimate requests yet</strong>
+                <p>
+                  Requests submitted through the public website will appear
+                  here immediately.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="overview-request-list">
+              {recentRequests.map((request) => (
+                <Link
+                  to={`/leads?request=${request.id}`}
+                  key={request.id}
+                  aria-label={`Open estimate request from ${request.firstName} ${request.lastName}`}
+                >
+                  <span className="overview-request-reference">
+                    {request.requestNumber || "Website request"}
+                  </span>
+                  <div>
+                    <strong>
+                      {request.firstName} {request.lastName}
+                    </strong>
+                    <small>{request.propertyAddress?.fullLine}</small>
+                  </div>
+                  <div>
+                    <strong>{requestServiceLabel(request.service)}</strong>
+                    <small>{request.urgency.replaceAll("_", " ")}</small>
+                  </div>
+                  <span className={`admin-status status-${request.status}`}>
+                    {request.status.replaceAll("_", " ")}
+                  </span>
+                  <time>{shortDate(request.createdAt)}</time>
+                  <ArrowRight size={16} />
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="overview-grid">

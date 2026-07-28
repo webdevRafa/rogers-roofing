@@ -36,6 +36,29 @@ function cleanLeadText(value: unknown, maxLength: number): string {
   return String(value ?? "").trim().slice(0, maxLength);
 }
 
+async function resolvePublicOrganizationId(): Promise<string> {
+  const organizations = admin.firestore().collection("organizations");
+  const preferredId =
+    cleanLeadText(process.env.PUBLIC_ORGANIZATION_ID, 100) ||
+    "rogers-roofing";
+  const preferred = await organizations.doc(preferredId).get();
+
+  if (preferred.exists) return preferred.id;
+
+  const matchingSlug = await organizations
+    .where("slug", "==", "rogers-roofing")
+    .limit(1)
+    .get();
+  if (!matchingSlug.empty) return matchingSlug.docs[0].id;
+
+  // This is a single-business Firebase project. Falling back to its existing
+  // organization keeps public requests aligned with legacy membership ids.
+  const existingOrganization = await organizations.limit(1).get();
+  return existingOrganization.empty
+    ? preferredId
+    : existingOrganization.docs[0].id;
+}
+
 /**
  * Public lead intake used by the client-facing website.
  *
@@ -62,8 +85,7 @@ export const submitWebsiteLead = onCall(
     const service = cleanLeadText(data.service, 60);
     const urgency = cleanLeadText(data.urgency, 40);
     const preferredContact = cleanLeadText(data.preferredContact, 20);
-    const organizationId =
-      cleanLeadText(data.organizationId, 100) || "rogers-roofing";
+    const organizationId = await resolvePublicOrganizationId();
 
     if (!firstName || !lastName || !email || !phone || !address) {
       throw new HttpsError(
@@ -85,8 +107,19 @@ export const submitWebsiteLead = onCall(
     }
 
     const leadRef = admin.firestore().collection("leads").doc();
+    const receivedAt = new Date();
+    const requestNumber = [
+      "RR",
+      receivedAt.getUTCFullYear(),
+      String(receivedAt.getUTCMonth() + 1).padStart(2, "0"),
+      leadRef.id.slice(0, 6).toUpperCase(),
+    ].join("-");
+
     await leadRef.set({
       organizationId,
+      orgId: organizationId,
+      requestNumber,
+      requestType: "estimate_request",
       status: "new",
       firstName,
       lastName,
@@ -114,7 +147,12 @@ export const submitWebsiteLead = onCall(
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    return { ok: true, leadId: leadRef.id };
+    return {
+      ok: true,
+      leadId: leadRef.id,
+      requestNumber,
+      status: "new",
+    };
   }
 );
 

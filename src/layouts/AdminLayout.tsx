@@ -32,7 +32,7 @@ import logo from "../assets/rogers-roofing.webp";
 const navigation = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { to: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
-  { to: "/leads", label: "Leads", icon: UserRoundSearch },
+  { to: "/leads", label: "Requests", icon: UserRoundSearch },
   { to: "/invoices-page", label: "Documents", icon: FileStack },
   { to: "/payouts", label: "Payouts", icon: HandCoins },
   { to: "/employees", label: "Members", icon: Users },
@@ -45,7 +45,7 @@ const routeLabels: Record<string, string> = {
   dashboard: "Overview",
   jobs: "Jobs",
   job: "Job workspace",
-  leads: "Leads",
+  leads: "Estimate requests",
   "invoices-page": "Documents",
   invoices: "Invoice",
   payouts: "Payouts",
