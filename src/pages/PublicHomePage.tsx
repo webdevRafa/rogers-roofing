@@ -243,7 +243,7 @@ export default function PublicHomePage() {
               transition={{ duration: 0.85, delay: 0.08 }}
             >
               Roofing built to protect
-              <br />
+              {" "}
               <em>what matters most.</em>
             </motion.h1>
             <motion.p
