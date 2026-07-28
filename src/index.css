@@ -2172,6 +2172,24 @@ img {
   line-height: 1.6;
 }
 
+.leads-load-error svg {
+  color: var(--red);
+}
+
+.leads-load-error .admin-secondary-button,
+.leads-workspace .admin-empty .admin-secondary-button {
+  margin: 18px auto 0;
+}
+
+.leads-load-error small {
+  display: block;
+  max-width: 520px;
+  margin: 14px auto 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .overview-header-actions {
   display: flex;
   gap: 10px;

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowRight,
   CalendarPlus,
   Mail,
   MapPin,
   MessageSquareText,
   Phone,
+  RefreshCw,
   Search,
   UserRoundSearch,
 } from "lucide-react";
@@ -90,16 +92,22 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!orgId) {
+      setLeads([]);
       setLoading(false);
       return;
     }
+
+    setLoading(true);
+    setError(null);
     const leadsQuery = query(
       collection(db, "leads"),
-      where("organizationId", "==", orgId)
+      where("orgId", "==", orgId)
     );
+
     return onSnapshot(
       leadsQuery,
       (snapshot) => {
@@ -116,7 +124,7 @@ export default function LeadsPage() {
         setLoading(false);
       }
     );
-  }, [orgId]);
+  }, [orgId, retryKey]);
 
   const requestedLeadId = searchParams.get("request");
 
@@ -303,17 +311,58 @@ export default function LeadsPage() {
             </span>
           </div>
 
-          {error && <div className="admin-inline-error">{error}</div>}
-
-          {filtered.length === 0 ? (
+          {error ? (
+            <div className="admin-empty leads-load-error" role="alert">
+              <div>
+                <AlertTriangle size={34} />
+                <strong>We couldn&apos;t load the request inbox</strong>
+                <p>
+                  Your requests are still safely stored. Check your connection
+                  or workspace access, then try again.
+                </p>
+                <button
+                  className="admin-secondary-button"
+                  type="button"
+                  onClick={() => setRetryKey((current) => current + 1)}
+                >
+                  <RefreshCw size={15} />
+                  Try again
+                </button>
+                <small>{error}</small>
+              </div>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="admin-empty">
               <div>
                 <UserRoundSearch size={34} />
-                <strong>No matching estimate requests</strong>
-                <p>
-                  New estimate requests submitted through the public website
-                  will appear here.
-                </p>
+                <strong>
+                  {search || status !== "all"
+                    ? "No requests match these filters"
+                    : "Your request inbox is ready"}
+                </strong>
+                {search || status !== "all" ? (
+                  <>
+                    <p>
+                      Try another search or clear the filters to see the full
+                      request queue.
+                    </p>
+                    <button
+                      className="admin-secondary-button"
+                      type="button"
+                      onClick={() => {
+                        setSearch("");
+                        setStatus("all");
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  </>
+                ) : (
+                  <p>
+                    New estimate requests submitted through the public website
+                    will appear here in real time.
+                  </p>
+                )}
               </div>
             </div>
           ) : (

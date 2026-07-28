@@ -159,10 +159,7 @@ export default function AdminOverviewPage() {
         markReady
       ),
       onSnapshot(
-        query(
-          collection(db, "leads"),
-          where("organizationId", "==", orgId)
-        ),
+        query(collection(db, "leads"), where("orgId", "==", orgId)),
         (snapshot) => {
           setLeads(
             snapshot.docs.map((document) => ({
