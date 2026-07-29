@@ -1051,26 +1051,46 @@ export default function InvoicesPage() {
 
   // Loading and guard states
   if (orgLoading) {
-    return <div className="p-4">Loading invoices…</div>;
+    return <div className="admin-loading">Loading documents…</div>;
   }
   if (!orgId) {
     return (
-      <div className="p-8 text-red-600">
-        You are not linked to an organization. Please contact your admin.
+      <div className="admin-page">
+        <div className="admin-card admin-empty">
+          You are not linked to an organization. Please contact your admin.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b ">
-      <div className="mx-auto w-[min(1100px,94vw)] space-y-8 py-8">
+    <main className="admin-page documents-page">
+      <div className="admin-content-width documents-content">
+        <header className="admin-page-header">
+          <div>
+            <span className="admin-kicker">Billing and receivables</span>
+            <h1>Documents</h1>
+            <p>
+              Create professional invoices, track payment status, and keep every
+              customer document connected to its job.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpenForm(true)}
+            className="admin-primary-button"
+          >
+            <Plus className="h-4 w-4" />
+            Create invoice
+          </button>
+        </header>
         {/* Summary cards */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-[var(--color-text)]">
-            Invoices Overview
+        <section className="admin-card documents-summary">
+          <h2>
+            Invoice portfolio
           </h2>
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+          <div className="documents-metrics">
+            <div className="documents-metric documents-metric-primary">
               <div className="text-xl font-semibold text-[var(--color-text)]">
                 {totalInvoices}
               </div>
@@ -1078,7 +1098,7 @@ export default function InvoicesPage() {
                 Total Invoices
               </div>
             </div>
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+            <div className="documents-metric">
               <div className="text-xl font-semibold text-[var(--color-text)]">
                 {money(totalAmount)}
               </div>
@@ -1086,7 +1106,7 @@ export default function InvoicesPage() {
                 Total Amount
               </div>
             </div>
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+            <div className="documents-metric">
               <div className="text-xl font-semibold text-[var(--color-text)]">
                 {money(outstandingAmount)}
               </div>
@@ -1094,7 +1114,7 @@ export default function InvoicesPage() {
                 Outstanding
               </div>
             </div>
-            <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
+            <div className="documents-metric">
               <div className="text-xl font-semibold text-[var(--color-text)]">
                 {money(paidAmount)}
               </div>
@@ -1105,19 +1125,21 @@ export default function InvoicesPage() {
           </div>
         </section>
         {/* Filters and actions */}
-        <section className="flex flex-col gap-3 sm:flex-row sm:items-end justify-between">
-          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+        <section className="admin-card documents-toolbar-card">
+          <div className="documents-toolbar">
             <input
               type="text"
               placeholder="Search invoices…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="documents-search-input"
+              aria-label="Search invoices"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="admin-filter-select"
+              aria-label="Filter invoices by status"
             >
               <option value="all">All statuses</option>
               <option value="draft">Draft</option>
@@ -1125,20 +1147,16 @@ export default function InvoicesPage() {
               <option value="paid">Paid</option>
               <option value="void">Void</option>
             </select>
+            <span className="admin-toolbar-count">
+              {filteredInvoices.length} documents
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setOpenForm(true)}
-            className="inline-flex items-center gap-1 max-w-[140px] bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] transition ease-in-out duration-300  text-white cursor-pointer   border border-[var(--color-border)]/30 px-2 py-1.5 text-xs "
-          >
-            <Plus className="h-4 w-4" /> New Invoice
-          </button>
         </section>
         {/* Invoice list table */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm">
+        <section className="admin-card documents-table-card">
           {/* IMPORTANT: scrolling must be on a wrapper div, not the section, for sticky header/footer */}
-          <div className="relative overflow-auto section-scroll-invoices">
-            <table className="min-w-full text-sm">
+          <div className="documents-table-wrap section-scroll-invoices">
+            <table className="admin-table documents-table">
               <thead className="sticky top-0 z-30 bg-[var(--color-card)] text-[11px] uppercase tracking-wide text-[var(--color-muted)] border-b border-[var(--color-border)]/40">
                 <tr>
                   <th className="px-3 py-2 text-left">Number</th>
@@ -1380,6 +1398,6 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

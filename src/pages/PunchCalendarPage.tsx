@@ -129,16 +129,21 @@ export default function PunchCalendarPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white ">
-      {/* Hero / header */}
-      <div className="">
-        <div className="mx-auto flex max-w-[1100px] flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between md:px-0"></div>
-      </div>
+    <main className="admin-page schedule-page">
+      <div className="admin-content-width">
+        <header className="admin-page-header">
+          <div>
+            <span className="admin-kicker">Production calendar</span>
+            <h1>Schedule</h1>
+            <p>
+              See dry-in, shingle, and punch activity at a glance, then open any
+              date to manage the day&apos;s work.
+            </p>
+          </div>
+        </header>
 
-      {/* Page content */}
-      <div className="mx-auto w-[min(1400px,94vw)] space-y-4 py-0">
         {/* Month controls */}
-        <section className=" border border-[var(--color-border)]/60 bg-white/90 p-4 shadow-sm bg-gradient-to-tr from-[var(--color-brown-hover)] via-[var(--color-brown)] to-[var(--color-logo)]">
+        <section className="admin-card schedule-month-card">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/80">
@@ -182,7 +187,7 @@ export default function PunchCalendarPage() {
         </section>
 
         {/* Calendar grid */}
-        <section className="rounded-2xl border border-[var(--color-border)]/60 bg-white/90 p-5 shadow-sm">
+        <section className="admin-card schedule-calendar-card">
           <div className="grid grid-cols-7 gap-1 text-[11px] text-[var(--color-muted)]">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
               <div key={d} className="px-1 py-1 text-center font-medium">
@@ -215,7 +220,7 @@ export default function PunchCalendarPage() {
                   type="button"
                   onClick={() => navigate(`/schedule/${key}`)}
                   className={[
-                    "h-20 w-full rounded-xl border px-2 py-1 text-left text-xs transition",
+                    "schedule-day h-20 w-full rounded-xl border px-2 py-1 text-left text-xs transition",
                     hasAnything
                       ? "border-[var(--color-border)] bg-emerald-50/40 hover:bg-[var(--color-primary)]/10"
                       : "border-[var(--color-border)] bg-white hover:bg-[var(--color-card-hover)]",
@@ -304,6 +309,6 @@ export default function PunchCalendarPage() {
           </div>
         </section>
       </div>
-    </div>
+    </main>
   );
 }

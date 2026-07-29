@@ -249,34 +249,51 @@ export default function EmployeesPage() {
   }
 
   return (
-    <>
-      <div className="mx-auto max-w-[1200px] py-8 px-4 md:px-0">
-        {/* Add employee */}
-        <section className="mb-6 rounded-xl p-4 shadow">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-start">
-            <h2 className="text-lg font-medium poppins text-[var(--color-logo)]">
-              New
-            </h2>
+    <main className="admin-page members-page">
+      <div className="admin-content-width">
+        <header className="admin-page-header">
+          <div>
+            <span className="admin-kicker">Team and access</span>
+            <h1>Members</h1>
+            <p>
+              Keep your field and office team organized, assign roles, and
+              manage workspace invitations.
+            </p>
+          </div>
+        </header>
 
-            <div className="flex gap-2 flex-row sm:items-center">
+        {/* Add employee */}
+        <section className="admin-card members-create-card">
+          <div className="members-create-heading">
+            <span className="admin-kicker">Add to your crew</span>
+            <h2>
+              New team member
+            </h2>
+            <p>
+              Add their basic details now. You can complete contact and payout
+              information from their member profile.
+            </p>
+          </div>
+
+            <div className="members-create-form">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Employee name"
-                className="w-full max-w-[300px] rounded-lg border border-[var(--color-border)]/50 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                aria-label="Employee name"
               />
 
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email (optional, for invite)"
-                className="w-full max-w-[300px] rounded-lg border border-[var(--color-border)]/50 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                aria-label="Employee email"
               />
 
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as any)}
-                className="w-full max-w-[220px] rounded-lg border border-[var(--color-border)]/50 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                aria-label="Employee role"
               >
                 <option value="roofer">Roofer</option>
                 <option value="foreman">Foreman</option>
@@ -289,12 +306,11 @@ export default function EmployeesPage() {
               <button
                 onClick={createEmployee}
                 disabled={creating || !name.trim()}
-                className="bg-[var(--color-brown-hover)] hover:bg-[var(--color-brown)] px-4 py-1.5 text-xs text-white cursor-pointer transition duration-300 ease-in-out"
+                className="admin-primary-button"
               >
-                {creating ? "Saving…" : "Add"}
+                {creating ? "Saving…" : "Add member"}
               </button>
             </div>
-          </div>
 
           {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
@@ -306,19 +322,25 @@ export default function EmployeesPage() {
         </section>
 
         {/* List */}
-        <section className="rounded-xl bg-white/30 p-4 shadow">
-          <div className="mb-2 flex flex-col md:flex-row items-start md:items-center justify-between md:justify-start gap-5">
-            <h2 className="text-xl font-medium">All employees</h2>
-            <p className="text-xs text-gray-500">
+        <section className="admin-card members-workspace">
+          <div className="members-list-heading">
+            <div>
+              <span className="admin-kicker">Team directory</span>
+              <h2>All members</h2>
+            </div>
+            <p>
               Active employees can be selected on jobs. Inactive stay for
               history only.
             </p>
           </div>
 
           {employees.length === 0 ? (
-            <p className="text-sm text-gray-500">No employees yet.</p>
+            <div className="admin-empty">
+              <strong>No team members yet</strong>
+              <p>Add your first team member using the form above.</p>
+            </div>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="members-list">
               {employees.map((e) => {
                 const addr = normalizeEmployeeAddress(e.address);
                 const active = e.isActive !== false;
@@ -335,7 +357,7 @@ export default function EmployeesPage() {
                         navigate(`/employees/${e.id}`);
                       }
                     }}
-                    className="flex items-start justify-between py-4 px-4 rounded-md hover:bg-white transition duration-300 ease-in-out cursor-pointer"
+                    className="member-row"
                   >
                     {/* Left side: employee name and address */}
                     <div className="pr-4">
@@ -479,7 +501,7 @@ export default function EmployeesPage() {
           )}
         </section>
       </div>
-    </>
+    </main>
   );
 }
 

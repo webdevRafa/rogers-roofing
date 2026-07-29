@@ -55,6 +55,11 @@ ChartJS.register(
   Legend
 );
 
+ChartJS.defaults.font.family =
+  '"acumin-pro", "Aptos", "Segoe UI", Helvetica, Arial, sans-serif';
+ChartJS.defaults.font.size = 12;
+ChartJS.defaults.color = "#746f67";
+
 // Convert Firestore/Date/number/string to milliseconds
 function toMillis(x: unknown): number | null {
   if (x == null) return null;
@@ -817,21 +822,34 @@ export default function FinancialOverviewPage() {
 
   // Loading and guard states
   if (orgLoading) {
-    return <div className="p-4">Loading financial overview…</div>;
+    return <div className="admin-loading">Loading reports…</div>;
   }
   if (!orgId) {
     return (
-      <div className="p-8 text-red-600">
-        You are not linked to an organization. Please contact your admin.
+      <div className="admin-page">
+        <div className="admin-card admin-empty">
+          You are not linked to an organization. Please contact your admin.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full py-6 sm:py-10 md:px-4 grid grid-cols-1 gap-6 lg:grid-cols-12">
+    <main className="admin-page reports-page grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <header className="admin-page-header reports-page-header lg:col-span-12">
+        <div>
+          <span className="admin-kicker">Business performance</span>
+          <h1>Reports</h1>
+          <p>
+            Understand revenue, job costs, payouts, and profit without losing
+            the connection to the work behind each number.
+          </p>
+        </div>
+      </header>
+
       {/* Summary cards */}
       <div className="lg:col-span-12">
-        <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+        <section className="reports-metrics mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
           <div className="rounded-xl bg-white/60 p-4 shadow-md border border-[var(--color-border)]/40">
             <div className="text-xl font-semibold text-[var(--color-text)]">
               {formatCurrency(totalEarningsCents)}
@@ -883,7 +901,7 @@ export default function FinancialOverviewPage() {
         </section>
       </div>
       {/* Range selector */}
-      <div className="lg:col-span-12">
+      <div className="reports-range lg:col-span-12">
         <div className="flex flex-wrap items-center gap-2 text-sm mb-4">
           <span className="font-semibold text-[var(--color-text)]">
             Time Range:
@@ -913,7 +931,7 @@ export default function FinancialOverviewPage() {
       </div>
       {/* Profit trend chart section */}
       <div className="lg:col-span-12">
-        <section className="rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
+        <section className="reports-card rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg">
           <h2 className="mb-4 text-xl font-semibold text-[var(--color-text)]">
             Earnings, Expenses &amp; Profit Trend
           </h2>
@@ -929,7 +947,7 @@ export default function FinancialOverviewPage() {
 
       {/* Financial Reporting (Invoice-based) */}
       <div className="lg:col-span-12">
-        <section className="rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg border border-[var(--color-border)]/40">
+        <section className="reports-card rounded-2xl bg-white/60 hover:bg-white transition duration-300 ease-in-out p-4 sm:p-6 shadow-md hover:shadow-lg border border-[var(--color-border)]/40">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-[var(--color-text)]">
@@ -1321,6 +1339,6 @@ export default function FinancialOverviewPage() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
