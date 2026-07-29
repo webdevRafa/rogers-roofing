@@ -16,6 +16,11 @@
   --red-dark: #821018;
   --ember: #e59a24;
   --green: #2e6b4f;
+  --brand-font-display:
+    "source-serif-4-display", "Iowan Old Style", "Palatino Linotype", Georgia,
+    serif;
+  --brand-font-sans:
+    "acumin-pro", "Aptos", "Segoe UI", Helvetica, Arial, sans-serif;
 
   --color-background: var(--cream);
   --color-surface: #ebe6dc;
@@ -113,11 +118,8 @@ img {
 /* Public website */
 
 .public-site {
-  --public-font-display:
-    "source-serif-4-display", "Iowan Old Style", "Palatino Linotype", Georgia,
-    serif;
-  --public-font-sans:
-    "acumin-pro", "Aptos", "Segoe UI", Helvetica, Arial, sans-serif;
+  --public-font-display: var(--brand-font-display);
+  --public-font-sans: var(--brand-font-sans);
 
   overflow: clip;
   background: var(--paper);
@@ -1223,6 +1225,11 @@ img {
   grid-template-columns: minmax(0, 1.12fr) minmax(480px, 0.88fr);
   min-height: 100svh;
   background: var(--paper);
+  font-family: var(--brand-font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
 }
 
 .login-visual {
@@ -1260,8 +1267,9 @@ img {
   border-radius: 5px;
   background: rgb(12 12 10 / 36%);
   color: white;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   text-decoration: none;
   backdrop-filter: blur(12px);
 }
@@ -1277,27 +1285,28 @@ img {
 
 .login-visual-copy > span {
   color: #f3d7a6;
-  font-size: 10px;
-  font-weight: 900;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .login-visual-copy h1 {
   margin: 18px 0 20px;
-  font-family: "griffon", Georgia, serif;
-  font-size: clamp(48px, 5.2vw, 82px);
-  font-weight: 500;
-  line-height: 0.98;
-  letter-spacing: -0.045em;
+  font-family: var(--brand-font-display);
+  font-size: clamp(52px, 5.4vw, 88px);
+  font-weight: 400;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
 }
 
 .login-visual-copy p {
   max-width: 620px;
   margin: 0;
-  color: rgb(255 255 255 / 68%);
-  font-size: 15px;
-  line-height: 1.7;
+  color: rgb(255 255 255 / 72%);
+  font-size: 16px;
+  line-height: 1.65;
 }
 
 .login-visual-copy > div {
@@ -1307,7 +1316,7 @@ img {
   margin-top: 28px;
   color: rgb(255 255 255 / 78%);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1353,15 +1362,16 @@ img {
 }
 
 .login-brand strong {
-  font-family: "griffon", Georgia, serif;
-  font-size: 18px;
+  font-family: var(--brand-font-display);
+  font-size: 20px;
   font-weight: 600;
+  line-height: 1.05;
 }
 
 .login-brand span {
   color: var(--muted);
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -1372,24 +1382,26 @@ img {
 
 .login-heading > span {
   color: var(--red);
-  font-size: 9px;
-  font-weight: 900;
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
 .login-heading h2 {
   margin: 11px 0 10px;
-  font-family: "griffon", Georgia, serif;
-  font-size: 48px;
-  font-weight: 500;
-  letter-spacing: -0.04em;
+  font-family: var(--brand-font-display);
+  font-size: clamp(48px, 4vw, 56px);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
 }
 
 .login-heading p {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .login-form-wrap form {
@@ -1401,9 +1413,9 @@ img {
   display: grid;
   gap: 9px;
   color: var(--ink-soft);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -1415,8 +1427,8 @@ img {
   border-radius: 5px;
   background: white;
   color: var(--ink);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 400;
   letter-spacing: normal;
   outline: none;
   text-transform: none;
@@ -1471,8 +1483,8 @@ img {
   border-radius: 5px;
   background: var(--red);
   color: white;
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 13px;
+  font-weight: 700;
   letter-spacing: 0.03em;
   transition:
     background 160ms ease,
@@ -1493,7 +1505,7 @@ img {
 .login-help {
   margin: 24px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
   text-align: center;
 }
