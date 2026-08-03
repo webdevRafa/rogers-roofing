@@ -89,8 +89,8 @@ export default function EstimateDocument({
           />
           <div>
             <strong>
-              {organization?.legalName ||
-                organization?.name ||
+              {organization?.name ||
+                organization?.legalName ||
                 "Roger's Roofing & Contracting LLC"}
             </strong>
             {organizationAddress.map((line) => (
@@ -138,13 +138,6 @@ export default function EstimateDocument({
           ))}
         </div>
       </section>
-
-      {estimate.scopeSummary && (
-        <section className="estimate-scope-intro">
-          <span>Project scope</span>
-          <p>{estimate.scopeSummary}</p>
-        </section>
-      )}
 
       <section className="estimate-line-items">
         <table>

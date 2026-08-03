@@ -54,7 +54,6 @@ type FormState = {
   customerEmail: string;
   customerPhone: string;
   projectTitle: string;
-  scopeSummary: string;
   issueDate: string;
   validUntil: string;
   taxRate: string;
@@ -125,8 +124,6 @@ function initialForm(): FormState {
     customerEmail: "",
     customerPhone: "",
     projectTitle: "Roof replacement estimate",
-    scopeSummary:
-      "Provide the labor, materials, delivery, installation, and cleanup described below for the roofing project.",
     issueDate: dateInput(today),
     validUntil: dateInput(addDays(today, 30)),
     taxRate: "0",
@@ -370,7 +367,6 @@ export default function EstimateBuilderPage() {
           customerEmail: estimate.customerSnapshot?.email || "",
           customerPhone: estimate.customerSnapshot?.phone || "",
           projectTitle: estimate.projectTitle || "Roofing project estimate",
-          scopeSummary: estimate.scopeSummary || "",
           issueDate:
             estimate.issueDate ||
             timestampToDateInput(estimate.createdAt) ||
@@ -620,7 +616,6 @@ export default function EstimateBuilderPage() {
         status: nextStatus,
         documentType: "estimate",
         projectTitle: form.projectTitle.trim(),
-        scopeSummary: form.scopeSummary.trim(),
         issueDate: form.issueDate || null,
         validUntil: form.validUntil || null,
         customerSnapshot: {
@@ -814,16 +809,6 @@ export default function EstimateBuilderPage() {
                     value={form.validUntil}
                     onChange={(event) =>
                       updateForm("validUntil", event.target.value)
-                    }
-                  />
-                </label>
-                <label className="estimate-field estimate-field-wide">
-                  <span>Scope summary</span>
-                  <textarea
-                    rows={3}
-                    value={form.scopeSummary}
-                    onChange={(event) =>
-                      updateForm("scopeSummary", event.target.value)
                     }
                   />
                 </label>

@@ -7639,9 +7639,11 @@ img {
 
 .estimate-business-block strong {
   margin-bottom: 4px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 18px;
-  line-height: 1.15;
+  font-family: "acumin-pro", "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
 }
 
 .estimate-business-block span {
@@ -7668,11 +7670,11 @@ img {
 .estimate-document-title h1 {
   margin: 0;
   color: #211f1b;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 42px;
-  font-weight: 400;
-  letter-spacing: -0.04em;
-  line-height: 1;
+  font-family: "acumin-pro", "Helvetica Neue", Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
 .estimate-document-title strong {
@@ -7706,7 +7708,6 @@ img {
 
 .estimate-meta-grid span,
 .estimate-bill-to > span,
-.estimate-scope-intro > span,
 .estimate-terms-stack span,
 .estimate-fine-print span,
 .estimate-approval span {
@@ -7741,19 +7742,8 @@ img {
   line-height: 1.35;
 }
 
-.estimate-scope-intro {
-  padding: 19px 0 17px;
-}
-
-.estimate-scope-intro p {
-  max-width: 670px;
-  margin: 7px 0 0;
-  color: #4f4b46;
-  font-size: 10px;
-  line-height: 1.55;
-}
-
 .estimate-line-items {
+  margin-top: 22px;
   overflow: hidden;
   border: 1px solid #d9d3cb;
   border-radius: 8px;
