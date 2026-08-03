@@ -29,6 +29,8 @@ import MaterialsPage from "./pages/MaterialsPage";
 import PayoutsPage from "./pages/PayoutsPage";
 import JobWorkspacePage from "./pages/JobWorkspacePage";
 import WarrantyPreviewPage from "./pages/WarrantyPreviewPage";
+import EstimateBuilderPage from "./pages/EstimateBuilderPage";
+import EstimateViewer from "./pages/EstimateViewer";
 
 export default function App() {
   return (
@@ -41,6 +43,7 @@ export default function App() {
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/complete-signup" element={<CompleteSignupPage />} />
           <Route path="/invoice/:id" element={<InvoiceViewer />} />
+          <Route path="/estimate/:id" element={<EstimateViewer />} />
 
           {/* ✅ Admin routes protected by AdminGuard */}
           <Route
@@ -72,6 +75,11 @@ export default function App() {
             />
             <Route path="/legacy-job/:id" element={<JobDetailPage />} />
             <Route path="/invoices/:id" element={<InvoiceViewer />} />
+            <Route path="/estimates/new" element={<EstimateBuilderPage />} />
+            <Route
+              path="/estimates/:id/edit"
+              element={<EstimateBuilderPage />}
+            />
           </Route>
 
           {/* ✅ Crew routes accessible to crew, manager, readOnly roles */}

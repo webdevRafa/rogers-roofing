@@ -8,6 +8,7 @@
 // the same Tailwind aesthetics and patterns.
 
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   collection,
   doc,
@@ -40,6 +41,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 // Import logo for invoice printing. Using import rather than require avoids bundler issues and ensures the asset is included properly.
 import logo from "../assets/rogers-roofing.webp";
+import type { EstimateRecord } from "../domain/roofing";
 
 // Helper to format money from cents to dollars
 function money(cents: number | null | undefined): string {
@@ -50,6 +52,11 @@ function money(cents: number | null | undefined): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function jobAddress(job: Job): string {
+  if (typeof job.address === "string") return job.address;
+  return job.address?.fullLine || "Address not added";
 }
 
 // Generate a human friendly invoice number like INV-2025-000123
@@ -899,6 +906,7 @@ function InvoicePreviewModal({
 export default function InvoicesPage() {
   const { orgId, loading: orgLoading } = useOrg();
   const [invoices, setInvoices] = useState<InvoiceDoc[]>([]);
+  const [estimates, setEstimates] = useState<EstimateRecord[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"all" | InvoiceStatus>(
@@ -954,6 +962,26 @@ export default function InvoicesPage() {
     return () => unsub();
   }, [orgId]);
 
+  useEffect(() => {
+    if (!orgId) return;
+    const estimatesQuery = query(
+      collection(db, "estimates"),
+      where("organizationId", "==", orgId)
+    );
+    return onSnapshot(estimatesQuery, (snapshot) => {
+      const list = snapshot.docs.map((snapshotDocument) => ({
+        id: snapshotDocument.id,
+        ...(snapshotDocument.data() as Omit<EstimateRecord, "id">),
+      }));
+      list.sort((a, b) => {
+        const aTime = (a.updatedAt as { seconds?: number } | undefined)?.seconds ?? 0;
+        const bTime = (b.updatedAt as { seconds?: number } | undefined)?.seconds ?? 0;
+        return bTime - aTime;
+      });
+      setEstimates(list);
+    });
+  }, [orgId]);
+
   // Load jobs for invoice creation dropdown
   useEffect(() => {
     if (!orgId) return;
@@ -970,17 +998,13 @@ export default function InvoicesPage() {
 
   // Derived stats
   const totalInvoices = invoices.length;
-  const totalAmount = invoices.reduce(
-    (sum, inv) => sum + (inv.money?.totalCents ?? 0),
+  const totalEstimateValue = estimates.reduce(
+    (sum, estimate) => sum + estimate.totalCents,
     0
   );
   const outstandingAmount = invoices.reduce((sum, inv) => {
     if (inv.status === "draft" || inv.status === "sent")
       return sum + (inv.money?.totalCents ?? 0);
-    return sum;
-  }, 0);
-  const paidAmount = invoices.reduce((sum, inv) => {
-    if (inv.status === "paid") return sum + (inv.money?.totalCents ?? 0);
     return sum;
   }, 0);
 
@@ -1075,35 +1099,49 @@ export default function InvoicesPage() {
               customer document connected to its job.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setOpenForm(true)}
-            className="admin-primary-button"
-          >
-            <Plus className="h-4 w-4" />
-            Create invoice
-          </button>
+          <div className="documents-header-actions">
+            <button
+              type="button"
+              onClick={() => setOpenForm(true)}
+              className="admin-secondary-button"
+            >
+              <Plus className="h-4 w-4" />
+              New invoice
+            </button>
+            <Link to="/estimates/new" className="admin-primary-button">
+              <FileText className="h-4 w-4" />
+              New estimate
+            </Link>
+          </div>
         </header>
         {/* Summary cards */}
         <section className="admin-card documents-summary">
           <h2>
-            Invoice portfolio
+            Document portfolio
           </h2>
           <div className="documents-metrics">
             <div className="documents-metric documents-metric-primary">
               <div className="text-xl font-semibold text-[var(--color-text)]">
-                {totalInvoices}
+                {estimates.length}
               </div>
               <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Total Invoices
+                Total estimates
               </div>
             </div>
             <div className="documents-metric">
               <div className="text-xl font-semibold text-[var(--color-text)]">
-                {money(totalAmount)}
+                {money(totalEstimateValue)}
               </div>
               <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Total Amount
+                Quoted value
+              </div>
+            </div>
+            <div className="documents-metric">
+              <div className="text-xl font-semibold text-[var(--color-text)]">
+                {totalInvoices}
+              </div>
+              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                Total invoices
               </div>
             </div>
             <div className="documents-metric">
@@ -1114,15 +1152,70 @@ export default function InvoicesPage() {
                 Outstanding
               </div>
             </div>
-            <div className="documents-metric">
-              <div className="text-xl font-semibold text-[var(--color-text)]">
-                {money(paidAmount)}
-              </div>
-              <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Paid
-              </div>
-            </div>
           </div>
+        </section>
+        <section className="admin-card documents-estimate-pipeline">
+          <div className="documents-section-heading">
+            <div>
+              <span className="admin-kicker">Estimate pipeline</span>
+              <h2>Customer proposals</h2>
+              <p>
+                Draft, preview, and deliver professional itemized estimates
+                before a job moves into invoicing.
+              </p>
+            </div>
+            <Link className="admin-secondary-button" to="/estimates/new">
+              <Plus size={15} /> Create estimate
+            </Link>
+          </div>
+          {estimates.length === 0 ? (
+            <div className="documents-estimate-empty">
+              <FileText size={28} />
+              <div>
+                <strong>No estimates created yet</strong>
+                <p>
+                  Start with a job, add the roofing scope and pricing, then
+                  preview the exact document your customer will receive.
+                </p>
+              </div>
+              <Link to="/estimates/new">
+                Build the first estimate <Plus size={14} />
+              </Link>
+            </div>
+          ) : (
+            <div className="documents-estimate-list">
+              {estimates.map((estimate) => {
+                const job = jobs.find((item) => item.id === estimate.jobId);
+                return (
+                  <article key={estimate.id}>
+                    <span className="documents-estimate-icon">
+                      <FileText size={18} />
+                    </span>
+                    <div>
+                      <strong>{estimate.number}</strong>
+                      <small>
+                        {estimate.customerSnapshot?.name ||
+                          job?.customer?.name ||
+                          "Customer not linked"}
+                      </small>
+                    </div>
+                    <p>
+                      <strong>{job ? jobAddress(job) : "Job"}</strong>
+                      <small>Version {estimate.version}</small>
+                    </p>
+                    <b>{money(estimate.totalCents)}</b>
+                    <span className={`admin-status status-${estimate.status}`}>
+                      {estimate.status.replaceAll("_", " ")}
+                    </span>
+                    <div className="documents-estimate-actions">
+                      <Link to={`/estimate/${estimate.id}`}>Preview</Link>
+                      <Link to={`/estimates/${estimate.id}/edit`}>Edit</Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
         {/* Filters and actions */}
         <section className="admin-card documents-toolbar-card">

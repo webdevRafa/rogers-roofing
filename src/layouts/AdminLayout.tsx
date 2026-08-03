@@ -48,6 +48,7 @@ const routeLabels: Record<string, string> = {
   leads: "Estimate requests",
   "invoices-page": "Documents",
   invoices: "Invoice",
+  estimates: "Estimate studio",
   payouts: "Payouts",
   employees: "Members",
   materials: "Materials",

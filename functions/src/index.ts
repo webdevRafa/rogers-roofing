@@ -809,3 +809,313 @@ export const onInvoiceCreated = onDocumentCreated(
   }
 );
 
+function escapeEmailHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function timestampDate(value: unknown): Date | undefined {
+  const record = asRecord(value);
+  return typeof record.toDate === "function"
+    ? (record.toDate as () => Date)()
+    : undefined;
+}
+
+async function assertOrganizationAccess(uid: string, organizationId: string) {
+  const db = admin.firestore();
+  const membership = await db
+    .collection("memberships")
+    .where("userId", "==", uid)
+    .where("orgId", "==", organizationId)
+    .where("status", "==", "active")
+    .limit(1)
+    .get();
+
+  if (!membership.empty) return;
+
+  // Backward compatibility for the legacy single-organization records.
+  const user = await db.doc(`users/${uid}`).get();
+  if (user.exists && String(user.data()?.orgId || "") === organizationId) {
+    return;
+  }
+  const employee = await db
+    .collection("employees")
+    .where("userId", "==", uid)
+    .where("orgId", "==", organizationId)
+    .limit(1)
+    .get();
+  if (!employee.empty) return;
+
+  throw new HttpsError(
+    "permission-denied",
+    "You do not have access to this estimate."
+  );
+}
+
+async function ensureEstimatePublicToken(
+  estimateId: string,
+  estimate: Record<string, unknown>
+): Promise<string> {
+  const existing = String(estimate.publicToken || "").trim();
+  if (existing) return existing;
+  const token = randomUUID();
+  await admin.firestore().doc(`estimates/${estimateId}`).set(
+    { publicToken: token },
+    { merge: true }
+  );
+  return token;
+}
+
+function buildEstimateLink(estimateId: string, publicToken: string): string {
+  const baseUrl = (APP_BASE_URL.value() || "").replace(/\/$/, "");
+  return `${baseUrl}/estimate/${encodeURIComponent(estimateId)}?token=${encodeURIComponent(publicToken)}`;
+}
+
+export const sendEstimateEmail = onCall(
+  {
+    region: "us-central1",
+    secrets: [RESEND_API_KEY, INVITE_FROM_EMAIL, APP_BASE_URL],
+  },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "You must be signed in.");
+    }
+
+    const estimateId = String(request.data?.estimateId || "").trim();
+    const email = String(request.data?.email || "").trim().toLowerCase();
+    if (!estimateId) {
+      throw new HttpsError("invalid-argument", "Missing estimateId.");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new HttpsError("invalid-argument", "Enter a valid customer email.");
+    }
+
+    const db = admin.firestore();
+    const estimateRef = db.doc(`estimates/${estimateId}`);
+    const snapshot = await estimateRef.get();
+    if (!snapshot.exists) {
+      throw new HttpsError("not-found", "Estimate not found.");
+    }
+    const estimate = snapshot.data() as Record<string, unknown>;
+    const customer = asRecord(estimate.customerSnapshot);
+    const organization = asRecord(estimate.organizationSnapshot);
+    const organizationId = String(
+      estimate.organizationId || estimate.orgId || ""
+    ).trim();
+    if (!organizationId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Estimate is missing its organization."
+      );
+    }
+    await assertOrganizationAccess(request.auth.uid, organizationId);
+
+    const lastSent = timestampDate(estimate.lastEmailSentAt);
+    if (lastSent && Date.now() - lastSent.getTime() < 2 * 60 * 1000) {
+      const publicToken = await ensureEstimatePublicToken(estimateId, estimate);
+      return {
+        ok: true,
+        skipped: true,
+        reason: "recently_sent",
+        publicUrl: buildEstimateLink(estimateId, publicToken),
+      };
+    }
+
+    const inFlight = timestampDate(estimate.emailSendInFlightAt);
+    if (inFlight && Date.now() - inFlight.getTime() < 2 * 60 * 1000) {
+      return { ok: true, skipped: true, reason: "in_flight" };
+    }
+
+    await estimateRef.set(
+      { emailSendInFlightAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+
+    try {
+      const publicToken = await ensureEstimatePublicToken(estimateId, estimate);
+      const estimateUrl = buildEstimateLink(estimateId, publicToken);
+      const rawNumber = String(estimate.number || "Estimate");
+      const number = escapeEmailHtml(rawNumber);
+      const customerName = escapeEmailHtml(
+        customer.name || "there"
+      );
+      const rawBusinessName = String(
+        organization.legalName ||
+          organization.name ||
+          "Roger's Roofing"
+      );
+      const businessName = escapeEmailHtml(rawBusinessName);
+      const total = (Number(estimate.totalCents || 0) / 100).toLocaleString(
+        "en-US",
+        { style: "currency", currency: "USD" }
+      );
+      const resend = getResend();
+      const from = (
+        INVITE_FROM_EMAIL.value() ||
+        "Roger's Roofing <no-reply@rogersroofingtx.com>"
+      ).trim();
+      const subject = `${rawNumber} from ${rawBusinessName}`;
+      const html = `
+        <div style="background:#f4f1ec;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#24231f;">
+          <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #ddd6cc;border-top:6px solid #b71920;border-radius:10px;padding:34px;">
+            <p style="margin:0 0 8px;color:#b71920;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">Professional roofing estimate</p>
+            <h1 style="margin:0 0 20px;font-family:Georgia,serif;font-size:32px;font-weight:400;">${number}</h1>
+            <p style="margin:0 0 12px;line-height:1.6;">Hello ${customerName},</p>
+            <p style="margin:0 0 22px;line-height:1.6;color:#5f5a54;">${businessName} prepared an itemized estimate for your roofing project. The current estimate total is <strong style="color:#24231f;">${escapeEmailHtml(total)}</strong>.</p>
+            <p style="margin:0 0 24px;"><a href="${estimateUrl}" style="display:inline-block;background:#b71920;color:#ffffff;text-decoration:none;border-radius:7px;padding:13px 18px;font-weight:700;">View estimate</a></p>
+            <p style="margin:0;color:#817a72;font-size:12px;line-height:1.5;">The private link includes the complete scope, quantities, rates, warranty information, and a print / download option. Reply to this email if you have any questions.</p>
+          </div>
+        </div>
+      `;
+
+      const { data, error } = await resend.emails.send({
+        from,
+        to: [email],
+        subject,
+        html,
+      });
+      if (error) {
+        throw new HttpsError(
+          "internal",
+          error.message || "Failed to send estimate email."
+        );
+      }
+
+      await estimateRef.set(
+        {
+          status: "sent",
+          sentAt:
+            estimate.sentAt || admin.firestore.FieldValue.serverTimestamp(),
+          lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastEmailResendId: data?.id || null,
+          publicToken,
+          emailSendInFlightAt: admin.firestore.FieldValue.delete(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      return { ok: true, id: data?.id || null, publicUrl: estimateUrl };
+    } catch (error) {
+      await estimateRef.set(
+        { emailSendInFlightAt: admin.firestore.FieldValue.delete() },
+        { merge: true }
+      );
+      if (error instanceof HttpsError) throw error;
+      console.error("Failed to send estimate email:", error);
+      throw new HttpsError("internal", "Failed to send estimate email.");
+    }
+  }
+);
+
+export const getPublicEstimate = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const estimateId = String(request.data?.estimateId || "").trim();
+    const token = String(request.data?.token || "").trim();
+    if (!estimateId || !token) {
+      throw new HttpsError("invalid-argument", "Invalid estimate link.");
+    }
+
+    const estimateRef = admin.firestore().doc(`estimates/${estimateId}`);
+    const snapshot = await estimateRef.get();
+    if (!snapshot.exists) {
+      throw new HttpsError("not-found", "Estimate not found.");
+    }
+    const estimate = snapshot.data() as Record<string, unknown>;
+    if (!estimate.publicToken || estimate.publicToken !== token) {
+      throw new HttpsError("permission-denied", "Invalid estimate link.");
+    }
+
+    if (estimate.status === "sent") {
+      await estimateRef.set(
+        {
+          status: "viewed",
+          viewedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+
+    const publicLineItems = Array.isArray(estimate.lineItems)
+      ? estimate.lineItems
+          .filter(
+            (line: unknown) => {
+              const record = asRecord(line);
+              return (
+                record.customerVisible !== false && record.selected !== false
+              );
+            }
+          )
+          .map((line: unknown) => {
+            const record = asRecord(line);
+            return {
+              id: String(record.id || ""),
+              category: String(record.category || "roofing_scope"),
+              title: String(record.title || ""),
+              customerDescription: String(record.customerDescription || ""),
+              quantity: Number(record.quantity || 0),
+              unit: String(record.unit || "LS"),
+              unitPriceCents: Number(record.unitPriceCents || 0),
+              lineTotalCents: Number(record.lineTotalCents || 0),
+              discountCents: Number(record.discountCents || 0),
+              pricingMode: String(record.pricingMode || "unit_price"),
+              selectionType: String(record.selectionType || "base"),
+              selected: true,
+              customerVisible: true,
+              taxable: Boolean(record.taxable),
+              source: String(record.source || "manual"),
+            };
+          })
+      : [];
+
+    return {
+      estimate: {
+        id: estimateId,
+        organizationId: String(estimate.organizationId || estimate.orgId || ""),
+        jobId: String(estimate.jobId || ""),
+        number: String(estimate.number || "Estimate"),
+        version: Number(estimate.version || 1),
+        status: estimate.status === "sent" ? "viewed" : estimate.status,
+        documentType: "estimate",
+        projectTitle: String(estimate.projectTitle || "Roofing project"),
+        scopeSummary: String(estimate.scopeSummary || ""),
+        issueDate: estimate.issueDate || null,
+        validUntil: estimate.validUntil || null,
+        customerSnapshot: estimate.customerSnapshot || {},
+        propertyAddressSnapshot: estimate.propertyAddressSnapshot || null,
+        organizationSnapshot: estimate.organizationSnapshot || {
+          name: "Roger's Roofing",
+        },
+        lineItems: publicLineItems,
+        subtotalCents: Number(estimate.subtotalCents || 0),
+        discountCents: Number(estimate.discountCents || 0),
+        taxCents: Number(estimate.taxCents || 0),
+        taxRatePercent: Number(estimate.taxRatePercent || 0),
+        totalCents: Number(estimate.totalCents || 0),
+        depositCents: Number(estimate.depositCents || 0),
+        paymentTerms: String(estimate.paymentTerms || ""),
+        warrantyText: String(estimate.warrantyText || ""),
+        notes: String(estimate.notes || ""),
+        assumptions: Array.isArray(estimate.assumptions)
+          ? estimate.assumptions.map(String)
+          : [],
+        exclusions: Array.isArray(estimate.exclusions)
+          ? estimate.exclusions.map(String)
+          : [],
+      },
+    };
+  }
+);
+

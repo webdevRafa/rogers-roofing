@@ -93,6 +93,8 @@ export type EstimateStatus =
 
 export type RoofingUnit =
   | "EA"
+  | "PIECE"
+  | "BOX"
   | "SQ"
   | "SF"
   | "LF"
@@ -143,21 +145,49 @@ export type EstimateLineItem = {
 export type EstimateRecord = {
   id: ID;
   organizationId: ID;
+  orgId?: ID;
   jobId: ID;
   customerId?: ID | null;
   number: string;
   version: number;
   status: EstimateStatus;
   documentType: "estimate" | "quote" | "proposal" | "bid";
+  projectTitle?: string;
+  scopeSummary?: string;
+  issueDate?: string | null;
   validUntil?: string | null;
+  customerSnapshot?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
+  propertyAddressSnapshot?: Address;
+  organizationSnapshot?: {
+    name: string;
+    legalName?: string;
+    phone?: string;
+    email?: string;
+    address?: Address | null;
+    logoUrl?: string | null;
+  };
   lineItems: EstimateLineItem[];
   subtotalCents: number;
   discountCents: number;
   taxCents: number;
+  taxRatePercent?: number;
   totalCents: number;
   depositCents?: number;
+  paymentTerms?: string;
+  warrantyText?: string;
+  notes?: string;
   assumptions: string[];
   exclusions: string[];
+  publicToken?: string;
+  sentAt?: FirestoreTime;
+  viewedAt?: FirestoreTime;
+  lastEmailSentAt?: FirestoreTime;
+  lastEmailResendId?: string | null;
+  emailSendInFlightAt?: FirestoreTime;
   acceptedAt?: FirestoreTime;
   frozenSnapshotHash?: string | null;
   createdAt?: FirestoreTime;

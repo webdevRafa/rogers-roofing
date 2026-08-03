@@ -937,9 +937,12 @@ export default function JobWorkspacePage() {
                     <span>Customer documents</span>
                     <h2>Estimates and invoices</h2>
                   </div>
-                  <Link className="admin-primary-button" to="/invoices-page">
+                  <Link
+                    className="admin-primary-button"
+                    to={`/estimates/new?jobId=${job.id}`}
+                  >
                     <Plus size={14} />
-                    Create document
+                    Create estimate
                   </Link>
                 </div>
                 {estimates.length + invoices.length === 0 ? (
@@ -956,7 +959,7 @@ export default function JobWorkspacePage() {
                 ) : (
                   <div className="job-documents">
                     {estimates.map((estimate) => (
-                      <div key={estimate.id}>
+                      <Link to={`/estimate/${estimate.id}`} key={estimate.id}>
                         <span>
                           <FileStack size={17} />
                         </span>
@@ -972,7 +975,7 @@ export default function JobWorkspacePage() {
                         <span className={`admin-status status-${estimate.status}`}>
                           {estimate.status}
                         </span>
-                      </div>
+                      </Link>
                     ))}
                     {invoices.map((invoice) => (
                       <Link to={`/invoices/${invoice.id}`} key={invoice.id}>
