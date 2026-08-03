@@ -7602,15 +7602,6 @@ img {
   print-color-adjust: exact;
 }
 
-.estimate-paper-accent {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 7px;
-  background: linear-gradient(90deg, #a8131b 0%, #d1202a 68%, #201f1b 68%);
-}
-
 .estimate-document-header {
   display: flex;
   align-items: flex-start;
@@ -7671,10 +7662,10 @@ img {
 .estimate-document-title h1 {
   margin: 0;
   color: #211f1b;
-  font-size: 21px;
+  font-size: 17px;
   font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
+  letter-spacing: 0;
+  line-height: 1.25;
 }
 
 .estimate-document-title strong {
