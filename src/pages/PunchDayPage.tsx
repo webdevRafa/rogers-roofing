@@ -183,7 +183,7 @@ export default function PunchDayPage() {
       // Write using the same converter as elsewhere
       await setDoc(newRef.withConverter(jobConverter), job);
 
-      // Go straight to JobDetailPage for this job
+      // Go straight to the current job workspace.
       navigate(`/job/${newRef.id}`);
 
       // Reset form state in case user comes back

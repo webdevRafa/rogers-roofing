@@ -922,7 +922,7 @@ export default function InvoicesPage() {
   const INVOICES_PER_PAGE = 10;
   const [invoicesPage, setInvoicesPage] = useState<number>(1);
 
-  // ---- Global toast (match JobDetailPage styling) ----
+  // ---- Global document toast ----
   type ToastStatus = "success" | "error" | "loading";
   type ToastState = {
     status: ToastStatus;
@@ -1448,7 +1448,7 @@ export default function InvoicesPage() {
         />
       )}
 
-      {/* ===== Global Toast (matches JobDetailPage) ===== */}
+      {/* ===== Global document toast ===== */}
       {toast && (
         <div className="fixed right-4 top-20 z-50">
           <div className="flex items-start gap-3 rounded-xl border border-[var(--color-border)] bg-white/95 px-4 py-3 text-sm shadow-lg">

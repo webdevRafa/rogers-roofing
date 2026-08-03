@@ -1,6 +1,7 @@
 // src/App.tsx
 import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import "./index.css";
+import "./styles/admin-premium.css";
 
 import LoginPage from "./pages/LoginPage";
 import PublicHomePage from "./pages/PublicHomePage";
@@ -19,7 +20,6 @@ import EmployeesPage from "./pages/EmployeesPage";
 import EmployeeDetailPage from "./pages/EmployeeDetailPage";
 import PunchCalendarPage from "./pages/PunchCalendarPage";
 import PunchDayPage from "./pages/PunchDayPage";
-import JobDetailPage from "./pages/JobDetailPage";
 import InvoiceViewer from "./pages/InvoiceViewer";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
 import CompleteSignupPage from "./pages/CompleteSignupPage";
@@ -73,7 +73,6 @@ export default function App() {
               path="/job/:id/warranty-preview"
               element={<WarrantyPreviewPage />}
             />
-            <Route path="/legacy-job/:id" element={<JobDetailPage />} />
             <Route path="/invoices/:id" element={<InvoiceViewer />} />
             <Route path="/estimates/new" element={<EstimateBuilderPage />} />
             <Route

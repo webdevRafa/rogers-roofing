@@ -15,12 +15,13 @@ import {
   Mail,
   MapPin,
   PackageSearch,
-  PencilLine,
   Phone,
   Plus,
   ReceiptText,
   ShieldCheck,
+  UploadCloud,
   Users,
+  X,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
@@ -34,6 +35,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
 
 import { useOrg } from "../contexts/OrgContext";
 import { db } from "../firebase/firebaseConfig";
@@ -189,6 +191,10 @@ export default function JobWorkspacePage() {
   const [notes, setNotes] = useState("");
   const [materialOpen, setMaterialOpen] = useState(false);
   const [materialForm, setMaterialForm] = useState(initialMaterialForm);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoCaption, setPhotoCaption] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoMessage, setPhotoMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -439,6 +445,40 @@ export default function JobWorkspacePage() {
     }
   }
 
+  async function uploadPhoto(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!job || !photoFile) return;
+    setPhotoUploading(true);
+    setPhotoMessage(null);
+    setError(null);
+    try {
+      const safeName = photoFile.name
+        .replace(/\s+/g, "_")
+        .replace(/[^\w.-]/g, "");
+      const filename = `${Date.now()}_${safeName || "job-photo"}`;
+      const fileRef = storageRef(
+        getStorage(),
+        `jobs/${job.id}/attachments/${filename}`
+      );
+      await uploadBytes(fileRef, photoFile, {
+        contentType: photoFile.type || "image/*",
+        customMetadata: {
+          jobId: job.id,
+          caption: photoCaption.trim(),
+        },
+      });
+      setPhotoFile(null);
+      setPhotoCaption("");
+      setPhotoMessage(
+        "Photo received. It will appear here as soon as processing finishes."
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
   async function addMaterial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!job || !orgId) return;
@@ -675,13 +715,6 @@ export default function JobWorkspacePage() {
                   </option>
                 ))}
               </select>
-              <Link
-                className="admin-secondary-button"
-                to={`/legacy-job/${job.id}`}
-              >
-                <PencilLine size={15} />
-                Legacy editor
-              </Link>
             </div>
           </div>
         </div>
@@ -1344,10 +1377,61 @@ export default function JobWorkspacePage() {
                 <span>Project evidence</span>
                 <h2>Files and photos</h2>
               </div>
-              <Link className="admin-secondary-button" to={`/legacy-job/${job.id}`}>
-                Manage uploads
-              </Link>
+              <label className="admin-secondary-button job-upload-button">
+                <UploadCloud size={15} />
+                Add photos
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    setPhotoFile(event.target.files?.[0] ?? null);
+                    setPhotoMessage(null);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
             </div>
+            {photoFile && (
+              <form className="job-upload-panel" onSubmit={uploadPhoto}>
+                <div>
+                  <UploadCloud size={18} />
+                  <p>
+                    <strong>{photoFile.name}</strong>
+                    <small>Ready to attach to this job</small>
+                  </p>
+                </div>
+                <input
+                  value={photoCaption}
+                  onChange={(event) => setPhotoCaption(event.target.value)}
+                  placeholder="Optional caption, e.g. completed ridge line"
+                  maxLength={200}
+                  aria-label="Photo caption"
+                />
+                <button
+                  type="button"
+                  className="admin-icon-button"
+                  onClick={() => {
+                    setPhotoFile(null);
+                    setPhotoCaption("");
+                  }}
+                  aria-label="Remove selected photo"
+                >
+                  <X size={16} />
+                </button>
+                <button
+                  type="submit"
+                  className="admin-primary-button"
+                  disabled={photoUploading}
+                >
+                  {photoUploading ? "Uploading…" : "Upload photo"}
+                </button>
+              </form>
+            )}
+            {photoMessage && (
+              <p className="job-upload-message" role="status">
+                <Check size={15} /> {photoMessage}
+              </p>
+            )}
             {photos.length === 0 ? (
               <div className="admin-empty">
                 <div>
