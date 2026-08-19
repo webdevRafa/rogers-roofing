@@ -1080,6 +1080,18 @@ img {
   line-height: 1.68;
 }
 
+.public-form-success .public-success-email {
+  margin-top: 15px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: white;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .public-success-timeline {
   display: grid;
   width: min(590px, 100%);
@@ -7596,17 +7608,10 @@ img {
   overflow: hidden;
   background: white;
   color: #24231f;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "acumin-pro", "Helvetica Neue", Arial, sans-serif;
   box-shadow: 0 18px 60px rgb(42 35 28 / 16%);
-}
-
-.estimate-paper-accent {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 7px;
-  background: linear-gradient(90deg, #a8131b 0%, #d1202a 68%, #201f1b 68%);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .estimate-document-header {
@@ -7639,11 +7644,10 @@ img {
 
 .estimate-business-block strong {
   margin-bottom: 4px;
-  font-family: "acumin-pro", "Helvetica Neue", Arial, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
 .estimate-business-block span {
@@ -7660,21 +7664,20 @@ img {
 
 .estimate-document-title > span {
   margin-bottom: 5px;
-  color: #a8131b;
+  color: #5d5a55;
   font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .estimate-document-title h1 {
   margin: 0;
   color: #211f1b;
-  font-family: "acumin-pro", "Helvetica Neue", Arial, sans-serif;
-  font-size: 26px;
-  font-weight: 650;
-  letter-spacing: -0.025em;
-  line-height: 1.1;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.25;
 }
 
 .estimate-document-title strong {
@@ -7711,10 +7714,10 @@ img {
 .estimate-terms-stack span,
 .estimate-fine-print span,
 .estimate-approval span {
-  color: #8c1a20;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  color: #45433f;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
@@ -7731,9 +7734,8 @@ img {
 
 .estimate-bill-to strong {
   margin: 2px 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 16px;
-  font-weight: 400;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .estimate-bill-to small {
@@ -7760,10 +7762,12 @@ img {
 
 .estimate-line-items th {
   padding: 10px 11px;
-  background: #24231f;
-  color: white;
-  font-size: 8px;
-  letter-spacing: 0.1em;
+  border-bottom: 1px solid #aaa49c;
+  background: #f3f1ed;
+  color: #292824;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.075em;
   text-align: right;
   text-transform: uppercase;
 }
@@ -7776,8 +7780,8 @@ img {
 .estimate-line-items td {
   padding: 11px;
   border-bottom: 1px solid #e4ded7;
-  color: #3f3c37;
-  font-size: 9px;
+  color: #383631;
+  font-size: 10px;
   line-height: 1.35;
   text-align: right;
   vertical-align: top;
@@ -7798,13 +7802,14 @@ img {
 
 .estimate-line-items td strong {
   color: #24231f;
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .estimate-line-items td span {
   margin-top: 3px;
-  color: #716c65;
-  font-size: 8.5px;
+  color: #5e5a54;
+  font-size: 9px;
   line-height: 1.45;
 }
 
@@ -7823,8 +7828,8 @@ img {
 
 .estimate-terms-stack p {
   margin: 5px 0 0;
-  color: #5a5650;
-  font-size: 9px;
+  color: #504d48;
+  font-size: 9.5px;
   line-height: 1.5;
 }
 
@@ -7867,9 +7872,8 @@ img {
 }
 
 .estimate-totals .estimate-total-row dd {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 20px;
-  font-weight: 400;
+  font-size: 17px;
+  font-weight: 600;
 }
 
 .estimate-fine-print {
@@ -7886,8 +7890,8 @@ img {
 .estimate-fine-print ul {
   margin: 7px 0 0;
   padding-left: 13px;
-  color: #625d57;
-  font-size: 8px;
+  color: #56524d;
+  font-size: 8.5px;
   line-height: 1.5;
 }
 
@@ -7923,15 +7927,14 @@ img {
 }
 
 .estimate-document-footer strong {
-  color: #8c1a20;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 11px;
-  font-weight: 400;
+  color: #393733;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .estimate-document-footer span {
-  color: #77716a;
-  font-size: 7.5px;
+  color: #625e58;
+  font-size: 8px;
   line-height: 1.45;
 }
 
@@ -8151,6 +8154,10 @@ img {
   }
 
   .estimate-preview-toolbar {
+    display: none !important;
+  }
+
+  .estimate-document-title > span {
     display: none !important;
   }
 

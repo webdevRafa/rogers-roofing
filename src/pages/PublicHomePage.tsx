@@ -45,6 +45,8 @@ type EstimateRequestConfirmation = {
   leadId: string;
   requestNumber: string;
   status: "new";
+  confirmationEmailSent: boolean;
+  confirmationEmail: string;
 };
 
 const initialLead: LeadFormState = {
@@ -643,6 +645,12 @@ export default function PublicHomePage() {
                   Thank you. Our team will review the details and contact you
                   using the method you selected.
                 </p>
+                {confirmation.confirmationEmailSent && (
+                  <p className="public-success-email">
+                    We also sent a confirmation to{" "}
+                    <strong>{confirmation.confirmationEmail}</strong>.
+                  </p>
+                )}
                 <div className="public-success-timeline">
                   <div className="is-complete">
                     <strong>1</strong>

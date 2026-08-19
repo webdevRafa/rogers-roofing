@@ -79,8 +79,6 @@ export default function EstimateDocument({
 
   return (
     <article className="estimate-paper">
-      <div className="estimate-paper-accent" />
-
       <header className="estimate-document-header">
         <div className="estimate-business-block">
           <img
