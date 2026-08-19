@@ -1001,32 +1001,6 @@
   color: var(--admin-success);
 }
 
-.material-pricing-basis {
-  display: inline-flex;
-  min-height: 27px;
-  align-items: center;
-  padding: 0 10px;
-  border: 1px solid #d7e2ee;
-  border-radius: 999px;
-  background: #f3f7fb;
-  color: #315a7d;
-  font-size: 9px;
-  font-weight: 750;
-  white-space: nowrap;
-}
-
-.material-rate {
-  color: var(--admin-text);
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.material-rate-unit {
-  margin-left: 4px;
-  color: var(--admin-muted);
-  font-size: 9px;
-}
-
 .material-type-section {
   background: linear-gradient(180deg, #fff 0%, #fbfcfd 100%);
 }
@@ -1101,21 +1075,6 @@
   color: var(--admin-faint);
 }
 
-.field-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.field-optional {
-  color: var(--admin-faint);
-  font-size: 8px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: none;
-}
-
 .material-pricing-fields {
   display: grid;
   gap: 13px;
@@ -1183,6 +1142,67 @@
 .material-form-drawer .admin-drawer-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
+}
+
+.material-expense-preview {
+  overflow: hidden;
+  border: 1px solid var(--admin-border);
+  border-radius: 11px;
+  background: white;
+}
+
+.material-expense-preview > div {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.material-expense-preview > div:last-child {
+  min-height: 48px;
+  border-bottom: 0;
+  background: #f4f7fa;
+}
+
+.material-expense-preview span {
+  color: var(--admin-muted);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.material-expense-preview strong {
+  color: var(--admin-text);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.material-expense-preview > div:last-child span,
+.material-expense-preview > div:last-child strong {
+  color: var(--admin-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.job-material-guidance-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 20px;
+  padding: 13px;
+  border: 1px solid #d9e5ef;
+  border-radius: 10px;
+  background: #f5f9fc;
+  color: var(--admin-text-soft);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.job-material-guidance-note svg {
+  flex: 0 0 auto;
+  color: #315f84;
 }
 
 /* Calendar */

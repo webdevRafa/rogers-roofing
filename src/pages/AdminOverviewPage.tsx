@@ -7,7 +7,6 @@ import {
   CircleDollarSign,
   FileCheck2,
   HandCoins,
-  PackageSearch,
   Plus,
   TrendingUp,
   UserRoundSearch,
@@ -538,8 +537,8 @@ export default function AdminOverviewPage() {
               <Link to="/jobs?create=1">
                 <Plus /> Create a job <ArrowRight />
               </Link>
-              <Link to="/materials">
-                <PackageSearch /> Add a material <ArrowRight />
+              <Link to="/jobs">
+                <BriefcaseBusiness /> Review job costs <ArrowRight />
               </Link>
               <Link to="/payouts">
                 <HandCoins /> Record a payout <ArrowRight />

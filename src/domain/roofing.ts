@@ -357,6 +357,8 @@ export type JobMaterialActual = {
   organizationId: ID;
   jobId: ID;
   catalogItemId?: ID | null;
+  materialType?: RoofingMaterialType | null;
+  category?: RoofingMaterialCategory | null;
   descriptionSnapshot: string;
   manufacturerSnapshot?: string | null;
   productSnapshot?: string | null;
@@ -379,8 +381,10 @@ export type JobMaterialActual = {
   rebatesCents: number;
   netActualCostCents: number;
   supplierId?: ID | null;
+  supplierName?: string | null;
   supplierInvoiceId?: ID | null;
   lotOrBatch?: string | null;
+  warrantyComponent?: boolean;
   installedAt?: FirestoreTime;
   createdAt?: FirestoreTime;
   updatedAt?: FirestoreTime;
