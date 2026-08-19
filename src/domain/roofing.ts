@@ -142,6 +142,14 @@ export type EstimateLineItem = {
   source: "manual" | "template" | "measurement" | "carrier" | "catalog";
 };
 
+export type RoofMeasurement = {
+  id: ID;
+  lengthFt: number;
+  widthFt: number;
+  areaSquareFeet: number;
+  roofingSquares: number;
+};
+
 export type EstimateRecord = {
   id: ID;
   organizationId: ID;
@@ -170,6 +178,10 @@ export type EstimateRecord = {
     address?: Address | null;
     logoUrl?: string | null;
   };
+  roofMeasurements?: RoofMeasurement[];
+  roofAreaSquareFeet?: number;
+  roofSquares?: number;
+  measurementsFinalized?: boolean;
   lineItems: EstimateLineItem[];
   subtotalCents: number;
   discountCents: number;

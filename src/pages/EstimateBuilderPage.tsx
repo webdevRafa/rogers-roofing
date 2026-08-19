@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Calculator,
   Check,
   Copy,
   Eye,
@@ -10,6 +11,7 @@ import {
   Loader2,
   Mail,
   Plus,
+  Ruler,
   Save,
   Send,
   Sparkles,
@@ -35,6 +37,7 @@ import type {
   EstimateLineItem,
   EstimateRecord,
   EstimateStatus,
+  RoofMeasurement,
   RoofingUnit,
 } from "../domain/roofing";
 import type { Address, Job, Org } from "../types/types";
@@ -47,6 +50,12 @@ type EditorLine = {
   unit: RoofingUnit;
   rate: string;
   pricingMode: "unit_price" | "included";
+};
+
+type EditorMeasurement = {
+  id: string;
+  length: string;
+  width: string;
 };
 
 type FormState = {
@@ -152,6 +161,38 @@ function newLine(overrides: Partial<EditorLine> = {}): EditorLine {
     pricingMode: "unit_price",
     ...overrides,
   };
+}
+
+function newMeasurement(
+  overrides: Partial<EditorMeasurement> = {}
+): EditorMeasurement {
+  return {
+    id: crypto.randomUUID(),
+    length: "",
+    width: "",
+    ...overrides,
+  };
+}
+
+function positiveNumber(value: string) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
+
+function roundMeasurement(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function measurementArea(measurement: EditorMeasurement) {
+  return roundMeasurement(
+    positiveNumber(measurement.length) * positiveNumber(measurement.width)
+  );
+}
+
+function formatMeasurement(value: number, maximumFractionDigits = 2) {
+  return value.toLocaleString("en-US", {
+    maximumFractionDigits,
+  });
 }
 
 const roofingTemplate: Omit<EditorLine, "id">[] = [
@@ -300,6 +341,10 @@ export default function EstimateBuilderPage() {
   );
   const [form, setForm] = useState<FormState>(initialForm);
   const [lines, setLines] = useState<EditorLine[]>([newLine()]);
+  const [measurements, setMeasurements] = useState<EditorMeasurement[]>([
+    newMeasurement(),
+  ]);
+  const [measurementsFinalized, setMeasurementsFinalized] = useState(false);
   const [organization, setOrganization] = useState<
     NonNullable<EstimateRecord["organizationSnapshot"]>
   >({ name: orgName || "Roger's Roofing" });
@@ -396,6 +441,19 @@ export default function EstimateBuilderPage() {
                 : "unit_price",
           }))
         );
+        const savedMeasurements = estimate.roofMeasurements || [];
+        setMeasurements(
+          savedMeasurements.length > 0
+            ? savedMeasurements.map((measurement) => ({
+                id: measurement.id,
+                length: String(measurement.lengthFt),
+                width: String(measurement.widthFt),
+              }))
+            : [newMeasurement()]
+        );
+        setMeasurementsFinalized(
+          Boolean(estimate.measurementsFinalized && savedMeasurements.length)
+        );
         initializedJob.current = true;
       })
       .catch((caught: unknown) => {
@@ -448,12 +506,31 @@ export default function EstimateBuilderPage() {
     };
   }, [form.deposit, form.discount, form.taxRate, lines]);
 
+  const measurementTotals = useMemo(() => {
+    const completed = measurements.filter(
+      (measurement) =>
+        positiveNumber(measurement.length) > 0 &&
+        positiveNumber(measurement.width) > 0
+    );
+    const squareFeet = roundMeasurement(
+      completed.reduce(
+        (total, measurement) => total + measurementArea(measurement),
+        0
+      )
+    );
+    return {
+      completedCount: completed.length,
+      squareFeet,
+      roofingSquares: roundMeasurement(squareFeet / 100),
+    };
+  }, [measurements]);
+
   const readiness = useMemo(
     () => [
       { label: "Customer selected", ready: Boolean(form.customerName.trim()) },
       { label: "Project connected", ready: Boolean(selectedJob) },
       {
-        label: "Scope itemized",
+        label: "Materials itemized",
         ready: lines.some((line) => line.title.trim()),
       },
       {
@@ -493,6 +570,60 @@ export default function EstimateBuilderPage() {
       current.map((line) =>
         line.id === lineId ? { ...line, [key]: value } : line
       )
+    );
+  }
+
+  function updateMeasurement(
+    measurementId: string,
+    key: "length" | "width",
+    value: string
+  ) {
+    setMeasurements((current) =>
+      current.map((measurement) =>
+        measurement.id === measurementId
+          ? { ...measurement, [key]: value }
+          : measurement
+      )
+    );
+    setMeasurementsFinalized(false);
+  }
+
+  function removeMeasurement(measurementId: string) {
+    setMeasurements((current) => {
+      const remaining = current.filter(
+        (measurement) => measurement.id !== measurementId
+      );
+      return remaining.length > 0 ? remaining : [newMeasurement()];
+    });
+    setMeasurementsFinalized(false);
+  }
+
+  function finishMeasurements() {
+    const hasIncompleteMeasurement = measurements.some((measurement) => {
+      const hasLength = positiveNumber(measurement.length) > 0;
+      const hasWidth = positiveNumber(measurement.width) > 0;
+      return hasLength !== hasWidth;
+    });
+    if (hasIncompleteMeasurement) {
+      setError(
+        "Complete both dimensions for every roof area, or remove the incomplete row."
+      );
+      setSuccess(null);
+      return;
+    }
+    if (measurementTotals.completedCount === 0) {
+      setError(
+        "Add at least one complete roof dimension before marking pricing done."
+      );
+      setSuccess(null);
+      return;
+    }
+    setError(null);
+    setMeasurementsFinalized(true);
+    setSuccess(
+      "Pricing measurements complete: " +
+        formatMeasurement(measurementTotals.squareFeet) +
+        " sq. ft."
     );
   }
 
@@ -555,6 +686,17 @@ export default function EstimateBuilderPage() {
       setError("Add at least one scope item with a description.");
       return;
     }
+    const hasIncompleteMeasurement = measurements.some((measurement) => {
+      const hasLength = positiveNumber(measurement.length) > 0;
+      const hasWidth = positiveNumber(measurement.width) > 0;
+      return hasLength !== hasWidth;
+    });
+    if (hasIncompleteMeasurement) {
+      setError(
+        "Complete both dimensions for every roof area, or remove the incomplete row."
+      );
+      return;
+    }
     if (mode === "send" && !/^\S+@\S+\.\S+$/.test(form.customerEmail)) {
       setError("Add a valid customer email before sending.");
       return;
@@ -597,6 +739,26 @@ export default function EstimateBuilderPage() {
           source: "manual",
         };
       });
+      const roofMeasurements: RoofMeasurement[] = measurements
+        .filter(
+          (measurement) =>
+            positiveNumber(measurement.length) > 0 &&
+            positiveNumber(measurement.width) > 0
+        )
+        .map((measurement) => {
+          const lengthFt = roundMeasurement(
+            positiveNumber(measurement.length)
+          );
+          const widthFt = roundMeasurement(positiveNumber(measurement.width));
+          const areaSquareFeet = roundMeasurement(lengthFt * widthFt);
+          return {
+            id: measurement.id,
+            lengthFt,
+            widthFt,
+            areaSquareFeet,
+            roofingSquares: roundMeasurement(areaSquareFeet / 100),
+          };
+        });
       const nextStatus: EstimateStatus =
         mode === "send"
           ? "ready_to_send"
@@ -629,6 +791,11 @@ export default function EstimateBuilderPage() {
         },
         propertyAddressSnapshot: addressSnapshot(selectedJob),
         organizationSnapshot: organization,
+        roofMeasurements,
+        roofAreaSquareFeet: measurementTotals.squareFeet,
+        roofSquares: measurementTotals.roofingSquares,
+        measurementsFinalized:
+          measurementsFinalized && roofMeasurements.length > 0,
         lineItems,
         subtotalCents: totals.subtotalCents,
         discountCents: totals.discountCents,
@@ -815,14 +982,189 @@ export default function EstimateBuilderPage() {
               </div>
             </section>
 
-            <section className="admin-card estimate-form-section estimate-line-section">
-              <div className="estimate-section-heading estimate-section-heading-actions">
+            <section
+              className={
+                "admin-card estimate-form-section estimate-measurement-section" +
+                (measurementsFinalized ? " is-complete" : "")
+              }
+            >
+              <div className="estimate-section-heading">
                 <span>02</span>
                 <div>
-                  <h2>Scope and pricing</h2>
+                  <h2>Pricing</h2>
                   <p>
-                    Use quantities and per-unit rates so the customer can see
-                    exactly what the bid includes.
+                    Enter each roof area in feet. Square footage and roofing SQ
+                    are calculated automatically.
+                  </p>
+                </div>
+              </div>
+
+              <div className="estimate-measurement-workspace">
+                <div className="estimate-measurement-intro">
+                  <div>
+                    <i aria-hidden="true">
+                      <Ruler size={19} />
+                    </i>
+                    <div>
+                      <strong>Roof dimensions</strong>
+                      <p>
+                        Break the roof into rectangular areas and enter only the
+                        two measured sides.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="estimate-measurement-formula">
+                    <span>Roofing reference</span>
+                    <strong>100 sq. ft. = 1 SQ</strong>
+                    <small>Admin only</small>
+                  </div>
+                </div>
+
+                <div className="estimate-measurement-list">
+                  {measurements.map((measurement, index) => {
+                    const areaSquareFeet = measurementArea(measurement);
+                    const roofingSquares = roundMeasurement(
+                      areaSquareFeet / 100
+                    );
+                    return (
+                      <article key={measurement.id}>
+                        <div className="estimate-measurement-index">
+                          <span>Area</span>
+                          <strong>{String(index + 1).padStart(2, "0")}</strong>
+                        </div>
+                        <label>
+                          <span>Length</span>
+                          <div>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              inputMode="decimal"
+                              value={measurement.length}
+                              onChange={(event) =>
+                                updateMeasurement(
+                                  measurement.id,
+                                  "length",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="12"
+                              aria-label={
+                                "Area " + (index + 1) + " length in feet"
+                              }
+                            />
+                            <span>ft</span>
+                          </div>
+                        </label>
+                        <b aria-hidden="true">×</b>
+                        <label>
+                          <span>Width</span>
+                          <div>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              inputMode="decimal"
+                              value={measurement.width}
+                              onChange={(event) =>
+                                updateMeasurement(
+                                  measurement.id,
+                                  "width",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="8"
+                              aria-label={
+                                "Area " + (index + 1) + " width in feet"
+                              }
+                            />
+                            <span>ft</span>
+                          </div>
+                        </label>
+                        <div className="estimate-measurement-result">
+                          <span>Square footage</span>
+                          <strong>
+                            {areaSquareFeet > 0
+                              ? formatMeasurement(areaSquareFeet) + " sq. ft."
+                              : "—"}
+                          </strong>
+                        </div>
+                        <div className="estimate-measurement-result is-admin">
+                          <span>
+                            Roofing SQ <small>Admin only</small>
+                          </span>
+                          <strong>
+                            {areaSquareFeet > 0
+                              ? formatMeasurement(roofingSquares) + " SQ"
+                              : "—"}
+                          </strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeMeasurement(measurement.id)}
+                          aria-label={"Remove area " + (index + 1)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="estimate-measurement-footer">
+                  <button
+                    className="estimate-add-measurement"
+                    type="button"
+                    onClick={() => {
+                      setMeasurements((current) => [
+                        ...current,
+                        newMeasurement(),
+                      ]);
+                      setMeasurementsFinalized(false);
+                    }}
+                  >
+                    <Plus size={15} /> Add another area
+                  </button>
+                  <div className="estimate-measurement-total">
+                    <div>
+                      <span>Total roof area</span>
+                      <strong>
+                        {formatMeasurement(measurementTotals.squareFeet)} sq. ft.
+                      </strong>
+                    </div>
+                    <div>
+                      <span>
+                        Total roofing SQ <small>Admin only</small>
+                      </span>
+                      <strong>
+                        {formatMeasurement(measurementTotals.roofingSquares)} SQ
+                      </strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={finishMeasurements}
+                      disabled={measurementTotals.completedCount === 0}
+                    >
+                      {measurementsFinalized ? (
+                        <Check size={15} />
+                      ) : (
+                        <Calculator size={15} />
+                      )}
+                      {measurementsFinalized ? "Measurements complete" : "Done"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="admin-card estimate-form-section estimate-line-section">
+              <div className="estimate-section-heading estimate-section-heading-actions">
+                <span>03</span>
+                <div>
+                  <h2>Materials</h2>
+                  <p>
+                    Itemize materials, labor, and included services with clear
+                    customer-facing descriptions.
                   </p>
                 </div>
                 <button type="button" onClick={loadTemplate}>
@@ -993,7 +1335,7 @@ export default function EstimateBuilderPage() {
 
             <section className="admin-card estimate-form-section">
               <div className="estimate-section-heading">
-                <span>03</span>
+                <span>04</span>
                 <div>
                   <h2>Terms and totals</h2>
                   <p>Add the commercial details that make the estimate complete.</p>
@@ -1104,8 +1446,24 @@ export default function EstimateBuilderPage() {
                 <FileText size={18} />
               </div>
               <strong>{money(totals.totalCents)}</strong>
-              <small>{lines.filter((line) => line.title.trim()).length} scope items</small>
+              <small>{lines.filter((line) => line.title.trim()).length} line items</small>
               <dl>
+                {measurementTotals.squareFeet > 0 && (
+                  <>
+                    <div>
+                      <dt>Roof area</dt>
+                      <dd>
+                        {formatMeasurement(measurementTotals.squareFeet)} sq. ft.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Roofing SQ · admin</dt>
+                      <dd>
+                        {formatMeasurement(measurementTotals.roofingSquares)} SQ
+                      </dd>
+                    </div>
+                  </>
+                )}
                 <div>
                   <dt>Subtotal</dt>
                   <dd>{money(totals.subtotalCents)}</dd>

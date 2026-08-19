@@ -1239,6 +1239,15 @@ export const sendEstimateEmail = onCall(
         "en-US",
         { style: "currency", currency: "USD" }
       );
+      const roofAreaSquareFeet = Number(estimate.roofAreaSquareFeet || 0);
+      const roofAreaSummary =
+        roofAreaSquareFeet > 0
+          ? `<p style="margin:0 0 22px;padding:12px 14px;border:1px solid #ddd6cc;border-radius:8px;background:#faf8f5;color:#5f5a54;font-size:13px;line-height:1.5;">Measured roof area: <strong style="color:#24231f;">${escapeEmailHtml(
+              `${roofAreaSquareFeet.toLocaleString("en-US", {
+                maximumFractionDigits: 2,
+              })} sq. ft.`
+            )}</strong></p>`
+          : "";
       const resend = getResend();
       const from = (
         INVITE_FROM_EMAIL.value() ||
@@ -1252,6 +1261,7 @@ export const sendEstimateEmail = onCall(
             <h1 style="margin:0 0 20px;font-family:Georgia,serif;font-size:32px;font-weight:400;">${number}</h1>
             <p style="margin:0 0 12px;line-height:1.6;">Hello ${customerName},</p>
             <p style="margin:0 0 22px;line-height:1.6;color:#5f5a54;">${businessName} prepared an itemized estimate for your roofing project. The current estimate total is <strong style="color:#24231f;">${escapeEmailHtml(total)}</strong>.</p>
+            ${roofAreaSummary}
             <p style="margin:0 0 24px;"><a href="${estimateUrl}" style="display:inline-block;background:#b71920;color:#ffffff;text-decoration:none;border-radius:7px;padding:13px 18px;font-weight:700;">View estimate</a></p>
             <p style="margin:0;color:#817a72;font-size:12px;line-height:1.5;">The private link includes the complete scope, quantities, rates, warranty information, and a print / download option. Reply to this email if you have any questions.</p>
           </div>
@@ -1378,6 +1388,7 @@ export const getPublicEstimate = onCall(
         organizationSnapshot: estimate.organizationSnapshot || {
           name: "Roger's Roofing",
         },
+        roofAreaSquareFeet: Number(estimate.roofAreaSquareFeet || 0),
         lineItems: publicLineItems,
         subtotalCents: Number(estimate.subtotalCents || 0),
         discountCents: Number(estimate.discountCents || 0),
