@@ -305,10 +305,26 @@ export type RoofingMaterialCategory =
   | "PERMIT_FEE"
   | "MISCELLANEOUS";
 
+export type RoofingMaterialType =
+  | "FIELD_SHINGLES"
+  | "HIP_RIDGE_SHINGLES"
+  | "STARTER_STRIP"
+  | "FELT_UNDERLAYMENT"
+  | "DRIP_EDGE"
+  | "PIPE_FLASHING_ROOF_JACK"
+  | "ATTIC_VENT"
+  | "EXHAUST_VENT"
+  | "L_FLASHING"
+  | "J_STEP_FLASHING"
+  | "COUNTER_FLASHING"
+  | "TIN_CAPS"
+  | "ROOFING_COIL_NAILS";
+
 export type MaterialCatalogItem = {
   id: ID;
   organizationId: ID;
   active: boolean;
+  materialType?: RoofingMaterialType | null;
   internalCode: string;
   category: RoofingMaterialCategory;
   genericName: string;
