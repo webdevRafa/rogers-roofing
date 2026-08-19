@@ -17,6 +17,7 @@ import { defineSecret } from "firebase-functions/params";
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 const INVITE_FROM_EMAIL = defineSecret("INVITE_FROM_EMAIL");
 const APP_BASE_URL = defineSecret("APP_BASE_URL");
+const LEAD_NOTIFICATION_EMAIL = "rogersroofing23@gmail.com";
 
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1", memory: "1GiB", timeoutSeconds: 540 });
@@ -34,6 +35,195 @@ const allowedLeadServices = new Set([
 
 function cleanLeadText(value: unknown, maxLength: number): string {
   return String(value ?? "").trim().slice(0, maxLength);
+}
+
+const leadServiceLabels: Record<string, string> = {
+  roof_replacement: "Roof replacement",
+  roof_repair: "Roof repair or leak",
+  storm_damage: "Storm damage",
+  new_construction: "New construction",
+  inspection: "Roof inspection",
+  commercial_roofing: "Commercial roofing",
+  gutters: "Gutters or drainage",
+  other: "Something else",
+};
+
+const leadUrgencyLabels: Record<string, string> = {
+  emergency: "Active leak / urgent",
+  within_week: "Within a week",
+  within_month: "Within a month",
+  planning: "Planning ahead",
+};
+
+const leadContactLabels: Record<string, string> = {
+  phone: "Phone call",
+  text: "Text message",
+  email: "Email",
+};
+
+function leadEmailShell(content: string): string {
+  return `
+    <!doctype html>
+    <html lang="en">
+      <body style="margin:0;background:#f4f2ee;font-family:Arial,Helvetica,sans-serif;color:#24231f;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f2ee;padding:32px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #ded9d1;border-radius:12px;overflow:hidden;">
+                <tr>
+                  <td style="padding:28px 32px 22px;border-bottom:1px solid #e4dfd8;">
+                    <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b665f;">Roger's Roofing</p>
+                    <p style="margin:0;font-size:22px;font-weight:700;line-height:1.25;color:#20201d;">Professional roofing. Clear communication.</p>
+                  </td>
+                </tr>
+                <tr><td style="padding:30px 32px;">${content}</td></tr>
+                <tr>
+                  <td style="padding:20px 32px;border-top:1px solid #e4dfd8;background:#faf9f7;color:#69645e;font-size:12px;line-height:1.6;">
+                    Roger's Roofing &amp; Contracting LLC<br />
+                    <a href="mailto:rogersroofing23@gmail.com" style="color:#34322f;text-decoration:none;">rogersroofing23@gmail.com</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>`;
+}
+
+function leadDetailRow(label: string, value: string): string {
+  return `
+    <tr>
+      <td style="width:36%;padding:10px 0;border-bottom:1px solid #ece8e2;color:#77716a;font-size:12px;vertical-align:top;">${escapeEmailHtml(label)}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #ece8e2;color:#292824;font-size:13px;font-weight:600;line-height:1.45;vertical-align:top;">${escapeEmailHtml(value)}</td>
+    </tr>`;
+}
+
+type WebsiteLeadEmailDetails = {
+  requestNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  service: string;
+  urgency: string;
+  preferredContact: string;
+  message: string;
+  insuranceClaimStarted: boolean;
+  receivedAt: Date;
+};
+
+async function sendWebsiteLeadEmails(details: WebsiteLeadEmailDetails) {
+  const resend = getResend();
+  const from = (
+    INVITE_FROM_EMAIL.value() ||
+    "Roger's Roofing <no-reply@rogersroofingtx.com>"
+  ).trim();
+  const customerName = `${details.firstName} ${details.lastName}`;
+  const subjectCustomerName = customerName.replace(/[\r\n]+/g, " ");
+  const serviceLabel = leadServiceLabels[details.service] || details.service;
+  const urgencyLabel = leadUrgencyLabels[details.urgency] || details.urgency;
+  const contactLabel =
+    leadContactLabels[details.preferredContact] || details.preferredContact;
+  const receivedLabel = details.receivedAt.toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    dateStyle: "long",
+    timeStyle: "short",
+  });
+  const message = details.message || "No additional project notes were provided.";
+
+  const adminHtml = leadEmailShell(`
+    <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#69645e;">New website estimate request</p>
+    <h1 style="margin:0 0 10px;font-size:25px;line-height:1.25;color:#20201d;">${escapeEmailHtml(customerName)} requested an estimate</h1>
+    <p style="margin:0 0 24px;color:#625d57;font-size:14px;line-height:1.6;">Request <strong style="color:#292824;">${escapeEmailHtml(details.requestNumber)}</strong> was submitted ${escapeEmailHtml(receivedLabel)}.</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      ${leadDetailRow("Service", serviceLabel)}
+      ${leadDetailRow("Timing", urgencyLabel)}
+      ${leadDetailRow("Property address", details.address)}
+      ${leadDetailRow("Customer", customerName)}
+      ${leadDetailRow("Email", details.email)}
+      ${leadDetailRow("Phone", details.phone)}
+      ${leadDetailRow("Preferred contact", contactLabel)}
+      ${leadDetailRow("Insurance claim started", details.insuranceClaimStarted ? "Yes" : "No")}
+    </table>
+    <div style="margin-top:24px;padding:18px 20px;background:#f7f5f2;border:1px solid #e6e1da;border-radius:8px;">
+      <p style="margin:0 0 7px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#69645e;">Project notes</p>
+      <p style="margin:0;color:#373530;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeEmailHtml(message)}</p>
+    </div>
+    <p style="margin:24px 0 0;color:#625d57;font-size:13px;line-height:1.6;">Reply directly to this email to contact ${escapeEmailHtml(details.firstName)} at ${escapeEmailHtml(details.email)}.</p>`);
+
+  const customerHtml = leadEmailShell(`
+    <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#69645e;">Estimate request received</p>
+    <h1 style="margin:0 0 12px;font-size:25px;line-height:1.25;color:#20201d;">Thank you, ${escapeEmailHtml(details.firstName)}.</h1>
+    <p style="margin:0 0 24px;color:#5f5a54;font-size:14px;line-height:1.65;">We received your request and our team will review the project details before contacting you by ${escapeEmailHtml(contactLabel.toLowerCase())}.</p>
+    <div style="padding:18px 20px;background:#f7f5f2;border:1px solid #e6e1da;border-radius:8px;">
+      <p style="margin:0 0 5px;color:#77716a;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Request number</p>
+      <p style="margin:0;color:#20201d;font-size:18px;font-weight:700;">${escapeEmailHtml(details.requestNumber)}</p>
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;">
+      ${leadDetailRow("Service requested", serviceLabel)}
+      ${leadDetailRow("Preferred timing", urgencyLabel)}
+      ${leadDetailRow("Property address", details.address)}
+      ${leadDetailRow("Preferred contact", contactLabel)}
+      ${leadDetailRow("Email", details.email)}
+      ${leadDetailRow("Phone", details.phone)}
+      ${leadDetailRow("Insurance claim started", details.insuranceClaimStarted ? "Yes" : "No")}
+    </table>
+    ${details.message ? `
+      <div style="margin-top:24px;padding:18px 20px;background:#f7f5f2;border:1px solid #e6e1da;border-radius:8px;">
+        <p style="margin:0 0 7px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#69645e;">Your project notes</p>
+        <p style="margin:0;color:#373530;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeEmailHtml(details.message)}</p>
+      </div>` : ""}
+    <div style="margin-top:24px;">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#292824;">What happens next</p>
+      <p style="margin:0;color:#625d57;font-size:13px;line-height:1.65;">A member of the Roger's Roofing team will review your request and contact you to discuss the property, answer questions, and coordinate an inspection when needed. Please keep the request number above for your records.</p>
+    </div>
+    <p style="margin:24px 0 0;color:#625d57;font-size:13px;line-height:1.65;">Need to add something? Reply to this email and our team will receive your message.</p>`);
+
+  const adminText = [
+    "New website estimate request",
+    `Request: ${details.requestNumber}`,
+    `Submitted: ${receivedLabel}`,
+    `Customer: ${customerName}`,
+    `Service: ${serviceLabel}`,
+    `Timing: ${urgencyLabel}`,
+    `Address: ${details.address}`,
+    `Email: ${details.email}`,
+    `Phone: ${details.phone}`,
+    `Preferred contact: ${contactLabel}`,
+    `Insurance claim started: ${details.insuranceClaimStarted ? "Yes" : "No"}`,
+    `Project notes: ${message}`,
+  ].join("\n");
+  const customerText = [
+    `Thank you, ${details.firstName}. We received your estimate request.`,
+    `Request number: ${details.requestNumber}`,
+    `Service requested: ${serviceLabel}`,
+    `Preferred timing: ${urgencyLabel}`,
+    `Property address: ${details.address}`,
+    `Preferred contact: ${contactLabel}`,
+    "A member of the Roger's Roofing team will review your request and contact you to discuss next steps.",
+    "Reply to this email if you need to add any information.",
+  ].join("\n");
+
+  return Promise.allSettled([
+    resend.emails.send({
+      from,
+      to: [LEAD_NOTIFICATION_EMAIL],
+      replyTo: details.email,
+      subject: `New estimate request: ${subjectCustomerName} - ${serviceLabel}`,
+      html: adminHtml,
+      text: adminText,
+    }),
+    resend.emails.send({
+      from,
+      to: [details.email],
+      replyTo: LEAD_NOTIFICATION_EMAIL,
+      subject: `We received your estimate request - ${details.requestNumber}`,
+      html: customerHtml,
+      text: customerText,
+    }),
+  ]);
 }
 
 async function resolvePublicOrganizationId(): Promise<string> {
@@ -67,7 +257,10 @@ async function resolvePublicOrganizationId(): Promise<string> {
  * record for the admin lead pipeline.
  */
 export const submitWebsiteLead = onCall(
-  { region: "us-central1" },
+  {
+    region: "us-central1",
+    secrets: [RESEND_API_KEY, INVITE_FROM_EMAIL],
+  },
   async (request) => {
     const data = request.data ?? {};
 
@@ -86,6 +279,19 @@ export const submitWebsiteLead = onCall(
     const urgency = cleanLeadText(data.urgency, 40);
     const preferredContact = cleanLeadText(data.preferredContact, 20);
     const organizationId = await resolvePublicOrganizationId();
+    const normalizedPreferredContact = ["phone", "text", "email"].includes(
+      preferredContact
+    )
+      ? preferredContact
+      : "phone";
+    const normalizedUrgency = [
+      "emergency",
+      "within_week",
+      "within_month",
+      "planning",
+    ].includes(urgency)
+      ? urgency
+      : "within_month";
 
     if (!firstName || !lastName || !email || !phone || !address) {
       throw new HttpsError(
@@ -125,20 +331,14 @@ export const submitWebsiteLead = onCall(
       lastName,
       email,
       phone,
-      preferredContact: ["phone", "text", "email"].includes(preferredContact)
-        ? preferredContact
-        : "phone",
+      preferredContact: normalizedPreferredContact,
       propertyAddress: {
         fullLine: address,
         country: "US",
       },
       service,
       propertyType: cleanLeadText(data.propertyType, 40) || "residential",
-      urgency: ["emergency", "within_week", "within_month", "planning"].includes(
-        urgency
-      )
-        ? urgency
-        : "within_month",
+      urgency: normalizedUrgency,
       message,
       insuranceClaimStarted: Boolean(data.insuranceClaimStarted),
       consentToContact: true,
@@ -147,11 +347,91 @@ export const submitWebsiteLead = onCall(
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    let adminEmailSent = false;
+    let customerEmailSent = false;
+    let adminEmailResendId: string | null = null;
+    let customerEmailResendId: string | null = null;
+
+    try {
+      const [adminEmailResult, customerEmailResult] =
+        await sendWebsiteLeadEmails({
+          requestNumber,
+          firstName,
+          lastName,
+          email,
+          phone,
+          address,
+          service,
+          urgency: normalizedUrgency,
+          preferredContact: normalizedPreferredContact,
+          message,
+          insuranceClaimStarted: Boolean(data.insuranceClaimStarted),
+          receivedAt,
+        });
+
+      adminEmailSent =
+        adminEmailResult.status === "fulfilled" &&
+        !adminEmailResult.value.error;
+      customerEmailSent =
+        customerEmailResult.status === "fulfilled" &&
+        !customerEmailResult.value.error;
+      adminEmailResendId =
+        adminEmailResult.status === "fulfilled"
+          ? adminEmailResult.value.data?.id || null
+          : null;
+      customerEmailResendId =
+        customerEmailResult.status === "fulfilled"
+          ? customerEmailResult.value.data?.id || null
+          : null;
+
+      if (!adminEmailSent) {
+        console.error(
+          "Failed to send website lead notification:",
+          adminEmailResult.status === "rejected"
+            ? adminEmailResult.reason
+            : adminEmailResult.value.error
+        );
+      }
+      if (!customerEmailSent) {
+        console.error(
+          "Failed to send website lead confirmation:",
+          customerEmailResult.status === "rejected"
+            ? customerEmailResult.reason
+            : customerEmailResult.value.error
+        );
+      }
+    } catch (emailSetupError) {
+      console.error("Website lead email delivery could not start:", emailSetupError);
+    }
+
+    try {
+      await leadRef.update({
+        emailDelivery: {
+          admin: {
+            status: adminEmailSent ? "sent" : "failed",
+            recipient: LEAD_NOTIFICATION_EMAIL,
+            resendId: adminEmailResendId,
+          },
+          customer: {
+            status: customerEmailSent ? "sent" : "failed",
+            recipient: email,
+            resendId: customerEmailResendId,
+          },
+          attemptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (auditError) {
+      console.error("Failed to record website lead email delivery:", auditError);
+    }
+
     return {
       ok: true,
       leadId: leadRef.id,
       requestNumber,
       status: "new",
+      confirmationEmailSent: customerEmailSent,
+      confirmationEmail: email,
     };
   }
 );
