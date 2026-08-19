@@ -174,11 +174,14 @@ img {
 }
 
 .public-brand img {
+  box-sizing: border-box;
   width: 55px;
   height: 55px;
+  padding: 5px;
   border-radius: 50%;
   background: white;
   object-fit: contain;
+  box-shadow: 0 5px 18px rgb(0 0 0 / 22%);
 }
 
 .public-brand span {
@@ -1180,11 +1183,14 @@ img {
 }
 
 .public-footer-brand img {
+  box-sizing: border-box;
   width: 66px;
   height: 66px;
+  padding: 6px;
   border-radius: 50%;
   background: white;
   object-fit: contain;
+  box-shadow: 0 7px 22px rgb(0 0 0 / 24%);
 }
 
 .public-footer-brand div {
@@ -1558,11 +1564,14 @@ img {
 }
 
 .admin-sidebar-brand img {
+  box-sizing: border-box;
   width: 48px;
   height: 48px;
+  padding: 4px;
   border-radius: 50%;
   background: white;
   object-fit: contain;
+  box-shadow: 0 5px 18px rgb(0 0 0 / 24%);
 }
 
 .admin-sidebar-brand span {

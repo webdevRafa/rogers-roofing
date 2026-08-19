@@ -23,7 +23,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import Reveal from "../components/Reveal";
 import { functions } from "../firebase/firebaseConfig";
-import logo from "../assets/rogers-roofing.webp";
+import logo from "../assets/rogers.svg";
 import finishedRoof from "../assets/AdobeStock_102630327.webp";
 import roofWorksite from "../assets/AdobeStock_356783144.webp";
 

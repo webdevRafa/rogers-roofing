@@ -1,4 +1,4 @@
-import logo from "../../assets/rogers-roofing.webp";
+import logo from "../../assets/rogers.svg";
 import { LogOut, CalendarDays, Users } from "lucide-react";
 
 type DashboardHeaderProps = {
@@ -23,7 +23,7 @@ export function DashboardHeader({
             <div className="text-lg md:text-3xl poppins text-white uppercase flex justify-between w-full items-center">
               Roger&apos;s Roofing &amp; Contracting LLC
               <img
-                className="max-w-[100px] md:max-w-[150px] rounded-2xl shadow-md"
+                className="h-20 w-20 rounded-full bg-white p-2 object-contain shadow-md md:h-24 md:w-24"
                 src={logo}
                 alt="Roger's Roofing logo"
               />
