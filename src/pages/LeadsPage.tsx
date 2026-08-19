@@ -8,7 +8,6 @@ import {
   Mail,
   MapPin,
   MessageSquareText,
-  Pencil,
   Phone,
   RefreshCw,
   Search,
@@ -42,6 +41,27 @@ import { jobConverter } from "../types/types";
 import { recomputeJob } from "../utils/calc";
 
 type FsDate = { toDate?: () => Date; seconds?: number };
+
+const INTAKE_STATUS_OPTIONS: LeadStatus[] = [
+  "new",
+  "contacted",
+  "inspection_scheduled",
+  "lost",
+  "archived",
+];
+
+const OPEN_REQUEST_STATUSES: LeadStatus[] = [
+  "new",
+  "contacted",
+  "inspection_scheduled",
+];
+
+const DEFAULT_PAYMENT_TERMS =
+  "Payment schedule will be confirmed with the customer before work begins.";
+const DEFAULT_WARRANTY =
+  "One-year workmanship warranty covering leaks, blown shingles, and installation-related seal failure. Manufacturer warranties remain subject to their published terms.";
+const DEFAULT_NOTES =
+  "Final quantities may be adjusted if concealed decking damage or other unforeseen conditions are discovered after tear-off.";
 
 function toDate(value: unknown): Date | null {
   if (!value) return null;
@@ -85,18 +105,103 @@ function projectTypeFromService(service: RoofingService): ProjectType {
   return "replacement";
 }
 
+function estimateProjectTitle(service: RoofingService) {
+  return `${serviceLabel(service)} estimate`;
+}
+
+function dateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function LeadsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { orgId, loading: orgLoading } = useOrg();
+  const { orgId, orgName, loading: orgLoading } = useOrg();
   const [leads, setLeads] = useState<CustomerLead[]>([]);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<LeadStatus | "all">("all");
+  const [status, setStatus] = useState<LeadStatus | "open">("open");
   const [selected, setSelected] = useState<CustomerLead | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+
+  async function generateEstimateNumber() {
+    if (!orgId) throw new Error("Your organization is still loading.");
+    const year = new Date().getFullYear();
+    const prefix = `EST-${year}-`;
+    const snapshot = await getDocs(
+      query(
+        collection(db, "estimates"),
+        where("organizationId", "==", orgId)
+      )
+    );
+    const max = snapshot.docs.reduce((highest, snapshotDocument) => {
+      const number = String(snapshotDocument.data().number || "");
+      if (!number.startsWith(prefix)) return highest;
+      const sequence = Number(number.slice(prefix.length));
+      return Number.isFinite(sequence) ? Math.max(highest, sequence) : highest;
+    }, 0);
+    return `${prefix}${String(max + 1).padStart(4, "0")}`;
+  }
+
+  async function pendingEstimateForLead(
+    lead: CustomerLead,
+    jobId: string
+  ) {
+    if (!orgId) throw new Error("Your organization is still loading.");
+    const estimateRef = doc(collection(db, "estimates"));
+    const issueDate = new Date();
+    const validUntil = new Date(issueDate);
+    validUntil.setDate(validUntil.getDate() + 30);
+    const estimate: EstimateRecord = {
+      id: estimateRef.id,
+      organizationId: orgId,
+      orgId,
+      jobId,
+      sourceLeadId: lead.id,
+      number: await generateEstimateNumber(),
+      version: 1,
+      status: "lead_received",
+      documentType: "estimate",
+      projectTitle: estimateProjectTitle(lead.service),
+      issueDate: dateInput(issueDate),
+      validUntil: dateInput(validUntil),
+      customerSnapshot: {
+        name: `${lead.firstName} ${lead.lastName}`.trim(),
+        email: lead.email,
+        phone: lead.phone,
+      },
+      propertyAddressSnapshot: lead.propertyAddress,
+      organizationSnapshot: {
+        name: orgName || "Roger's Roofing",
+      },
+      roofMeasurements: [],
+      roofAreaSquareFeet: 0,
+      roofSquares: 0,
+      measurementsFinalized: false,
+      lineItems: [],
+      subtotalCents: 0,
+      discountCents: 0,
+      taxCents: 0,
+      taxRatePercent: 0,
+      totalCents: 0,
+      depositCents: 0,
+      paymentTerms: DEFAULT_PAYMENT_TERMS,
+      warrantyText: DEFAULT_WARRANTY,
+      notes: DEFAULT_NOTES,
+      assumptions: ["Property access will be available during scheduled work."],
+      exclusions: [
+        "Structural repairs, permits, and concealed damage are excluded unless specifically listed above.",
+      ],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    return { estimateRef, estimate };
+  }
 
   async function findEstimateForJob(jobId: string) {
     if (!orgId) return null;
@@ -112,14 +217,8 @@ export default function LeadsPage() {
         (estimate) =>
           estimate.organizationId === orgId || estimate.orgId === orgId
       );
-    const editable = estimates.filter(
-      (estimate) =>
-        estimate.status !== "accepted" &&
-        estimate.status !== "converted_to_contract"
-    );
-    const candidates = editable.length > 0 ? editable : estimates;
     return (
-      [...candidates].sort(
+      [...estimates].sort(
         (a, b) =>
           (toDate(b.updatedAt)?.getTime() ??
             toDate(b.createdAt)?.getTime() ??
@@ -144,12 +243,13 @@ export default function LeadsPage() {
     return existingJob?.id || null;
   }
 
-  async function createJobFromLead(
-    lead: CustomerLead,
-    nextStatus: LeadStatus
-  ) {
+  async function createJobFromLead(lead: CustomerLead) {
     if (!orgId) throw new Error("Your organization is still loading.");
     const jobRef = doc(collection(db, "jobs"));
+    const { estimateRef, estimate } = await pendingEstimateForLead(
+      lead,
+      jobRef.id
+    );
     const baseJob: Job = {
       id: jobRef.id,
       orgId,
@@ -187,18 +287,17 @@ export default function LeadsPage() {
     const job = recomputeJob(baseJob);
     const batch = writeBatch(db);
     batch.set(jobRef.withConverter(jobConverter), job);
+    batch.set(estimateRef, estimate);
     batch.update(doc(db, "leads", lead.id), {
-      status: nextStatus,
+      status: "won",
       linkedJobId: jobRef.id,
+      linkedEstimateId: estimateRef.id,
+      convertedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
     await batch.commit();
-    setSelected((current) =>
-      current?.id === lead.id
-        ? { ...current, status: nextStatus, linkedJobId: jobRef.id }
-        : current
-    );
-    return jobRef.id;
+    setSelected(null);
+    return { jobId: jobRef.id, estimateId: estimateRef.id };
   }
 
   useEffect(() => {
@@ -218,12 +317,16 @@ export default function LeadsPage() {
     return onSnapshot(
       leadsQuery,
       (snapshot) => {
-        setLeads(
-          snapshot.docs.map((document) => ({
-            id: document.id,
-            ...(document.data() as Omit<CustomerLead, "id">),
-          }))
-        );
+        const nextLeads = snapshot.docs.map((document) => ({
+          id: document.id,
+          ...(document.data() as Omit<CustomerLead, "id">),
+        }));
+        setLeads(nextLeads);
+        setSelected((current) => {
+          if (!current) return null;
+          const liveRequest = nextLeads.find((lead) => lead.id === current.id);
+          return liveRequest && !liveRequest.linkedJobId ? liveRequest : null;
+        });
         setLoading(false);
       },
       (snapshotError) => {
@@ -237,7 +340,9 @@ export default function LeadsPage() {
 
   useEffect(() => {
     if (!requestedLeadId) return;
-    const requestedLead = leads.find((lead) => lead.id === requestedLeadId);
+    const requestedLead = leads.find(
+      (lead) => lead.id === requestedLeadId && !lead.linkedJobId
+    );
     if (requestedLead) setSelected(requestedLead);
   }, [leads, requestedLeadId]);
 
@@ -255,10 +360,19 @@ export default function LeadsPage() {
     setSelected(null);
   }
 
+  const intakeLeads = useMemo(
+    () => leads.filter((lead) => !lead.linkedJobId),
+    [leads]
+  );
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return [...leads]
-      .filter((lead) => status === "all" || lead.status === status)
+    return [...intakeLeads]
+      .filter((lead) =>
+        status === "open"
+          ? OPEN_REQUEST_STATUSES.includes(lead.status)
+          : lead.status === status
+      )
       .filter((lead) => {
         if (!term) return true;
         return [
@@ -279,7 +393,7 @@ export default function LeadsPage() {
           (toDate(b.createdAt)?.getTime() ?? 0) -
           (toDate(a.createdAt)?.getTime() ?? 0)
       );
-  }, [leads, search, status]);
+  }, [intakeLeads, search, status]);
 
   async function changeStatus(lead: CustomerLead, nextStatus: LeadStatus) {
     setSavingId(lead.id);
@@ -309,44 +423,32 @@ export default function LeadsPage() {
 
     try {
       const existingJobId = await findJobForLead(lead);
-      const jobId =
-        existingJobId || (await createJobFromLead(lead, "won"));
-      if (existingJobId && !lead.linkedJobId) {
-        await updateDoc(doc(db, "leads", lead.id), {
+      let jobId: string;
+      if (existingJobId) {
+        jobId = existingJobId;
+        const existingEstimate = await findEstimateForJob(jobId);
+        const batch = writeBatch(db);
+        let estimateId = existingEstimate?.id || "";
+        if (!existingEstimate) {
+          const { estimateRef, estimate } = await pendingEstimateForLead(
+            lead,
+            jobId
+          );
+          batch.set(estimateRef, estimate);
+          estimateId = estimateRef.id;
+        }
+        batch.update(doc(db, "leads", lead.id), {
           status: "won",
-          linkedJobId: existingJobId,
-          updatedAt: serverTimestamp(),
-        });
-      }
-      navigate(`/job/${jobId}`);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
-      setSavingId(null);
-    }
-  }
-
-  async function openEstimateStudio(lead: CustomerLead) {
-    if (!orgId || savingId) return;
-    setSavingId(lead.id);
-    setError(null);
-    try {
-      let jobId = await findJobForLead(lead);
-      if (!jobId) {
-        jobId = await createJobFromLead(lead, "estimate_in_progress");
-      } else if (!lead.linkedJobId) {
-        await updateDoc(doc(db, "leads", lead.id), {
-          status: "estimate_in_progress",
           linkedJobId: jobId,
+          linkedEstimateId: estimateId,
+          convertedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+        await batch.commit();
+      } else {
+        ({ jobId } = await createJobFromLead(lead));
       }
-
-      const estimate = await findEstimateForJob(jobId);
-      navigate(
-        estimate
-          ? `/estimates/${estimate.id}/edit`
-          : `/estimates/new?jobId=${encodeURIComponent(jobId)}`
-      );
+      navigate(`/job/${jobId}?tab=financials`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setSavingId(null);
@@ -372,13 +474,15 @@ export default function LeadsPage() {
             <span className="admin-kicker">Estimate request pipeline</span>
             <h1>Estimate requests</h1>
             <p>
-              Every request from the public website is saved here in real time.
-              Qualify the project, schedule an inspection, and convert approved
-              opportunities into jobs.
+              This is the intake queue for new website requests. Converting a
+              request creates its job and first estimate, then moves the work
+              into the job workspace.
             </p>
           </div>
           <div className="leads-summary">
-            <span>{leads.filter((lead) => lead.status === "new").length}</span>
+            <span>
+              {intakeLeads.filter((lead) => lead.status === "new").length}
+            </span>
             new requests
           </div>
         </header>
@@ -397,13 +501,13 @@ export default function LeadsPage() {
               className="admin-filter-select"
               value={status}
               onChange={(event) =>
-                setStatus(event.target.value as LeadStatus | "all")
+                setStatus(event.target.value as LeadStatus | "open")
               }
             >
-              <option value="all">All statuses</option>
-              {Object.entries(LEAD_STATUS_LABELS).map(([value, label]) => (
+              <option value="open">Open requests</option>
+              {INTAKE_STATUS_OPTIONS.map((value) => (
                 <option value={value} key={value}>
-                  {label}
+                  {LEAD_STATUS_LABELS[value]}
                 </option>
               ))}
             </select>
@@ -438,11 +542,11 @@ export default function LeadsPage() {
               <div>
                 <UserRoundSearch size={34} />
                 <strong>
-                  {search || status !== "all"
+                  {search || status !== "open"
                     ? "No requests match these filters"
-                    : "Your request inbox is ready"}
+                    : "Your request inbox is clear"}
                 </strong>
-                {search || status !== "all" ? (
+                {search || status !== "open" ? (
                   <>
                     <p>
                       Try another search or clear the filters to see the full
@@ -453,7 +557,7 @@ export default function LeadsPage() {
                       type="button"
                       onClick={() => {
                         setSearch("");
-                        setStatus("all");
+                        setStatus("open");
                       }}
                     >
                       Clear filters
@@ -461,8 +565,8 @@ export default function LeadsPage() {
                   </>
                 ) : (
                   <p>
-                    New estimate requests submitted through the public website
-                    will appear here in real time.
+                    New website requests will appear here. Converted requests
+                    continue in their job workspace and document history.
                   </p>
                 )}
               </div>
@@ -523,33 +627,15 @@ export default function LeadsPage() {
                             changeStatus(lead, event.target.value as LeadStatus)
                           }
                         >
-                          {Object.entries(LEAD_STATUS_LABELS).map(
-                            ([value, label]) => (
-                              <option value={value} key={value}>
-                                {label}
-                              </option>
-                            )
-                          )}
+                          {INTAKE_STATUS_OPTIONS.map((value) => (
+                            <option value={value} key={value}>
+                              {LEAD_STATUS_LABELS[value]}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td>
                         <div className="leads-row-actions">
-                          <button
-                            className="admin-row-button leads-edit-button"
-                            type="button"
-                            disabled={savingId === lead.id}
-                            onClick={() => void openEstimateStudio(lead)}
-                            aria-label={
-                              `Open estimate studio for ${lead.firstName} ${lead.lastName}`
-                            }
-                            title="Edit estimate"
-                          >
-                            {savingId === lead.id ? (
-                              <Loader2 className="estimate-spin" size={15} />
-                            ) : (
-                              <Pencil size={15} />
-                            )}
-                          </button>
                           <button
                             className="admin-row-button"
                             type="button"
@@ -558,7 +644,11 @@ export default function LeadsPage() {
                             aria-label={`View ${lead.firstName} ${lead.lastName}`}
                             title="View request"
                           >
-                            <ArrowRight size={16} />
+                            {savingId === lead.id ? (
+                              <Loader2 className="estimate-spin" size={15} />
+                            ) : (
+                              <ArrowRight size={16} />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -604,9 +694,9 @@ export default function LeadsPage() {
                   changeStatus(selected, event.target.value as LeadStatus)
                 }
               >
-                {Object.entries(LEAD_STATUS_LABELS).map(([value, label]) => (
+                {INTAKE_STATUS_OPTIONS.map((value) => (
                   <option value={value} key={value}>
-                    {label}
+                    {LEAD_STATUS_LABELS[value]}
                   </option>
                 ))}
               </select>
@@ -676,14 +766,24 @@ export default function LeadsPage() {
               </dl>
             </section>
 
+            <div className="leads-handoff-note">
+              <strong>Ready to move forward?</strong>
+              <span>
+                Conversion creates a pending job and its first estimate. Future
+                pricing, revisions, and delivery continue from that job.
+              </span>
+            </div>
+
             <div className="admin-drawer-actions">
               <button
                 className="admin-primary-button"
                 type="button"
-                disabled={Boolean(selected.linkedJobId) || savingId === selected.id}
+                disabled={savingId === selected.id}
                 onClick={() => convertToJob(selected)}
               >
-                {selected.linkedJobId ? "Already converted" : "Convert to job"}
+                {savingId === selected.id
+                  ? "Creating job and estimate…"
+                  : "Convert to job"}
                 <ArrowRight size={16} />
               </button>
             </div>

@@ -39,6 +39,7 @@ import type {
   RoofMeasurement,
   RoofingUnit,
 } from "../domain/roofing";
+import { ESTIMATE_STATUS_LABELS } from "../domain/roofing";
 import type { Address, Job, Org } from "../types/types";
 
 type EditorMeasurement = {
@@ -751,7 +752,9 @@ export default function EstimateBuilderPage() {
           </div>
           <div className="estimate-builder-status">
             <span className={`admin-status status-${existing?.status || "draft"}`}>
-              {existing?.status?.replaceAll("_", " ") || "New draft"}
+              {existing
+                ? ESTIMATE_STATUS_LABELS[existing.status]
+                : "New draft"}
             </span>
             {existing && <small>Version {existing.version}</small>}
           </div>

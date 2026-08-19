@@ -44,6 +44,8 @@ export type CustomerLead = {
   assignedEmployeeId?: ID | null;
   linkedCustomerId?: ID | null;
   linkedJobId?: ID | null;
+  linkedEstimateId?: ID | null;
+  convertedAt?: FirestoreTime;
   createdAt?: FirestoreTime;
   updatedAt?: FirestoreTime;
   lastContactedAt?: FirestoreTime;
@@ -155,6 +157,7 @@ export type EstimateRecord = {
   organizationId: ID;
   orgId?: ID;
   jobId: ID;
+  sourceLeadId?: ID | null;
   customerId?: ID | null;
   number: string;
   version: number;
@@ -438,4 +441,21 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   won: "Won",
   lost: "Lost",
   archived: "Archived",
+};
+
+export const ESTIMATE_STATUS_LABELS: Record<EstimateStatus, string> = {
+  lead_received: "Pending setup",
+  inspection_scheduled: "Inspection scheduled",
+  inspection_complete: "Inspection complete",
+  draft: "Draft",
+  internal_review: "Internal review",
+  ready_to_send: "Ready to send",
+  sent: "Sent",
+  viewed: "Viewed",
+  revising: "Revising",
+  accepted: "Accepted",
+  declined: "Declined",
+  expired: "Expired",
+  cancelled: "Cancelled",
+  converted_to_contract: "Converted to contract",
 };

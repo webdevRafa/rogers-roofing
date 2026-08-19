@@ -82,6 +82,13 @@ function requestServiceLabel(service: CustomerLead["service"]): string {
   }[service];
 }
 
+function isOpenIntakeRequest(lead: CustomerLead) {
+  return (
+    !lead.linkedJobId &&
+    ["new", "contacted", "inspection_scheduled"].includes(lead.status)
+  );
+}
+
 export default function AdminOverviewPage() {
   const { orgId, orgName, loading: orgLoading } = useOrg();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -190,9 +197,7 @@ export default function AdminOverviewPage() {
     const activeJobs = jobs.filter(
       (job) => !["closed", "completed", "archived"].includes(job.status)
     ).length;
-    const openRequests = leads.filter(
-      (lead) => !["won", "lost", "archived"].includes(lead.status)
-    ).length;
+    const openRequests = leads.filter(isOpenIntakeRequest).length;
     const unpaidPayouts = payouts
       .filter((payout) => !payout.paidAt)
       .reduce((sum, payout) => sum + (payout.amountCents ?? 0), 0);
@@ -222,6 +227,7 @@ export default function AdminOverviewPage() {
   const recentRequests = useMemo(
     () =>
       [...leads]
+        .filter(isOpenIntakeRequest)
         .sort(
           (a, b) =>
             (toDate(b.createdAt)?.getTime() ?? 0) -
@@ -353,7 +359,7 @@ export default function AdminOverviewPage() {
           <div className="overview-card-heading">
             <div>
               <span>Incoming pipeline</span>
-              <h2>Recent estimate requests</h2>
+              <h2>Open estimate requests</h2>
             </div>
             <Link to="/leads">
               View request queue <ArrowRight size={14} />
@@ -364,10 +370,10 @@ export default function AdminOverviewPage() {
             <div className="admin-empty">
               <div>
                 <UserRoundSearch size={32} />
-                <strong>No estimate requests yet</strong>
+                <strong>The request inbox is clear</strong>
                 <p>
-                  Requests submitted through the public website will appear
-                  here immediately.
+                  New website requests will appear here. Converted requests
+                  continue from their job workspace.
                 </p>
               </div>
             </div>

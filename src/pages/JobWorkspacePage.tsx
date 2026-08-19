@@ -53,6 +53,7 @@ import {
   ROOFING_MATERIAL_DEFINITIONS,
 } from "../domain/materials";
 import {
+  ESTIMATE_STATUS_LABELS,
   type EstimateRecord,
   type JobMaterialActual,
   type RoofingMaterialType,
@@ -182,10 +183,6 @@ function invoiceBalance(invoice: InvoiceDoc): number {
   return invoice.status === "paid" || invoice.status === "void"
     ? 0
     : invoice.money?.totalCents ?? 0;
-}
-
-function estimateStatusLabel(status: EstimateRecord["status"]) {
-  return status.replaceAll("_", " ");
 }
 
 export default function JobWorkspacePage() {
@@ -1053,13 +1050,15 @@ export default function JobWorkspacePage() {
                     <span>Customer documents</span>
                     <h2>Estimates and invoices</h2>
                   </div>
-                  <Link
-                    className="admin-primary-button"
-                    to={`/estimates/new?jobId=${job.id}`}
-                  >
-                    <Plus size={14} />
-                    Create estimate
-                  </Link>
+                  {estimates.length === 0 && (
+                    <Link
+                      className="admin-primary-button"
+                      to={`/estimates/new?jobId=${job.id}`}
+                    >
+                      <Plus size={14} />
+                      Create estimate
+                    </Link>
+                  )}
                 </div>
                 {estimates.length + invoices.length === 0 ? (
                   <div className="admin-empty">
@@ -1089,20 +1088,25 @@ export default function JobWorkspacePage() {
                         </p>
                         <b>{money(estimate.totalCents)}</b>
                         <span className={`admin-status status-${estimate.status}`}>
-                          {estimateStatusLabel(estimate.status)}
+                          {ESTIMATE_STATUS_LABELS[estimate.status]}
                         </span>
                         <div className="job-document-actions">
-                          <Link
-                            to={`/estimate/${estimate.id}`}
-                            aria-label={`View ${estimate.number || "estimate"}`}
-                          >
-                            <Eye size={14} /> View
-                          </Link>
+                          {estimate.status !== "lead_received" && (
+                            <Link
+                              to={`/estimate/${estimate.id}`}
+                              aria-label={`View ${estimate.number || "estimate"}`}
+                            >
+                              <Eye size={14} /> View
+                            </Link>
+                          )}
                           <Link
                             to={`/estimates/${estimate.id}/edit`}
                             aria-label={`Edit ${estimate.number || "estimate"}`}
                           >
-                            <Pencil size={14} /> Edit
+                            <Pencil size={14} />
+                            {estimate.status === "lead_received"
+                              ? "Set up"
+                              : "Edit"}
                           </Link>
                         </div>
                       </article>
