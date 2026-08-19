@@ -8,6 +8,7 @@ import {
   Check,
   CircleDollarSign,
   ClipboardCheck,
+  Eye,
   FileCheck2,
   FileStack,
   HandCoins,
@@ -16,6 +17,7 @@ import {
   MapPin,
   PackageCheck,
   PackageSearch,
+  Pencil,
   Phone,
   Plus,
   ReceiptText,
@@ -25,7 +27,12 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   collection,
   doc,
@@ -66,6 +73,21 @@ type WorkspaceTab =
   | "payouts"
   | "warranty"
   | "files";
+
+const workspaceTabs: WorkspaceTab[] = [
+  "overview",
+  "financials",
+  "materials",
+  "payouts",
+  "warranty",
+  "files",
+];
+
+function requestedWorkspaceTab(value: string | null): WorkspaceTab {
+  return workspaceTabs.includes(value as WorkspaceTab)
+    ? (value as WorkspaceTab)
+    : "overview";
+}
 
 type PhotoDoc = {
   id: string;
@@ -162,11 +184,18 @@ function invoiceBalance(invoice: InvoiceDoc): number {
     : invoice.money?.totalCents ?? 0;
 }
 
+function estimateStatusLabel(status: EstimateRecord["status"]) {
+  return status.replaceAll("_", " ");
+}
+
 export default function JobWorkspacePage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { orgId } = useOrg();
-  const [tab, setTab] = useState<WorkspaceTab>("overview");
+  const [tab, setTab] = useState<WorkspaceTab>(() =>
+    requestedWorkspaceTab(searchParams.get("tab"))
+  );
   const [job, setJob] = useState<Job | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [payouts, setPayouts] = useState<PayoutDoc[]>([]);
@@ -196,6 +225,14 @@ export default function JobWorkspacePage() {
     materialForm.delivery,
     materialForm.freight,
   ].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+
+  function selectTab(nextTab: WorkspaceTab) {
+    setTab(nextTab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextTab === "overview") nextParams.delete("tab");
+    else nextParams.set("tab", nextTab);
+    setSearchParams(nextParams, { replace: true });
+  }
 
   function openMaterialForm() {
     setMaterialForm(initialMaterialForm);
@@ -261,23 +298,33 @@ export default function JobWorkspacePage() {
       ),
       onSnapshot(
         query(collection(db, "invoices"), where("jobId", "==", id)),
-        (snapshot) =>
-          setInvoices(
-            snapshot.docs.map((document) => ({
-              id: document.id,
-              ...(document.data() as Omit<InvoiceDoc, "id">),
-            }))
-          )
+        (snapshot) => {
+          const nextInvoices = snapshot.docs.map((document) => ({
+            id: document.id,
+            ...(document.data() as Omit<InvoiceDoc, "id">),
+          }));
+          nextInvoices.sort(
+            (a, b) =>
+              (toDate(b.updatedAt || b.createdAt)?.getTime() || 0) -
+              (toDate(a.updatedAt || a.createdAt)?.getTime() || 0)
+          );
+          setInvoices(nextInvoices);
+        }
       ),
       onSnapshot(
         query(collection(db, "estimates"), where("jobId", "==", id)),
-        (snapshot) =>
-          setEstimates(
-            snapshot.docs.map((document) => ({
-              id: document.id,
-              ...(document.data() as Omit<EstimateRecord, "id">),
-            }))
-          )
+        (snapshot) => {
+          const nextEstimates = snapshot.docs.map((document) => ({
+            id: document.id,
+            ...(document.data() as Omit<EstimateRecord, "id">),
+          }));
+          nextEstimates.sort(
+            (a, b) =>
+              (toDate(b.updatedAt || b.createdAt)?.getTime() || 0) -
+              (toDate(a.updatedAt || a.createdAt)?.getTime() || 0)
+          );
+          setEstimates(nextEstimates);
+        }
       ),
       onSnapshot(
         query(collection(db, "jobMaterials"), where("jobId", "==", id)),
@@ -765,7 +812,7 @@ export default function JobWorkspacePage() {
                 type="button"
                 key={item.key}
                 className={tab === item.key ? "is-active" : ""}
-                onClick={() => setTab(item.key)}
+                onClick={() => selectTab(item.key)}
               >
                 <Icon size={15} />
                 {item.label}
@@ -1028,7 +1075,7 @@ export default function JobWorkspacePage() {
                 ) : (
                   <div className="job-documents">
                     {estimates.map((estimate) => (
-                      <Link to={`/estimate/${estimate.id}`} key={estimate.id}>
+                      <article className="job-document-row" key={estimate.id}>
                         <span>
                           <FileStack size={17} />
                         </span>
@@ -1037,17 +1084,31 @@ export default function JobWorkspacePage() {
                             {estimate.number || `Estimate v${estimate.version}`}
                           </strong>
                           <small>
-                            Version {estimate.version} · {estimate.status}
+                            Estimate · Version {estimate.version} · Updated {formatDate(estimate.updatedAt || estimate.createdAt)}
                           </small>
                         </p>
                         <b>{money(estimate.totalCents)}</b>
                         <span className={`admin-status status-${estimate.status}`}>
-                          {estimate.status}
+                          {estimateStatusLabel(estimate.status)}
                         </span>
-                      </Link>
+                        <div className="job-document-actions">
+                          <Link
+                            to={`/estimate/${estimate.id}`}
+                            aria-label={`View ${estimate.number || "estimate"}`}
+                          >
+                            <Eye size={14} /> View
+                          </Link>
+                          <Link
+                            to={`/estimates/${estimate.id}/edit`}
+                            aria-label={`Edit ${estimate.number || "estimate"}`}
+                          >
+                            <Pencil size={14} /> Edit
+                          </Link>
+                        </div>
+                      </article>
                     ))}
                     {invoices.map((invoice) => (
-                      <Link to={`/invoices/${invoice.id}`} key={invoice.id}>
+                      <article className="job-document-row" key={invoice.id}>
                         <span>
                           <ReceiptText size={17} />
                         </span>
@@ -1059,7 +1120,12 @@ export default function JobWorkspacePage() {
                         <span className={`admin-status status-${invoice.status}`}>
                           {invoice.status}
                         </span>
-                      </Link>
+                        <div className="job-document-actions">
+                          <Link to={`/invoices/${invoice.id}`}>
+                            <Eye size={14} /> View
+                          </Link>
+                        </div>
+                      </article>
                     ))}
                   </div>
                 )}

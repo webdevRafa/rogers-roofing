@@ -152,9 +152,9 @@ export default function EstimateDocument({
         <table>
           <thead>
             <tr>
-              <th>Description</th>
-              <th>Rate</th>
-              <th>Qty</th>
+              <th>Material</th>
+              <th>Rate / unit</th>
+              <th>Quantity</th>
               <th>Amount</th>
             </tr>
           </thead>

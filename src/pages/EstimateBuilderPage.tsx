@@ -4,17 +4,14 @@ import {
   ArrowRight,
   Calculator,
   Check,
-  Copy,
   Eye,
   FileText,
-  GripVertical,
   Loader2,
   Mail,
   Plus,
   Ruler,
   Save,
   Send,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -32,25 +29,17 @@ import {
 import { httpsCallable } from "firebase/functions";
 
 import { useOrg } from "../contexts/OrgContext";
+import { estimateLineItemsFromJobMaterials } from "../domain/estimateMaterials";
 import { db, functions } from "../firebase/firebaseConfig";
 import type {
   EstimateLineItem,
   EstimateRecord,
   EstimateStatus,
+  JobMaterialActual,
   RoofMeasurement,
   RoofingUnit,
 } from "../domain/roofing";
 import type { Address, Job, Org } from "../types/types";
-
-type EditorLine = {
-  id: string;
-  title: string;
-  description: string;
-  quantity: string;
-  unit: RoofingUnit;
-  rate: string;
-  pricingMode: "unit_price" | "included";
-};
 
 type EditorMeasurement = {
   id: string;
@@ -76,24 +65,6 @@ type FormState = {
 };
 
 type SaveMode = "draft" | "preview" | "send";
-
-const units: RoofingUnit[] = [
-  "SQ",
-  "SF",
-  "LF",
-  "EA",
-  "PIECE",
-  "BUNDLE",
-  "ROLL",
-  "BOX",
-  "LS",
-  "HR",
-  "DAY",
-  "SHEET",
-  "GAL",
-  "TON",
-  "OTHER",
-];
 
 const unitLabels: Record<RoofingUnit, string> = {
   EA: "Each",
@@ -150,19 +121,6 @@ function initialForm(): FormState {
   };
 }
 
-function newLine(overrides: Partial<EditorLine> = {}): EditorLine {
-  return {
-    id: crypto.randomUUID(),
-    title: "",
-    description: "",
-    quantity: "1",
-    unit: "LS",
-    rate: "",
-    pricingMode: "unit_price",
-    ...overrides,
-  };
-}
-
 function newMeasurement(
   overrides: Partial<EditorMeasurement> = {}
 ): EditorMeasurement {
@@ -194,89 +152,6 @@ function formatMeasurement(value: number, maximumFractionDigits = 2) {
     maximumFractionDigits,
   });
 }
-
-const roofingTemplate: Omit<EditorLine, "id">[] = [
-  {
-    title: "Architectural field shingles",
-    description: "30-year architectural shingles in the customer-approved color.",
-    quantity: "1",
-    unit: "SQ",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Hip and ridge cap shingles",
-    description: "Matching ridge material for hips and ridgelines.",
-    quantity: "1",
-    unit: "SQ",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Starter strip",
-    description: "Starter course installed at required roof edges.",
-    quantity: "1",
-    unit: "BUNDLE",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Metal drip edge",
-    description: "Color-matched edge metal installed at eaves and rakes.",
-    quantity: "1",
-    unit: "PIECE",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Underlayment",
-    description: "Roofing underlayment installed over the prepared roof deck.",
-    quantity: "1",
-    unit: "ROLL",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Valley metal",
-    description: "Metal valley material installed where required by the roof design.",
-    quantity: "1",
-    unit: "ROLL",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Coil roofing nails",
-    description: "Approved roofing fasteners for the specified roof system.",
-    quantity: "1",
-    unit: "BOX",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Rooftop delivery",
-    description: "Material delivery and rooftop loading for the scheduled installation.",
-    quantity: "1",
-    unit: "LS",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Complete labor and installation",
-    description: "Tear-off, installation, flashing details, cleanup, and final magnetic sweep.",
-    quantity: "1",
-    unit: "LS",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Workmanship warranty",
-    description: "Contractor workmanship coverage as described in this estimate.",
-    quantity: "1",
-    unit: "LS",
-    rate: "0",
-    pricingMode: "included",
-  },
-];
 
 function centsFromInput(value: string) {
   const number = Number(value);
@@ -340,7 +215,8 @@ export default function EstimateBuilderPage() {
     searchParams.get("jobId") || ""
   );
   const [form, setForm] = useState<FormState>(initialForm);
-  const [lines, setLines] = useState<EditorLine[]>([newLine()]);
+  const [jobMaterials, setJobMaterials] = useState<JobMaterialActual[]>([]);
+  const [materialSyncReady, setMaterialSyncReady] = useState(false);
   const [measurements, setMeasurements] = useState<EditorMeasurement[]>([
     newMeasurement(),
   ]);
@@ -426,21 +302,6 @@ export default function EstimateBuilderPage() {
           assumptions: estimate.assumptions.join("\n"),
           exclusions: estimate.exclusions.join("\n"),
         });
-        setLines(
-          estimate.lineItems.map((line) => ({
-            id: line.id,
-            title: line.title,
-            description: line.customerDescription,
-            quantity: String(line.quantity),
-            unit: line.unit,
-            rate: String(line.unitPriceCents / 100),
-            pricingMode:
-              line.pricingMode === "included" ||
-              line.pricingMode === "no_charge"
-                ? "included"
-                : "unit_price",
-          }))
-        );
         const savedMeasurements = estimate.roofMeasurements || [];
         setMeasurements(
           savedMeasurements.length > 0
@@ -483,11 +344,59 @@ export default function EstimateBuilderPage() {
     [jobs, selectedJobId]
   );
 
+  useEffect(() => {
+    setJobMaterials([]);
+    setMaterialSyncReady(false);
+    if (!selectedJobId) return;
+
+    return onSnapshot(
+      query(
+        collection(db, "jobMaterials"),
+        where("jobId", "==", selectedJobId)
+      ),
+      (snapshot) => {
+        const nextMaterials = snapshot.docs.map((snapshotDocument) => ({
+          id: snapshotDocument.id,
+          ...(snapshotDocument.data() as Omit<JobMaterialActual, "id">),
+        }));
+        setJobMaterials(nextMaterials);
+        setMaterialSyncReady(true);
+      },
+      (snapshotError) => {
+        setError(snapshotError.message);
+        setMaterialSyncReady(true);
+      }
+    );
+  }, [selectedJobId]);
+
+  const syncedMaterialLines = useMemo(
+    () => estimateLineItemsFromJobMaterials(jobMaterials),
+    [jobMaterials]
+  );
+  const usingSavedSnapshot =
+    materialSyncReady &&
+    syncedMaterialLines.length === 0 &&
+    existing?.jobId === selectedJobId &&
+    existing.lineItems.length > 0;
+  const lines = useMemo(
+    () =>
+      syncedMaterialLines.length > 0
+        ? syncedMaterialLines
+        : existing?.jobId === selectedJobId
+          ? existing.lineItems
+          : [],
+    [existing, selectedJobId, syncedMaterialLines]
+  );
+
   const totals = useMemo(() => {
     const subtotalCents = lines.reduce((sum, line) => {
-      if (line.pricingMode === "included") return sum;
-      const quantity = Math.max(0, Number(line.quantity) || 0);
-      return sum + Math.round(quantity * centsFromInput(line.rate));
+      if (
+        line.pricingMode === "included" ||
+        line.pricingMode === "no_charge"
+      ) {
+        return sum;
+      }
+      return sum + Math.max(0, line.lineTotalCents);
     }, 0);
     const discountCents = Math.min(
       subtotalCents,
@@ -530,15 +439,21 @@ export default function EstimateBuilderPage() {
       { label: "Customer selected", ready: Boolean(form.customerName.trim()) },
       { label: "Project connected", ready: Boolean(selectedJob) },
       {
-        label: "Materials itemized",
-        ready: lines.some((line) => line.title.trim()),
+        label: "Job materials synced",
+        ready: materialSyncReady && syncedMaterialLines.length > 0,
       },
       {
         label: "Delivery email ready",
         ready: Boolean(form.customerEmail.trim()),
       },
     ],
-    [form.customerEmail, form.customerName, lines, selectedJob]
+    [
+      form.customerEmail,
+      form.customerName,
+      materialSyncReady,
+      selectedJob,
+      syncedMaterialLines.length,
+    ]
   );
 
   function updateForm<Key extends keyof FormState>(
@@ -559,18 +474,6 @@ export default function EstimateBuilderPage() {
       customerPhone: job.customer?.phone || "",
       projectTitle: projectTypeLabel(job.projectType),
     }));
-  }
-
-  function updateLine<Key extends keyof EditorLine>(
-    lineId: string,
-    key: Key,
-    value: EditorLine[Key]
-  ) {
-    setLines((current) =>
-      current.map((line) =>
-        line.id === lineId ? { ...line, [key]: value } : line
-      )
-    );
   }
 
   function updateMeasurement(
@@ -627,25 +530,6 @@ export default function EstimateBuilderPage() {
     );
   }
 
-  function duplicateLine(line: EditorLine) {
-    const index = lines.findIndex((item) => item.id === line.id);
-    const next = [...lines];
-    next.splice(index + 1, 0, { ...line, id: crypto.randomUUID() });
-    setLines(next);
-  }
-
-  function loadTemplate() {
-    const meaningfulLines = lines.filter(
-      (line) => line.title.trim() || line.rate.trim()
-    );
-    const templateLines = roofingTemplate.map((line) => ({
-      ...line,
-      id: crypto.randomUUID(),
-    }));
-    setLines([...meaningfulLines, ...templateLines]);
-    setSuccess("Roof replacement scope added. Review quantities and pricing.");
-  }
-
   async function generateNumber() {
     if (!orgId) return `EST-${new Date().getFullYear()}-0001`;
     const year = new Date().getFullYear();
@@ -681,9 +565,15 @@ export default function EstimateBuilderPage() {
       setError("Add the customer name before saving the estimate.");
       return;
     }
+    if (!materialSyncReady) {
+      setError("Job materials are still syncing. Please try again in a moment.");
+      return;
+    }
     const completedLines = lines.filter((line) => line.title.trim());
     if (completedLines.length === 0) {
-      setError("Add at least one scope item with a description.");
+      setError(
+        "Add at least one material to this job before creating its estimate."
+      );
       return;
     }
     const hasIncompleteMeasurement = measurements.some((measurement) => {
@@ -717,28 +607,7 @@ export default function EstimateBuilderPage() {
         ? doc(db, "estimates", existing.id)
         : doc(collection(db, "estimates"));
       const number = existing?.number || (await generateNumber());
-      const lineItems: EstimateLineItem[] = completedLines.map((line) => {
-        const quantity = Math.max(0, Number(line.quantity) || 0);
-        const unitPriceCents =
-          line.pricingMode === "included" ? 0 : centsFromInput(line.rate);
-        return {
-          id: line.id,
-          category: "roofing_scope",
-          title: line.title.trim(),
-          customerDescription: line.description.trim(),
-          quantity,
-          unit: line.unit,
-          unitPriceCents,
-          lineTotalCents: Math.round(quantity * unitPriceCents),
-          discountCents: 0,
-          pricingMode: line.pricingMode,
-          selectionType: "base",
-          selected: true,
-          customerVisible: true,
-          taxable: true,
-          source: "manual",
-        };
-      });
+      const lineItems: EstimateLineItem[] = completedLines;
       const roofMeasurements: RoofMeasurement[] = measurements
         .filter(
           (measurement) =>
@@ -864,7 +733,13 @@ export default function EstimateBuilderPage() {
       <div className="admin-content-width estimate-builder-shell">
         <header className="estimate-builder-header">
           <div>
-            <Link to={selectedJob ? `/job/${selectedJob.id}` : "/invoices-page"}>
+            <Link
+              to={
+                selectedJob
+                  ? `/job/${selectedJob.id}?tab=financials`
+                  : "/invoices-page"
+              }
+            >
               <ArrowLeft size={14} /> Back to documents
             </Link>
             <span className="admin-kicker">Estimate studio</span>
@@ -1161,176 +1036,98 @@ export default function EstimateBuilderPage() {
               <div className="estimate-section-heading estimate-section-heading-actions">
                 <span>03</span>
                 <div>
-                  <h2>Materials</h2>
+                  <h2>Job materials</h2>
                   <p>
-                    Itemize materials, labor, and included services with clear
-                    customer-facing descriptions.
+                    Synced automatically from this job. Roofing SQ is converted
+                    to customer-friendly square footage on the estimate.
                   </p>
                 </div>
-                <button type="button" onClick={loadTemplate}>
-                  <Sparkles size={15} /> Load roof template
-                </button>
+                {selectedJob && (
+                  <Link
+                    className="estimate-manage-materials"
+                    to={`/job/${selectedJob.id}?tab=materials`}
+                  >
+                    Manage job materials <ArrowRight size={14} />
+                  </Link>
+                )}
               </div>
 
-              <div className="estimate-editor-table-wrap">
-                <table className="estimate-editor-table">
-                  <thead>
-                    <tr>
-                      <th>Description</th>
-                      <th>Qty</th>
-                      <th>Unit</th>
-                      <th>Rate</th>
-                      <th>Amount</th>
-                      <th aria-label="Row actions" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((line, index) => {
-                      const lineTotal =
-                        line.pricingMode === "included"
-                          ? 0
-                          : Math.round(
-                              Math.max(0, Number(line.quantity) || 0) *
-                                centsFromInput(line.rate)
-                            );
-                      return (
-                        <tr key={line.id}>
-                          <td>
-                            <div className="estimate-line-description">
-                              <GripVertical size={15} aria-hidden="true" />
-                              <div>
-                                <input
-                                  value={line.title}
-                                  onChange={(event) =>
-                                    updateLine(line.id, "title", event.target.value)
-                                  }
-                                  placeholder={`Scope item ${index + 1}`}
-                                  aria-label={`Item ${index + 1} title`}
-                                />
-                                <textarea
-                                  rows={2}
-                                  value={line.description}
-                                  onChange={(event) =>
-                                    updateLine(
-                                      line.id,
-                                      "description",
-                                      event.target.value
-                                    )
-                                  }
-                                  placeholder="Customer-facing details"
-                                  aria-label={`Item ${index + 1} details`}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td data-label="Qty">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={line.quantity}
-                              onChange={(event) =>
-                                updateLine(line.id, "quantity", event.target.value)
-                              }
-                              aria-label={`Item ${index + 1} quantity`}
-                            />
-                          </td>
-                          <td data-label="Unit">
-                            <select
-                              value={line.unit}
-                              onChange={(event) =>
-                                updateLine(
-                                  line.id,
-                                  "unit",
-                                  event.target.value as RoofingUnit
-                                )
-                              }
-                              aria-label={`Item ${index + 1} unit`}
-                            >
-                              {units.map((unit) => (
-                                <option value={unit} key={unit}>
-                                  {unitLabels[unit]}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td data-label="Rate">
-                            <div className="estimate-money-input">
-                              <span>$</span>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={line.rate}
-                                disabled={line.pricingMode === "included"}
-                                onChange={(event) =>
-                                  updateLine(line.id, "rate", event.target.value)
-                                }
-                                placeholder="0.00"
-                                aria-label={`Item ${index + 1} rate`}
-                              />
-                            </div>
-                            <label className="estimate-included-toggle">
-                              <input
-                                type="checkbox"
-                                checked={line.pricingMode === "included"}
-                                onChange={(event) =>
-                                  updateLine(
-                                    line.id,
-                                    "pricingMode",
-                                    event.target.checked
-                                      ? "included"
-                                      : "unit_price"
-                                  )
-                                }
-                              />
-                              Included
-                            </label>
-                          </td>
-                          <td data-label="Amount">
-                            <strong>
-                              {line.pricingMode === "included"
-                                ? "Included"
-                                : money(lineTotal)}
-                            </strong>
-                          </td>
-                          <td>
-                            <div className="estimate-line-actions">
-                              <button
-                                type="button"
-                                onClick={() => duplicateLine(line)}
-                                aria-label={`Duplicate ${line.title || `item ${index + 1}`}`}
-                              >
-                                <Copy size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setLines((current) =>
-                                    current.length === 1
-                                      ? [newLine()]
-                                      : current.filter((item) => item.id !== line.id)
-                                  )
-                                }
-                                aria-label={`Remove ${line.title || `item ${index + 1}`}`}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
+              {!materialSyncReady ? (
+                <div className="estimate-material-sync-state">
+                  <Loader2 className="estimate-spin" size={20} />
+                  <div>
+                    <strong>Syncing job materials…</strong>
+                    <span>Preparing the customer-facing material schedule.</span>
+                  </div>
+                </div>
+              ) : lines.length === 0 ? (
+                <div className="estimate-material-sync-state is-empty">
+                  <FileText size={23} />
+                  <div>
+                    <strong>No materials have been added to this job.</strong>
+                    <span>
+                      Add material expenses in the job workspace, then they will
+                      appear here automatically.
+                    </span>
+                  </div>
+                  {selectedJob && (
+                    <Link to={`/job/${selectedJob.id}?tab=materials`}>
+                      Add job materials <ArrowRight size={14} />
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="estimate-material-sync-note">
+                    <Check size={15} />
+                    <span>
+                      {usingSavedSnapshot
+                        ? "Showing this estimate’s saved material snapshot because the job has no current material records."
+                        : `${jobMaterials.length} job material${jobMaterials.length === 1 ? "" : "s"} synced. Changes are made from the job’s Materials tab.`}
+                    </span>
+                  </div>
+                  <div className="estimate-editor-table-wrap">
+                    <table className="estimate-editor-table estimate-synced-materials-table">
+                      <thead>
+                        <tr>
+                          <th>Material</th>
+                          <th>Quantity</th>
+                          <th>Unit</th>
+                          <th>Rate / unit</th>
+                          <th>Amount</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <button
-                className="estimate-add-line"
-                type="button"
-                onClick={() => setLines((current) => [...current, newLine()])}
-              >
-                <Plus size={15} /> Add line item
-              </button>
+                      </thead>
+                      <tbody>
+                        {lines.map((line) => (
+                          <tr key={line.id}>
+                            <td>
+                              <div className="estimate-synced-material">
+                                <span><Check size={13} /></span>
+                                <div>
+                                  <strong>{line.title}</strong>
+                                  {line.customerDescription && (
+                                    <small>{line.customerDescription}</small>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td data-label="Quantity">
+                              {formatMeasurement(line.quantity)}
+                            </td>
+                            <td data-label="Unit">{unitLabels[line.unit]}</td>
+                            <td data-label="Rate / unit">
+                              {money(line.unitPriceCents)}
+                            </td>
+                            <td data-label="Amount">
+                              <strong>{money(line.lineTotalCents)}</strong>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </section>
 
             <section className="admin-card estimate-form-section">
