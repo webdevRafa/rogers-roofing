@@ -724,6 +724,35 @@
   transform: translateX(2px);
 }
 
+.leads-table th:last-child,
+.leads-table td:last-child {
+  width: 92px;
+}
+
+.leads-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.leads-edit-button {
+  border-color: #ecd7d8;
+  background: #fffafa;
+  color: var(--admin-accent);
+}
+
+.leads-edit-button:hover {
+  background: var(--admin-accent-soft);
+  transform: translateY(-1px);
+}
+
+.admin-row-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+  transform: none;
+}
+
 .admin-status {
   border: 1px solid transparent;
   border-radius: 999px;

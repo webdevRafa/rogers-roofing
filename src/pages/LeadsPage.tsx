@@ -4,9 +4,11 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarPlus,
+  Loader2,
   Mail,
   MapPin,
   MessageSquareText,
+  Pencil,
   Phone,
   RefreshCw,
   Search,
@@ -15,12 +17,13 @@ import {
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 
 import { useOrg } from "../contexts/OrgContext";
@@ -28,6 +31,7 @@ import { db } from "../firebase/firebaseConfig";
 import {
   LEAD_STATUS_LABELS,
   type CustomerLead,
+  type EstimateRecord,
   type LeadStatus,
   type ProjectType,
   type RoofingService,
@@ -93,6 +97,109 @@ export default function LeadsPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+
+  async function findEstimateForJob(jobId: string) {
+    if (!orgId) return null;
+    const snapshot = await getDocs(
+      query(collection(db, "estimates"), where("jobId", "==", jobId))
+    );
+    const estimates = snapshot.docs
+      .map((estimateDocument) => ({
+        id: estimateDocument.id,
+        ...(estimateDocument.data() as Omit<EstimateRecord, "id">),
+      }))
+      .filter(
+        (estimate) =>
+          estimate.organizationId === orgId || estimate.orgId === orgId
+      );
+    const editable = estimates.filter(
+      (estimate) =>
+        estimate.status !== "accepted" &&
+        estimate.status !== "converted_to_contract"
+    );
+    const candidates = editable.length > 0 ? editable : estimates;
+    return (
+      [...candidates].sort(
+        (a, b) =>
+          (toDate(b.updatedAt)?.getTime() ??
+            toDate(b.createdAt)?.getTime() ??
+            0) -
+          (toDate(a.updatedAt)?.getTime() ??
+            toDate(a.createdAt)?.getTime() ??
+            0)
+      )[0] || null
+    );
+  }
+
+  async function findJobForLead(lead: CustomerLead) {
+    if (lead.linkedJobId) return lead.linkedJobId;
+    if (!orgId) return null;
+    const snapshot = await getDocs(
+      query(collection(db, "jobs"), where("sourceLeadId", "==", lead.id))
+    );
+    const existingJob = snapshot.docs.find((jobDocument) => {
+      const job = jobDocument.data() as Partial<Job>;
+      return job.orgId === orgId;
+    });
+    return existingJob?.id || null;
+  }
+
+  async function createJobFromLead(
+    lead: CustomerLead,
+    nextStatus: LeadStatus
+  ) {
+    if (!orgId) throw new Error("Your organization is still loading.");
+    const jobRef = doc(collection(db, "jobs"));
+    const baseJob: Job = {
+      id: jobRef.id,
+      orgId,
+      status: "pending",
+      address: lead.propertyAddress,
+      customer: {
+        name: `${lead.firstName} ${lead.lastName}`.trim(),
+        email: lead.email,
+        phone: lead.phone,
+      },
+      projectType: projectTypeFromService(lead.service),
+      sourceLeadId: lead.id,
+      priority: lead.urgency === "emergency" ? "urgent" : "normal",
+      earnings: {
+        totalEarningsCents: 0,
+        entries: [],
+        currency: "USD",
+      },
+      expenses: {
+        totalPayoutsCents: 0,
+        totalMaterialsCents: 0,
+        payouts: [],
+        materials: [],
+        currency: "USD",
+      },
+      summaryNotes: lead.message || "",
+      attachments: [],
+      createdAt: serverTimestamp() as unknown as FieldValue,
+      updatedAt: serverTimestamp() as unknown as FieldValue,
+      computed: {
+        totalExpensesCents: 0,
+        netProfitCents: 0,
+      },
+    };
+    const job = recomputeJob(baseJob);
+    const batch = writeBatch(db);
+    batch.set(jobRef.withConverter(jobConverter), job);
+    batch.update(doc(db, "leads", lead.id), {
+      status: nextStatus,
+      linkedJobId: jobRef.id,
+      updatedAt: serverTimestamp(),
+    });
+    await batch.commit();
+    setSelected((current) =>
+      current?.id === lead.id
+        ? { ...current, status: nextStatus, linkedJobId: jobRef.id }
+        : current
+    );
+    return jobRef.id;
+  }
 
   useEffect(() => {
     if (!orgId) {
@@ -201,50 +308,45 @@ export default function LeadsPage() {
     setError(null);
 
     try {
-      const jobRef = doc(collection(db, "jobs"));
-      const baseJob: Job = {
-        id: jobRef.id,
-        orgId,
-        status: "pending",
-        address: lead.propertyAddress,
-        customer: {
-          name: `${lead.firstName} ${lead.lastName}`.trim(),
-          email: lead.email,
-          phone: lead.phone,
-        },
-        projectType: projectTypeFromService(lead.service),
-        sourceLeadId: lead.id,
-        priority: lead.urgency === "emergency" ? "urgent" : "normal",
-        earnings: {
-          totalEarningsCents: 0,
-          entries: [],
-          currency: "USD",
-        },
-        expenses: {
-          totalPayoutsCents: 0,
-          totalMaterialsCents: 0,
-          payouts: [],
-          materials: [],
-          currency: "USD",
-        },
-        summaryNotes: lead.message || "",
-        attachments: [],
-        createdAt: serverTimestamp() as unknown as FieldValue,
-        updatedAt: serverTimestamp() as unknown as FieldValue,
-        computed: {
-          totalExpensesCents: 0,
-          netProfitCents: 0,
-        },
-      };
-      const job = recomputeJob(baseJob);
+      const existingJobId = await findJobForLead(lead);
+      const jobId =
+        existingJobId || (await createJobFromLead(lead, "won"));
+      if (existingJobId && !lead.linkedJobId) {
+        await updateDoc(doc(db, "leads", lead.id), {
+          status: "won",
+          linkedJobId: existingJobId,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      navigate(`/job/${jobId}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      setSavingId(null);
+    }
+  }
 
-      await setDoc(jobRef.withConverter(jobConverter), job);
-      await updateDoc(doc(db, "leads", lead.id), {
-        status: "won",
-        linkedJobId: jobRef.id,
-        updatedAt: serverTimestamp(),
-      });
-      navigate(`/job/${jobRef.id}`);
+  async function openEstimateStudio(lead: CustomerLead) {
+    if (!orgId || savingId) return;
+    setSavingId(lead.id);
+    setError(null);
+    try {
+      let jobId = await findJobForLead(lead);
+      if (!jobId) {
+        jobId = await createJobFromLead(lead, "estimate_in_progress");
+      } else if (!lead.linkedJobId) {
+        await updateDoc(doc(db, "leads", lead.id), {
+          status: "estimate_in_progress",
+          linkedJobId: jobId,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      const estimate = await findEstimateForJob(jobId);
+      navigate(
+        estimate
+          ? `/estimates/${estimate.id}/edit`
+          : `/estimates/new?jobId=${encodeURIComponent(jobId)}`
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setSavingId(null);
@@ -431,14 +533,34 @@ export default function LeadsPage() {
                         </select>
                       </td>
                       <td>
-                        <button
-                          className="admin-row-button"
-                          type="button"
-                          onClick={() => openRequest(lead)}
-                          aria-label={`View ${lead.firstName} ${lead.lastName}`}
-                        >
-                          <ArrowRight size={16} />
-                        </button>
+                        <div className="leads-row-actions">
+                          <button
+                            className="admin-row-button leads-edit-button"
+                            type="button"
+                            disabled={savingId === lead.id}
+                            onClick={() => void openEstimateStudio(lead)}
+                            aria-label={
+                              `Open estimate studio for ${lead.firstName} ${lead.lastName}`
+                            }
+                            title="Edit estimate"
+                          >
+                            {savingId === lead.id ? (
+                              <Loader2 className="estimate-spin" size={15} />
+                            ) : (
+                              <Pencil size={15} />
+                            )}
+                          </button>
+                          <button
+                            className="admin-row-button"
+                            type="button"
+                            disabled={savingId === lead.id}
+                            onClick={() => openRequest(lead)}
+                            aria-label={`View ${lead.firstName} ${lead.lastName}`}
+                            title="View request"
+                          >
+                            <ArrowRight size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
