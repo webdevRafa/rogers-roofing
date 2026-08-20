@@ -24,7 +24,6 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Reveal from "../components/Reveal";
 import { functions } from "../firebase/firebaseConfig";
 import logo from "../assets/rogers-logo-separated-v2.png";
-import heroBrandLockup from "../assets/brand/rogers-lockup-separated-white-text.svg";
 import finishedRoof from "../assets/AdobeStock_102630327.webp";
 import roofWorksite from "../assets/AdobeStock_356783144.webp";
 
@@ -391,9 +390,9 @@ export default function PublicHomePage() {
           </div>
           <div className="public-hero-content">
             <motion.img
-              className="public-hero-lockup"
-              src={heroBrandLockup}
-              alt="Roger's Roofing & Contracting LLC"
+              className="public-hero-emblem"
+              src={logo}
+              alt="Roger's Roofing & Contracting LLC emblem"
               initial={{ opacity: 0, y: 18, scale: 0.985 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.8 }}
