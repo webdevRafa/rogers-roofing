@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
-const SITE_URL = "https://rogersroofingtx.com";
+const SITE_URL = "https://www.rogersroofingtx.com";
 const HOME_TITLE = "San Antonio Roofing Contractor | Roger's Roofing";
 const HOME_DESCRIPTION =
   "San Antonio roofing contractor for roof repair, replacement, inspections, storm damage, and new roofs. Request a free estimate from Roger's Roofing.";
