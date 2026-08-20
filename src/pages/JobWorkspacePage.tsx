@@ -1466,7 +1466,7 @@ export default function JobWorkspacePage() {
         )}
 
         {tab === "financials" && (
-          <div className="job-section-layout">
+          <div className="job-section-layout job-financials-layout">
             <section className="job-section-main">
               <div className="job-financial-summary">
                 <article>
@@ -1599,30 +1599,6 @@ export default function JobWorkspacePage() {
                 )}
               </article>
             </section>
-            <aside className="admin-card job-document-guidance">
-              <span className="admin-kicker">Document discipline</span>
-              <h2>Keep each record distinct.</h2>
-              <ul>
-                <li>
-                  <Check /> Estimates are versioned expectations—not final
-                  invoices.
-                </li>
-                <li>
-                  <Check /> Accepted scopes freeze before contract generation.
-                </li>
-                <li>
-                  <Check /> Issued invoices reflect contract, change orders, and
-                  payments.
-                </li>
-                <li>
-                  <Check /> Warranty closeout includes the governing files, not
-                  just a summary.
-                </li>
-              </ul>
-              <Link className="admin-secondary-button" to="/invoices-page">
-                Open document center <ArrowRight size={14} />
-              </Link>
-            </aside>
           </div>
         )}
 

@@ -1682,6 +1682,10 @@
   gap: 18px;
 }
 
+.job-financials-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .job-health-grid {
   gap: 12px;
 }
