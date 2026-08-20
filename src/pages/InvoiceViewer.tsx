@@ -5,7 +5,7 @@ import { db } from "../firebase/firebaseConfig";
 import type { InvoiceDoc } from "../types/types";
 
 // ✅ Use same logo concept as InvoicesPage modal (adjust path if needed)
-import logo from "../assets/rogers-roofing.webp";
+import logo from "../assets/rogers-logo-separated-v3.png";
 
 // ---------- helpers ----------
 function money(cents: number | null | undefined) {
@@ -154,7 +154,7 @@ export default function InvoiceViewer() {
                 <img
                   src={logo}
                   alt="Roger's Roofing logo"
-                  className="h-12 w-12 rounded-xl border border-slate-200 shadow-sm"
+                  className="h-12 w-20 rounded-xl border border-slate-200 object-contain p-1 shadow-sm"
                 />
                 <div className="min-w-0">
                   <div className="text-lg font-semibold text-slate-900 leading-5">

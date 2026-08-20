@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { auth, db } from "../firebase/firebaseConfig";
-import logo from "../assets/rogers-roofing.webp";
+import logo from "../assets/rogers-logo-separated-v3.png";
 import worksite from "../assets/AdobeStock_356783144.webp";
 
 type EmployeeAccess = {

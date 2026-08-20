@@ -13,6 +13,7 @@ import {
   Home,
   MapPin,
   Menu,
+  Phone,
   Ruler,
   ShieldCheck,
   Sparkles,
@@ -23,7 +24,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import Reveal from "../components/Reveal";
 import { functions } from "../firebase/firebaseConfig";
-import logo from "../assets/rogers-roofing.webp";
+import logo from "../assets/rogers-logo-separated-v3.png";
 import finishedRoof from "../assets/AdobeStock_102630327.webp";
 import roofWorksite from "../assets/AdobeStock_356783144.webp";
 
@@ -311,6 +312,17 @@ export default function PublicHomePage() {
         </nav>
 
         <div className="public-header-actions">
+          <a
+            className="public-call-button public-call-button-header"
+            href="tel:+19565433258"
+            aria-label="Call Roger's Roofing at 956-543-3258"
+          >
+            <Phone size={16} />
+            <span>
+              <strong>Call now</strong>
+              <small>956-543-3258</small>
+            </span>
+          </a>
           <a className="public-button public-button-small" href="#estimate">
             Request an estimate
             <ArrowUpRight size={16} />
@@ -372,6 +384,21 @@ export default function PublicHomePage() {
                     <ArrowRight size={15} />
                   </a>
                 ))}
+                <a
+                  className="public-mobile-call"
+                  href="tel:+19565433258"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Call Roger's Roofing at 956-543-3258"
+                >
+                  <span>
+                    <Phone size={18} />
+                    <span>
+                      <small>Call now</small>
+                      <strong>956-543-3258</strong>
+                    </span>
+                  </span>
+                  <ArrowUpRight size={16} />
+                </a>
               </motion.div>
             </motion.nav>
           )}
@@ -385,53 +412,91 @@ export default function PublicHomePage() {
               className="public-hero-image"
               src={finishedRoof}
               alt=""
+              decoding="async"
+              fetchPriority="high"
             />
             <div className="public-hero-shade" />
           </div>
-          <div className="public-hero-content">
-            <motion.div
-              className="public-eyebrow public-eyebrow-light"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
+          <div className="public-hero-shell">
+            <div className="public-hero-copy">
+              <motion.h1
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.85, delay: 0.16 }}
+              >
+                Roofing built to protect
+                {" "}
+                <em>what matters most.</em>
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.85, delay: 0.24 }}
+              >
+                Professional San Antonio roof inspections, detailed estimates,
+                and dependable roof repair, replacement, and new construction.
+              </motion.p>
+              <motion.div
+                className="public-hero-actions"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.85, delay: 0.32 }}
+              >
+                <a className="public-button" href="#estimate">
+                  Request a free estimate
+                  <ArrowRight size={18} />
+                </a>
+                <a
+                  className="public-call-button public-hero-call"
+                  href="tel:+19565433258"
+                  aria-label="Call Roger's Roofing at 956-543-3258"
+                >
+                  <Phone size={17} />
+                  Call 956-543-3258
+                </a>
+                <a className="public-text-link public-text-link-light" href="#services">
+                  Explore our services
+                  <ArrowUpRight size={16} />
+                </a>
+              </motion.div>
+            </div>
+
+            <motion.aside
+              className="public-hero-brand-card"
+              initial={{ opacity: 0, x: 30, scale: 0.985 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              transition={{ duration: 0.9, delay: 0.12 }}
+              aria-label="Roger's Roofing & Contracting LLC"
             >
-              <MapPin size={15} />
-              San Antonio, Texas
-              <span />
-              Roofing &amp; contracting
-            </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.08 }}
-            >
-              Roofing built to protect
-              {" "}
-              <em>what matters most.</em>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.16 }}
-            >
-              Straightforward inspections, detailed estimates, and dependable
-              roofing work for repairs, replacements, and new construction.
-            </motion.p>
-            <motion.div
-              className="public-hero-actions"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.24 }}
-            >
-              <a className="public-button" href="#estimate">
-                Request a free estimate
-                <ArrowRight size={18} />
-              </a>
-              <a className="public-text-link public-text-link-light" href="#services">
-                Explore our services
-                <ArrowUpRight size={16} />
-              </a>
-            </motion.div>
+              <img
+                className="public-hero-emblem"
+                src={logo}
+                alt="Roger's Roofing & Contracting LLC emblem"
+              />
+              <div className="public-hero-brand-copy">
+                <span>San Antonio roofing specialists</span>
+                <h2>
+                  Roger's Roofing
+                  <small>&amp; Contracting LLC</small>
+                </h2>
+                <p>
+                  Professional roofing for repairs, full replacements, and
+                  new construction.
+                </p>
+              </div>
+              <div className="public-hero-capabilities" aria-label="Primary services">
+                <span>Repairs</span>
+                <span>Replacements</span>
+                <span>New construction</span>
+              </div>
+              <div className="public-hero-brand-location">
+                <MapPin size={16} />
+                <span>
+                  <small>Based in</small>
+                  San Antonio, Texas
+                </span>
+              </div>
+            </motion.aside>
           </div>
 
         </section>
@@ -455,16 +520,18 @@ export default function PublicHomePage() {
           <section className="public-section public-services" id="services">
           <Reveal className="public-section-heading">
             <div>
-              <span className="public-eyebrow">Built for South Texas homes</span>
+              <span className="public-eyebrow">
+                Built for San Antonio and South Texas homes
+              </span>
               <h2>
                 Roofing help that fits the problem—not a one-size-fits-all
                 pitch.
               </h2>
             </div>
             <p>
-              Every roof is different. We inspect the actual condition, explain
-              what we find, and recommend the work and materials that make sense
-              for your property.
+              Every San Antonio roof is different. We inspect its actual
+              condition, explain what we find, and recommend the work and
+              materials that make sense for your property.
             </p>
           </Reveal>
 
@@ -852,6 +919,7 @@ export default function PublicHomePage() {
           <a href="#services">Services</a>
           <a href="#process">Process</a>
           <a href="#estimate">Free estimate</a>
+          <a href="tel:+19565433258">Call 956-543-3258</a>
         </div>
         <p>
           © {new Date().getFullYear()} Roger&apos;s Roofing &amp; Contracting

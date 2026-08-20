@@ -5,7 +5,7 @@ import type {
   PayoutStubDoc,
   PayoutStubLine,
 } from "../types/types";
-import logo from "../assets/rogers-roofing.webp";
+import logo from "../assets/rogers-logo-separated-v3.png";
 
 export type PayoutStubViewerModalProps = {
   stub: PayoutStubDoc;
