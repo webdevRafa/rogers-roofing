@@ -178,9 +178,7 @@ img {
   height: 55px;
   box-sizing: border-box;
   border-radius: 50%;
-  background: white;
   object-fit: contain;
-  padding: 5px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
 }
 
