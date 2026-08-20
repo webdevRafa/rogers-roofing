@@ -16,6 +16,8 @@ const LIVE_JOB_SOURCE_STATUSES = new Set<EstimateStatus>([
   "internal_review",
   "ready_to_send",
   "revising",
+  "sent",
+  "viewed",
 ]);
 
 export function estimateUsesLiveJobSources(status: EstimateStatus) {
@@ -68,9 +70,23 @@ export function synchronizeEstimateFromJobSources(
   const taxCents = Math.round(taxableBaseCents * (taxRatePercent / 100));
   const totalCents = taxableBaseCents + taxCents;
   const depositCents = Math.min(totalCents, safeCents(estimate.depositCents));
+  const customerSnapshot = {
+    name: job.customer?.name || estimate.customerSnapshot?.name || "",
+    ...(job.customer?.email || estimate.customerSnapshot?.email
+      ? { email: job.customer?.email || estimate.customerSnapshot?.email }
+      : {}),
+    ...(job.customer?.phone || estimate.customerSnapshot?.phone
+      ? { phone: job.customer?.phone || estimate.customerSnapshot?.phone }
+      : {}),
+  };
 
   return {
     ...estimate,
+    customerSnapshot,
+    propertyAddressSnapshot:
+      typeof job.address === "string"
+        ? { fullLine: job.address, street: job.address, country: "US" }
+        : job.address || estimate.propertyAddressSnapshot,
     lineItems,
     laborFeesSnapshot,
     roofMeasurements: job.roofMeasurements || estimate.roofMeasurements || [],
@@ -90,6 +106,8 @@ export function synchronizeEstimateFromJobSources(
 
 export function estimateJobSyncFields(estimate: EstimateRecord) {
   return {
+    customerSnapshot: estimate.customerSnapshot || {},
+    propertyAddressSnapshot: estimate.propertyAddressSnapshot || null,
     lineItems: estimate.lineItems,
     laborFeesSnapshot: estimate.laborFeesSnapshot,
     roofMeasurements: estimate.roofMeasurements || [],

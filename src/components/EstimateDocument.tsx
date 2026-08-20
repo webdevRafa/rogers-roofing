@@ -118,7 +118,10 @@ export default function EstimateDocument({
         <div className="estimate-document-title">
           {previewLabel && <span>{previewLabel}</span>}
           <h1>Estimate</h1>
-          <strong>{estimate.number || "Draft estimate"}</strong>
+          <strong>
+            {estimate.number || "Draft estimate"}
+            <small>Version {estimate.version || 1}</small>
+          </strong>
         </div>
       </header>
 

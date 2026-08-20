@@ -654,14 +654,23 @@ export default function EstimateBuilderPage() {
       if (mode === "send") {
         const sendEstimate = httpsCallable<
           { estimateId: string; email: string },
-          { ok: boolean; publicUrl?: string }
+          {
+            ok: boolean;
+            publicUrl?: string;
+            version?: number;
+            reusedVersion?: boolean;
+            pdfAttached?: boolean;
+          }
         >(functions, "sendEstimateEmail");
-        await sendEstimate({
+        const result = await sendEstimate({
           estimateId: estimateRef.id,
           email: form.customerEmail.trim(),
         });
-        setExisting({ ...estimate, status: "sent" });
-        setSuccess(`Estimate ${number} was emailed to ${form.customerEmail}.`);
+        const issuedVersion = result.data.version || estimate.version;
+        setExisting({ ...estimate, version: issuedVersion, status: "sent" });
+        setSuccess(
+          `Version ${issuedVersion} of ${number} was emailed to ${form.customerEmail} with its PDF snapshot attached.`
+        );
       } else if (mode === "preview") {
         if (previewWindow) {
           previewWindow.opener = null;

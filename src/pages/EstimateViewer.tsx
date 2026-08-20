@@ -36,6 +36,7 @@ export default function EstimateViewer() {
   const { id = "" } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
+  const requestedVersion = Number(searchParams.get("version") || 0);
   const [estimate, setEstimate] = useState<EstimateRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -54,10 +55,14 @@ export default function EstimateViewer() {
         if (!id) throw new Error("Estimate link is incomplete.");
         if (token) {
           const getPublicEstimate = httpsCallable<
-            { estimateId: string; token: string },
+            { estimateId: string; token: string; version?: number },
             { estimate: EstimateRecord }
           >(functions, "getPublicEstimate");
-          const result = await getPublicEstimate({ estimateId: id, token });
+          const result = await getPublicEstimate({
+            estimateId: id,
+            token,
+            ...(requestedVersion > 0 ? { version: requestedVersion } : {}),
+          });
           if (active) setEstimate(result.data.estimate);
         } else {
           const estimateRef = doc(db, "estimates", id);
@@ -148,7 +153,7 @@ export default function EstimateViewer() {
     return () => {
       active = false;
     };
-  }, [id, token]);
+  }, [id, requestedVersion, token]);
 
   useEffect(() => {
     if (!estimate) return;
@@ -162,8 +167,13 @@ export default function EstimateViewer() {
   async function copyCustomerLink() {
     if (!estimate) return;
     const customerToken = token || estimate.publicToken;
+    const customerVersion =
+      requestedVersion ||
+      estimate.publicVersion ||
+      estimate.latestIssuedVersion ||
+      estimate.version;
     const url = customerToken
-      ? `${window.location.origin}/estimate/${estimate.id}?token=${encodeURIComponent(customerToken)}`
+      ? `${window.location.origin}/estimate/${estimate.id}?token=${encodeURIComponent(customerToken)}&version=${customerVersion}`
       : window.location.href;
     await navigator.clipboard.writeText(url);
     setCopied(true);
@@ -207,7 +217,13 @@ export default function EstimateViewer() {
 
       const sendEstimate = httpsCallable<
         { estimateId: string; email: string },
-        { ok: boolean; publicUrl?: string }
+        {
+          ok: boolean;
+          publicUrl?: string;
+          version?: number;
+          reusedVersion?: boolean;
+          pdfAttached?: boolean;
+        }
       >(functions, "sendEstimateEmail");
       const result = await sendEstimate({
         estimateId: estimate.id,
@@ -215,11 +231,13 @@ export default function EstimateViewer() {
       });
 
       let publicToken = estimate.publicToken;
+      let publicVersion = result.data.version || estimate.version;
       if (result.data.publicUrl) {
         try {
-          publicToken =
-            new URL(result.data.publicUrl).searchParams.get("token") ||
-            publicToken;
+          const publicUrl = new URL(result.data.publicUrl);
+          publicToken = publicUrl.searchParams.get("token") || publicToken;
+          publicVersion =
+            Number(publicUrl.searchParams.get("version") || 0) || publicVersion;
         } catch {
           // The estimate was sent successfully; copying the returned link can
           // remain unavailable until the next refresh if its URL is malformed.
@@ -230,6 +248,9 @@ export default function EstimateViewer() {
           ? {
               ...current,
               status: "sent",
+              version: publicVersion,
+              publicVersion,
+              latestIssuedVersion: publicVersion,
               ...(publicToken ? { publicToken } : {}),
             }
           : current
@@ -237,7 +258,7 @@ export default function EstimateViewer() {
       setDeliveryState("sent");
       setDeliveryNotice({
         tone: "success",
-        message: `Estimate sent to ${email}.`,
+        message: `Version ${publicVersion} was sent to ${email} with its PDF snapshot attached.`,
       });
     } catch (caught) {
       setDeliveryState("idle");

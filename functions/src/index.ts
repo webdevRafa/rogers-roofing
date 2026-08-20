@@ -13,6 +13,13 @@ import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 
 import { defineSecret } from "firebase-functions/params";
+import { renderEstimatePdf } from "./estimatePdf.js";
+import {
+  buildEstimateSnapshot,
+  estimateSnapshotHash,
+  publicEstimateFromSnapshot,
+  type EstimateSnapshot,
+} from "./estimateSnapshot.js";
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 const INVITE_FROM_EMAIL = defineSecret("INVITE_FROM_EMAIL");
@@ -1142,23 +1149,197 @@ async function assertOrganizationAccess(uid: string, organizationId: string) {
   );
 }
 
-async function ensureEstimatePublicToken(
+function buildEstimateLink(
   estimateId: string,
-  estimate: Record<string, unknown>
-): Promise<string> {
-  const existing = String(estimate.publicToken || "").trim();
-  if (existing) return existing;
-  const token = randomUUID();
-  await admin.firestore().doc(`estimates/${estimateId}`).set(
-    { publicToken: token },
-    { merge: true }
-  );
-  return token;
+  publicToken: string,
+  version: number
+): string {
+  const baseUrl = (APP_BASE_URL.value() || "").replace(/\/$/, "");
+  return `${baseUrl}/estimate/${encodeURIComponent(estimateId)}?token=${encodeURIComponent(publicToken)}&version=${version}`;
 }
 
-function buildEstimateLink(estimateId: string, publicToken: string): string {
-  const baseUrl = (APP_BASE_URL.value() || "").replace(/\/$/, "");
-  return `${baseUrl}/estimate/${encodeURIComponent(estimateId)}?token=${encodeURIComponent(publicToken)}`;
+function estimateVersionId(version: number): string {
+  return `v${String(version).padStart(4, "0")}`;
+}
+
+function safeStorageSegment(value: unknown, fallback: string): string {
+  const cleaned = String(value || fallback)
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return cleaned || fallback;
+}
+
+type PreparedEstimateVersion = {
+  version: number;
+  contentHash: string;
+  publicToken: string;
+  snapshot: EstimateSnapshot;
+  versionRef: FirebaseFirestore.DocumentReference;
+  reused: boolean;
+  pdfStoragePath?: string;
+  pdfFilename?: string;
+};
+
+async function prepareEstimateVersion(
+  estimateId: string
+): Promise<PreparedEstimateVersion> {
+  const db = admin.firestore();
+  const estimateRef = db.doc(`estimates/${estimateId}`);
+
+  return db.runTransaction(async (transaction) => {
+    const current = await transaction.get(estimateRef);
+    if (!current.exists) {
+      throw new HttpsError("not-found", "Estimate not found.");
+    }
+    const estimate = current.data() as Record<string, unknown>;
+    const snapshot = buildEstimateSnapshot(estimateId, estimate);
+    const contentHash = estimateSnapshotHash(snapshot);
+    const latestVersion = Math.max(0, Number(estimate.latestVersion || 0));
+    const latestHash = String(estimate.latestVersionContentHash || "");
+
+    if (latestVersion > 0 && latestHash === contentHash) {
+      const versionRef = estimateRef
+        .collection("versions")
+        .doc(estimateVersionId(latestVersion));
+      const existingVersion = await transaction.get(versionRef);
+      if (existingVersion.exists) {
+        const data = existingVersion.data() as Record<string, unknown>;
+        const savedSnapshot = asRecord(data.snapshot);
+        return {
+          version: latestVersion,
+          contentHash,
+          publicToken: String(data.publicToken || estimate.publicToken || ""),
+          snapshot:
+            Object.keys(savedSnapshot).length > 0 ? savedSnapshot : snapshot,
+          versionRef,
+          reused: true,
+          pdfStoragePath: data.pdfStoragePath
+            ? String(data.pdfStoragePath)
+            : undefined,
+          pdfFilename: data.pdfFilename ? String(data.pdfFilename) : undefined,
+        };
+      }
+    }
+
+    const version = latestVersion + 1 || 1;
+    const publicToken = randomUUID();
+    const versionRef = estimateRef
+      .collection("versions")
+      .doc(estimateVersionId(version));
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    transaction.set(versionRef, {
+      estimateId,
+      organizationId: String(estimate.organizationId || estimate.orgId || ""),
+      jobId: String(estimate.jobId || ""),
+      number: String(estimate.number || "Estimate"),
+      version,
+      status: "preparing",
+      contentHash,
+      publicToken,
+      snapshot,
+      createdAt: now,
+      updatedAt: now,
+    });
+    transaction.set(
+      estimateRef,
+      {
+        version,
+        latestVersion: version,
+        latestVersionContentHash: contentHash,
+        publicToken,
+        publicVersion: version,
+        frozenSnapshotHash: contentHash,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+
+    return {
+      version,
+      contentHash,
+      publicToken,
+      snapshot,
+      versionRef,
+      reused: false,
+    };
+  });
+}
+
+let estimateLogoPromise: Promise<Buffer | undefined> | undefined;
+
+function estimateLogo(): Promise<Buffer | undefined> {
+  estimateLogoPromise ??= fs
+    .readFile(path.resolve(__dirname, "../assets/rogers-logo-separated-v3.png"))
+    .catch((error: unknown) => {
+      console.warn("Estimate PDF logo could not be loaded:", error);
+      return undefined;
+    });
+  return estimateLogoPromise;
+}
+
+async function ensureEstimatePdf(
+  estimateId: string,
+  prepared: PreparedEstimateVersion
+): Promise<{ buffer: Buffer; storagePath: string; filename: string }> {
+  const organizationId = safeStorageSegment(
+    prepared.snapshot.organizationId || prepared.snapshot.orgId,
+    "organization"
+  );
+  const jobId = safeStorageSegment(prepared.snapshot.jobId, "job");
+  const estimateNumber = safeStorageSegment(
+    prepared.snapshot.number,
+    "estimate"
+  );
+  const filename =
+    prepared.pdfFilename || `${estimateNumber}-v${prepared.version}.pdf`;
+  const storagePath =
+    prepared.pdfStoragePath ||
+    `organizations/${organizationId}/jobs/${jobId}/estimates/${safeStorageSegment(
+      estimateId,
+      "estimate"
+    )}/versions/v${prepared.version}/${filename}`;
+  const file = admin.storage().bucket().file(storagePath);
+  const [exists] = await file.exists();
+
+  let buffer: Buffer;
+  if (exists) {
+    [buffer] = await file.download();
+  } else {
+    buffer = await renderEstimatePdf(prepared.snapshot, {
+      version: prepared.version,
+      logo: await estimateLogo(),
+    });
+    await file.save(buffer, {
+      resumable: false,
+      contentType: "application/pdf",
+      metadata: {
+        cacheControl: "private, no-store, max-age=0",
+        contentDisposition: `attachment; filename="${filename}"`,
+        metadata: {
+          estimateId,
+          version: String(prepared.version),
+          contentHash: prepared.contentHash,
+          visibility: "private",
+        },
+      },
+    });
+  }
+
+  await prepared.versionRef.set(
+    {
+      status: "generated",
+      pdfStoragePath: storagePath,
+      pdfFilename: filename,
+      pdfSizeBytes: buffer.length,
+      pdfGeneratedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  return { buffer, storagePath, filename };
 }
 
 export const sendEstimateEmail = onCall(
@@ -1200,46 +1381,94 @@ export const sendEstimateEmail = onCall(
     }
     await assertOrganizationAccess(request.auth.uid, organizationId);
 
+    const initialSnapshot = buildEstimateSnapshot(estimateId, estimate);
+    const requestedContentHash = estimateSnapshotHash(initialSnapshot);
     const lastSent = timestampDate(estimate.lastEmailSentAt);
-    if (lastSent && Date.now() - lastSent.getTime() < 2 * 60 * 1000) {
-      const publicToken = await ensureEstimatePublicToken(estimateId, estimate);
+    const latestIssuedVersion = Number(estimate.latestIssuedVersion || 0);
+    if (
+      lastSent &&
+      Date.now() - lastSent.getTime() < 2 * 60 * 1000 &&
+      estimate.lastEmailContentHash === requestedContentHash &&
+      latestIssuedVersion > 0
+    ) {
+      const versionSnapshot = await estimateRef
+        .collection("versions")
+        .doc(estimateVersionId(latestIssuedVersion))
+        .get();
+      const versionData = versionSnapshot.data() || {};
+      const publicToken = String(versionData.publicToken || "");
       return {
         ok: true,
         skipped: true,
         reason: "recently_sent",
-        publicUrl: buildEstimateLink(estimateId, publicToken),
+        version: latestIssuedVersion,
+        publicUrl: publicToken
+          ? buildEstimateLink(estimateId, publicToken, latestIssuedVersion)
+          : undefined,
       };
     }
 
     const inFlight = timestampDate(estimate.emailSendInFlightAt);
     if (inFlight && Date.now() - inFlight.getTime() < 2 * 60 * 1000) {
-      return { ok: true, skipped: true, reason: "in_flight" };
+      if (estimate.emailSendContentHash === requestedContentHash) {
+        return { ok: true, skipped: true, reason: "in_flight" };
+      }
+      throw new HttpsError(
+        "aborted",
+        "Another estimate version is currently being prepared. Try again shortly."
+      );
     }
 
     await estimateRef.set(
-      { emailSendInFlightAt: admin.firestore.FieldValue.serverTimestamp() },
+      {
+        emailSendInFlightAt: admin.firestore.FieldValue.serverTimestamp(),
+        emailSendContentHash: requestedContentHash,
+      },
       { merge: true }
     );
 
+    let prepared: PreparedEstimateVersion | undefined;
     try {
-      const publicToken = await ensureEstimatePublicToken(estimateId, estimate);
-      const estimateUrl = buildEstimateLink(estimateId, publicToken);
-      const rawNumber = String(estimate.number || "Estimate");
+      prepared = await prepareEstimateVersion(estimateId);
+      if (!prepared.publicToken) {
+        throw new HttpsError(
+          "internal",
+          "The estimate version could not be secured for delivery."
+        );
+      }
+      const pdf = await ensureEstimatePdf(estimateId, prepared);
+      const estimateUrl = buildEstimateLink(
+        estimateId,
+        prepared.publicToken,
+        prepared.version
+      );
+      const currentEstimate = prepared.snapshot;
+      const currentCustomer = asRecord(currentEstimate.customerSnapshot);
+      const currentOrganization = asRecord(
+        currentEstimate.organizationSnapshot
+      );
+      const rawNumber = String(currentEstimate.number || "Estimate");
       const number = escapeEmailHtml(rawNumber);
       const customerName = escapeEmailHtml(
-        customer.name || "there"
+        currentCustomer.name || customer.name || "there"
       );
       const rawBusinessName = String(
-        organization.legalName ||
+        currentOrganization.legalName ||
+          currentOrganization.name ||
+          organization.legalName ||
           organization.name ||
           "Roger's Roofing"
       );
       const businessName = escapeEmailHtml(rawBusinessName);
-      const total = (Number(estimate.totalCents || 0) / 100).toLocaleString(
-        "en-US",
-        { style: "currency", currency: "USD" }
+      const total = (
+        Number(currentEstimate.totalCents || 0) / 100
+      ).toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+      });
+      const roofAreaSquareFeet = Number(
+        currentEstimate.roofAreaSquareFeet || 0
       );
-      const roofAreaSquareFeet = Number(estimate.roofAreaSquareFeet || 0);
       const roofAreaSummary =
         roofAreaSquareFeet > 0
           ? `<p style="margin:0 0 22px;padding:12px 14px;border:1px solid #ddd6cc;border-radius:8px;background:#faf8f5;color:#5f5a54;font-size:13px;line-height:1.5;">Measured roof area: <strong style="color:#24231f;">${escapeEmailHtml(
@@ -1253,17 +1482,17 @@ export const sendEstimateEmail = onCall(
         INVITE_FROM_EMAIL.value() ||
         "Roger's Roofing <no-reply@rogersroofingtx.com>"
       ).trim();
-      const subject = `${rawNumber} from ${rawBusinessName}`;
+      const subject = `${rawNumber} (Version ${prepared.version}) from ${rawBusinessName}`;
       const html = `
         <div style="background:#f4f1ec;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#24231f;">
           <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #ddd6cc;border-top:6px solid #b71920;border-radius:10px;padding:34px;">
             <p style="margin:0 0 8px;color:#b71920;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">Professional roofing estimate</p>
             <h1 style="margin:0 0 20px;font-family:Georgia,serif;font-size:32px;font-weight:400;">${number}</h1>
             <p style="margin:0 0 12px;line-height:1.6;">Hello ${customerName},</p>
-            <p style="margin:0 0 22px;line-height:1.6;color:#5f5a54;">${businessName} prepared an itemized estimate for your roofing project. The current estimate total is <strong style="color:#24231f;">${escapeEmailHtml(total)}</strong>.</p>
+            <p style="margin:0 0 22px;line-height:1.6;color:#5f5a54;">${businessName} prepared Version ${prepared.version} of your itemized roofing estimate. The estimate total is <strong style="color:#24231f;">${escapeEmailHtml(total)}</strong>.</p>
             ${roofAreaSummary}
             <p style="margin:0 0 24px;"><a href="${estimateUrl}" style="display:inline-block;background:#b71920;color:#ffffff;text-decoration:none;border-radius:7px;padding:13px 18px;font-weight:700;">View estimate</a></p>
-            <p style="margin:0;color:#817a72;font-size:12px;line-height:1.5;">The private link includes the complete scope, quantities, rates, warranty information, and a print / download option. Reply to this email if you have any questions.</p>
+            <p style="margin:0;color:#817a72;font-size:12px;line-height:1.5;">The private link includes the complete estimate and a print / download option. A PDF snapshot of this exact version is also attached for your convenience. Reply to this email if you have any questions.</p>
           </div>
         </div>
       `;
@@ -1273,6 +1502,13 @@ export const sendEstimateEmail = onCall(
         to: [email],
         subject,
         html,
+        attachments: [
+          {
+            filename: pdf.filename,
+            content: pdf.buffer,
+            contentType: "application/pdf",
+          },
+        ],
       });
       if (error) {
         throw new HttpsError(
@@ -1281,24 +1517,67 @@ export const sendEstimateEmail = onCall(
         );
       }
 
-      await estimateRef.set(
+      const sentAt = admin.firestore.FieldValue.serverTimestamp();
+      const batch = db.batch();
+      batch.set(
+        prepared.versionRef,
         {
           status: "sent",
-          sentAt:
-            estimate.sentAt || admin.firestore.FieldValue.serverTimestamp(),
-          lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastEmailResendId: data?.id || null,
-          publicToken,
-          emailSendInFlightAt: admin.firestore.FieldValue.delete(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          sentAt,
+          sentTo: email,
+          resendEmailId: data?.id || null,
+          pdfStoragePath: pdf.storagePath,
+          pdfFilename: pdf.filename,
+          updatedAt: sentAt,
         },
         { merge: true }
       );
+      batch.set(
+        estimateRef,
+        {
+          status: "sent",
+          version: prepared.version,
+          sentAt: estimate.sentAt || sentAt,
+          lastEmailSentAt: sentAt,
+          lastEmailResendId: data?.id || null,
+          lastEmailContentHash: prepared.contentHash,
+          latestIssuedVersion: prepared.version,
+          latestIssuedContentHash: prepared.contentHash,
+          latestIssuedPdfStoragePath: pdf.storagePath,
+          publicToken: prepared.publicToken,
+          publicVersion: prepared.version,
+          emailSendInFlightAt: admin.firestore.FieldValue.delete(),
+          emailSendContentHash: admin.firestore.FieldValue.delete(),
+          updatedAt: sentAt,
+        },
+        { merge: true }
+      );
+      await batch.commit();
 
-      return { ok: true, id: data?.id || null, publicUrl: estimateUrl };
+      return {
+        ok: true,
+        id: data?.id || null,
+        publicUrl: estimateUrl,
+        version: prepared.version,
+        reusedVersion: prepared.reused,
+        pdfAttached: true,
+      };
     } catch (error) {
+      if (prepared) {
+        await prepared.versionRef.set(
+          {
+            status: "delivery_failed",
+            deliveryFailedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
       await estimateRef.set(
-        { emailSendInFlightAt: admin.firestore.FieldValue.delete() },
+        {
+          emailSendInFlightAt: admin.firestore.FieldValue.delete(),
+          emailSendContentHash: admin.firestore.FieldValue.delete(),
+        },
         { merge: true }
       );
       if (error instanceof HttpsError) throw error;
@@ -1313,6 +1592,7 @@ export const getPublicEstimate = onCall(
   async (request) => {
     const estimateId = String(request.data?.estimateId || "").trim();
     const token = String(request.data?.token || "").trim();
+    const requestedVersion = Number(request.data?.version || 0);
     if (!estimateId || !token) {
       throw new HttpsError("invalid-argument", "Invalid estimate link.");
     }
@@ -1323,104 +1603,70 @@ export const getPublicEstimate = onCall(
       throw new HttpsError("not-found", "Estimate not found.");
     }
     const estimate = snapshot.data() as Record<string, unknown>;
+    const version =
+      Number.isInteger(requestedVersion) && requestedVersion > 0
+        ? requestedVersion
+        : Number(estimate.latestIssuedVersion || estimate.publicVersion || 0);
+
+    if (version > 0) {
+      const versionRef = estimateRef
+        .collection("versions")
+        .doc(estimateVersionId(version));
+      const versionSnapshot = await versionRef.get();
+      if (versionSnapshot.exists) {
+        const versionData = versionSnapshot.data() as Record<string, unknown>;
+        const versionStatus = String(versionData.status || "");
+        if (
+          versionData.publicToken !== token ||
+          !["sent", "viewed"].includes(versionStatus)
+        ) {
+          throw new HttpsError("permission-denied", "Invalid estimate link.");
+        }
+        const issuedSnapshot = asRecord(versionData.snapshot);
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        const batch = admin.firestore().batch();
+        batch.set(
+          versionRef,
+          { status: "viewed", viewedAt: now, updatedAt: now },
+          { merge: true }
+        );
+        if (Number(estimate.latestIssuedVersion || 0) === version) {
+          batch.set(
+            estimateRef,
+            { status: "viewed", viewedAt: now, updatedAt: now },
+            { merge: true }
+          );
+        }
+        await batch.commit();
+        return {
+          estimate: publicEstimateFromSnapshot(
+            estimateId,
+            issuedSnapshot,
+            version,
+            "viewed"
+          ),
+        };
+      }
+    }
+
+    // Legacy links created before immutable versions were introduced remain
+    // usable. New deliveries always resolve through a version snapshot above.
     if (!estimate.publicToken || estimate.publicToken !== token) {
       throw new HttpsError("permission-denied", "Invalid estimate link.");
     }
-
-    if (estimate.status === "sent") {
-      await estimateRef.set(
-        {
-          status: "viewed",
-          viewedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-
-    const publicLineItems = Array.isArray(estimate.lineItems)
-      ? estimate.lineItems
-          .filter(
-            (line: unknown) => {
-              const record = asRecord(line);
-              return (
-                record.customerVisible !== false && record.selected !== false
-              );
-            }
-          )
-          .map((line: unknown) => {
-            const record = asRecord(line);
-            return {
-              id: String(record.id || ""),
-              category: String(record.category || "roofing_scope"),
-              title: String(record.title || ""),
-              customerDescription: String(record.customerDescription || ""),
-              quantity: Number(record.quantity || 0),
-              unit: String(record.unit || "LS"),
-              unitPriceCents: Number(record.unitPriceCents || 0),
-              lineTotalCents: Number(record.lineTotalCents || 0),
-              discountCents: Number(record.discountCents || 0),
-              pricingMode: String(record.pricingMode || "unit_price"),
-              selectionType: String(record.selectionType || "base"),
-              selected: true,
-              customerVisible: true,
-              taxable: Boolean(record.taxable),
-              source: String(record.source || "manual"),
-            };
-          })
-      : [];
-    const laborFees = asRecord(estimate.laborFeesSnapshot);
-    const publicLaborFees = estimate.laborFeesSnapshot
-      ? {
-          materialTotalCents: Number(laborFees.materialTotalCents || 0),
-          laborCostCents: Number(laborFees.laborCostCents || 0),
-          dumpsterFeeCents: Number(laborFees.dumpsterFeeCents || 0),
-          roofLoadFeeCents: Number(laborFees.roofLoadFeeCents || 0),
-          laborAndFeesTotalCents: Number(
-            laborFees.laborAndFeesTotalCents || 0
-          ),
-        }
-      : null;
-
+    const legacyVersion = Number(estimate.version || 1);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await estimateRef.set(
+      { status: "viewed", viewedAt: now, updatedAt: now },
+      { merge: true }
+    );
     return {
-      estimate: {
-        id: estimateId,
-        organizationId: String(estimate.organizationId || estimate.orgId || ""),
-        jobId: String(estimate.jobId || ""),
-        number: String(estimate.number || "Estimate"),
-        version: Number(estimate.version || 1),
-        status: estimate.status === "sent" ? "viewed" : estimate.status,
-        documentType: "estimate",
-        projectTitle: String(estimate.projectTitle || "Roofing project"),
-        scopeSummary: String(estimate.scopeSummary || ""),
-        issueDate: estimate.issueDate || null,
-        validUntil: estimate.validUntil || null,
-        customerSnapshot: estimate.customerSnapshot || {},
-        propertyAddressSnapshot: estimate.propertyAddressSnapshot || null,
-        organizationSnapshot: estimate.organizationSnapshot || {
-          name: "Roger's Roofing",
-        },
-        roofAreaSquareFeet: Number(estimate.roofAreaSquareFeet || 0),
-        lineItems: publicLineItems,
-        ...(publicLaborFees
-          ? { laborFeesSnapshot: publicLaborFees }
-          : {}),
-        subtotalCents: Number(estimate.subtotalCents || 0),
-        discountCents: Number(estimate.discountCents || 0),
-        taxCents: Number(estimate.taxCents || 0),
-        taxRatePercent: Number(estimate.taxRatePercent || 0),
-        totalCents: Number(estimate.totalCents || 0),
-        depositCents: Number(estimate.depositCents || 0),
-        paymentTerms: String(estimate.paymentTerms || ""),
-        warrantyText: String(estimate.warrantyText || ""),
-        notes: String(estimate.notes || ""),
-        assumptions: Array.isArray(estimate.assumptions)
-          ? estimate.assumptions.map(String)
-          : [],
-        exclusions: Array.isArray(estimate.exclusions)
-          ? estimate.exclusions.map(String)
-          : [],
-      },
+      estimate: publicEstimateFromSnapshot(
+        estimateId,
+        buildEstimateSnapshot(estimateId, estimate),
+        legacyVersion,
+        "viewed"
+      ),
     };
   }
 );

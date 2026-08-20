@@ -210,6 +210,15 @@ export type EstimateRecord = {
   assumptions: string[];
   exclusions: string[];
   publicToken?: string;
+  /** Version associated with the current public customer link. */
+  publicVersion?: number;
+  /** Highest immutable version prepared for delivery. */
+  latestVersion?: number;
+  latestVersionContentHash?: string;
+  /** Highest immutable version successfully delivered to the customer. */
+  latestIssuedVersion?: number;
+  latestIssuedContentHash?: string;
+  latestIssuedPdfStoragePath?: string;
   sentAt?: FirestoreTime;
   viewedAt?: FirestoreTime;
   lastEmailSentAt?: FirestoreTime;
@@ -217,6 +226,33 @@ export type EstimateRecord = {
   emailSendInFlightAt?: FirestoreTime;
   acceptedAt?: FirestoreTime;
   frozenSnapshotHash?: string | null;
+  createdAt?: FirestoreTime;
+  updatedAt?: FirestoreTime;
+};
+
+export type EstimateVersionRecord = {
+  id: ID;
+  estimateId: ID;
+  organizationId: ID;
+  jobId: ID;
+  number: string;
+  version: number;
+  status: "preparing" | "generated" | "sent" | "viewed" | "delivery_failed";
+  contentHash: string;
+  publicToken: string;
+  snapshot: Omit<
+    EstimateRecord,
+    "status" | "version" | "createdAt" | "updatedAt"
+  >;
+  pdfStoragePath?: string;
+  pdfFilename?: string;
+  pdfSizeBytes?: number;
+  sentTo?: string;
+  resendEmailId?: string | null;
+  pdfGeneratedAt?: FirestoreTime;
+  sentAt?: FirestoreTime;
+  viewedAt?: FirestoreTime;
+  deliveryFailedAt?: FirestoreTime;
   createdAt?: FirestoreTime;
   updatedAt?: FirestoreTime;
 };

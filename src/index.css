@@ -8779,6 +8779,14 @@ img {
   letter-spacing: 0.06em;
 }
 
+.estimate-document-title strong small {
+  margin-left: 7px;
+  color: #8a857d;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .estimate-party-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.9fr);
