@@ -289,6 +289,59 @@ img {
   font-size: 12.5px;
 }
 
+.public-call-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 15px;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 3px;
+  background: rgb(255 255 255 / 6%);
+  color: white;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.public-call-button:hover {
+  border-color: rgb(255 255 255 / 58%);
+  background: rgb(255 255 255 / 12%);
+  transform: translateY(-2px);
+}
+
+.public-call-button-header > span {
+  display: grid;
+  gap: 3px;
+}
+
+.public-call-button-header strong,
+.public-call-button-header small {
+  line-height: 1;
+}
+
+.public-call-button-header strong {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.public-call-button-header small {
+  color: rgb(255 255 255 / 68%);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.public-hero-call {
+  display: none;
+}
+
 .public-menu-button {
   display: none;
   width: 44px;
@@ -5222,7 +5275,8 @@ img {
     font-size: 14px;
   }
 
-  .public-header-actions .public-button {
+  .public-header-actions .public-button,
+  .public-call-button-header {
     display: none;
   }
 
@@ -5270,6 +5324,41 @@ img {
 
   .public-mobile-nav a:last-child {
     border-bottom: 0;
+  }
+
+  .public-mobile-nav .public-mobile-call {
+    min-height: 64px;
+    margin-top: 10px;
+    padding: 0 14px;
+    border: 1px solid rgb(255 255 255 / 22%);
+    border-radius: 4px;
+    background: rgb(255 255 255 / 6%);
+    color: white;
+  }
+
+  .public-mobile-call > span {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .public-mobile-call > span > span {
+    display: grid;
+    gap: 4px;
+  }
+
+  .public-mobile-call small {
+    color: #f3d7a6;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .public-mobile-call strong {
+    font-size: 14px;
+    line-height: 1;
   }
 
   .public-hero {
@@ -5758,6 +5847,14 @@ img {
 
   .public-hero-actions .public-button {
     width: 100%;
+  }
+
+  .public-hero-call {
+    display: inline-flex;
+    width: 100%;
+    min-height: 52px;
+    background: rgb(18 18 16 / 34%);
+    backdrop-filter: blur(8px);
   }
 
   .public-hero-actions .public-text-link {

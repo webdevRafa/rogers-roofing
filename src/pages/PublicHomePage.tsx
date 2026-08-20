@@ -13,6 +13,7 @@ import {
   Home,
   MapPin,
   Menu,
+  Phone,
   Ruler,
   ShieldCheck,
   Sparkles,
@@ -311,6 +312,17 @@ export default function PublicHomePage() {
         </nav>
 
         <div className="public-header-actions">
+          <a
+            className="public-call-button public-call-button-header"
+            href="tel:+19565433258"
+            aria-label="Call Roger's Roofing at 956-543-3258"
+          >
+            <Phone size={16} />
+            <span>
+              <strong>Call now</strong>
+              <small>956-543-3258</small>
+            </span>
+          </a>
           <a className="public-button public-button-small" href="#estimate">
             Request an estimate
             <ArrowUpRight size={16} />
@@ -372,6 +384,21 @@ export default function PublicHomePage() {
                     <ArrowRight size={15} />
                   </a>
                 ))}
+                <a
+                  className="public-mobile-call"
+                  href="tel:+19565433258"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Call Roger's Roofing at 956-543-3258"
+                >
+                  <span>
+                    <Phone size={18} />
+                    <span>
+                      <small>Call now</small>
+                      <strong>956-543-3258</strong>
+                    </span>
+                  </span>
+                  <ArrowUpRight size={16} />
+                </a>
               </motion.div>
             </motion.nav>
           )}
@@ -416,6 +443,14 @@ export default function PublicHomePage() {
                 <a className="public-button" href="#estimate">
                   Request a free estimate
                   <ArrowRight size={18} />
+                </a>
+                <a
+                  className="public-call-button public-hero-call"
+                  href="tel:+19565433258"
+                  aria-label="Call Roger's Roofing at 956-543-3258"
+                >
+                  <Phone size={17} />
+                  Call 956-543-3258
                 </a>
                 <a className="public-text-link public-text-link-light" href="#services">
                   Explore our services
