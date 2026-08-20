@@ -74,7 +74,6 @@ import type {
   Employee,
   InvoiceDoc,
   Job,
-  JobStatus,
   PayoutDoc,
 } from "../types/types";
 
@@ -310,6 +309,23 @@ function invoiceBalance(invoice: InvoiceDoc): number {
   return invoice.status === "paid" || invoice.status === "void"
     ? 0
     : invoice.money?.totalCents ?? 0;
+}
+
+type JobEstimateLifecycle = {
+  label: string;
+  tone: "awaiting" | "sent" | "viewed";
+};
+
+function jobEstimateLifecycle(
+  estimates: EstimateRecord[]
+): JobEstimateLifecycle {
+  if (estimates.some((estimate) => estimate.status === "viewed")) {
+    return { label: "Customer viewed estimate", tone: "viewed" };
+  }
+  if (estimates.some((estimate) => estimate.status === "sent")) {
+    return { label: "Estimate sent to customer", tone: "sent" };
+  }
+  return { label: "Awaiting estimate", tone: "awaiting" };
 }
 
 export default function JobWorkspacePage() {
@@ -913,21 +929,6 @@ export default function JobWorkspacePage() {
     return required.length ? Math.round((ready.length / required.length) * 100) : 0;
   }, [warrantySections]);
 
-  async function changeStatus(nextStatus: JobStatus) {
-    if (!job) return;
-    setSaving(true);
-    try {
-      await updateDoc(doc(db, "jobs", job.id), {
-        status: nextStatus,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function saveNotes() {
     if (!job) return;
     setSaving(true);
@@ -1220,6 +1221,7 @@ export default function JobWorkspacePage() {
     },
     { key: "files", label: "Files & photos", icon: Image, count: photos.length },
   ];
+  const estimateLifecycle = jobEstimateLifecycle(estimates);
 
   return (
     <main className="job-workspace-page">
@@ -1232,36 +1234,21 @@ export default function JobWorkspacePage() {
           <div className="job-title-row">
             <div>
               <span className="admin-kicker">{projectLabel(job.projectType)}</span>
-              <h1>{addressLine(job)}</h1>
+              <div className="job-heading-line">
+                <h1>{addressLine(job)}</h1>
+                <span
+                  className={`job-estimate-lifecycle is-${estimateLifecycle.tone}`}
+                  role="status"
+                  aria-label={`Estimate status: ${estimateLifecycle.label}`}
+                >
+                  <i aria-hidden="true" />
+                  {estimateLifecycle.label}
+                </span>
+              </div>
               <p>
                 {job.customer?.name || "Customer not linked"}
                 {job.customer?.phone ? ` · ${job.customer.phone}` : ""}
               </p>
-            </div>
-            <div className="job-header-actions">
-              <select
-                className={`admin-status status-${job.status}`}
-                value={job.status}
-                disabled={saving}
-                onChange={(event) =>
-                  changeStatus(event.target.value as JobStatus)
-                }
-              >
-                {[
-                  "draft",
-                  "pending",
-                  "active",
-                  "invoiced",
-                  "paid",
-                  "completed",
-                  "closed",
-                  "archived",
-                ].map((statusOption) => (
-                  <option value={statusOption} key={statusOption}>
-                    {statusOption}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
         </div>

@@ -1577,6 +1577,61 @@
   line-height: 1.04;
 }
 
+.job-heading-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.job-heading-line h1 {
+  max-width: none;
+  min-width: 0;
+}
+
+.job-estimate-lifecycle {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  min-height: 28px;
+  margin-top: 2px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+}
+
+.job-estimate-lifecycle i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 62%);
+}
+
+.job-estimate-lifecycle.is-awaiting {
+  border-color: #ecd9b7;
+  background: #fff7e8;
+  color: #99600d;
+}
+
+.job-estimate-lifecycle.is-sent {
+  border-color: #c9dced;
+  background: #eff6fb;
+  color: #285f88;
+}
+
+.job-estimate-lifecycle.is-viewed {
+  border-color: #c5e2d5;
+  background: #edf8f2;
+  color: #24704e;
+}
+
 .job-title-row p {
   color: var(--admin-muted);
   font-size: 13px;
@@ -2613,6 +2668,17 @@
   .job-title-row h1,
   .estimate-builder-header h1 {
     font-size: 31px;
+  }
+
+  .job-heading-line {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .job-estimate-lifecycle {
+    min-height: 26px;
+    margin-top: 0;
+    font-size: 9px;
   }
 
   .admin-page-header p {
