@@ -24,6 +24,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Reveal from "../components/Reveal";
 import { functions } from "../firebase/firebaseConfig";
 import logo from "../assets/rogers-logo.png";
+import heroBrandLockup from "../assets/brand/rogers-lockup-white-text.svg";
 import finishedRoof from "../assets/AdobeStock_102630327.webp";
 import roofWorksite from "../assets/AdobeStock_356783144.webp";
 
@@ -389,21 +390,29 @@ export default function PublicHomePage() {
             <div className="public-hero-shade" />
           </div>
           <div className="public-hero-content">
+            <motion.img
+              className="public-hero-lockup"
+              src={heroBrandLockup}
+              alt="Roger's Roofing & Contracting LLC"
+              initial={{ opacity: 0, y: 18, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.8 }}
+            />
             <motion.div
               className="public-eyebrow public-eyebrow-light"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
+              transition={{ duration: 0.7, delay: 0.08 }}
             >
               <MapPin size={15} />
               San Antonio, Texas
               <span />
-              Roofing &amp; contracting
+              Roofing specialists
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.08 }}
+              transition={{ duration: 0.85, delay: 0.16 }}
             >
               Roofing built to protect
               {" "}
@@ -412,7 +421,7 @@ export default function PublicHomePage() {
             <motion.p
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.16 }}
+              transition={{ duration: 0.85, delay: 0.24 }}
             >
               Straightforward inspections, detailed estimates, and dependable
               roofing work for repairs, replacements, and new construction.
@@ -421,7 +430,7 @@ export default function PublicHomePage() {
               className="public-hero-actions"
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.24 }}
+              transition={{ duration: 0.85, delay: 0.32 }}
             >
               <a className="public-button" href="#estimate">
                 Request a free estimate

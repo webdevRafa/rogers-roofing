@@ -352,8 +352,16 @@ img {
 .public-hero-content {
   position: relative;
   z-index: 2;
-  width: min(980px, 72vw);
+  width: min(880px, 72vw);
   color: white;
+}
+
+.public-hero-lockup {
+  display: block;
+  width: clamp(250px, 22vw, 340px);
+  height: auto;
+  margin: 0 0 16px -10px;
+  filter: drop-shadow(0 18px 34px rgb(0 0 0 / 30%));
 }
 
 .public-eyebrow {
@@ -379,10 +387,10 @@ img {
 }
 
 .public-hero h1 {
-  max-width: 18ch;
-  margin: 28px 0 28px;
+  max-width: 16ch;
+  margin: 22px 0 24px;
   font-family: var(--public-font-display);
-  font-size: clamp(60px, 5.4vw, 102px);
+  font-size: clamp(56px, 4.8vw, 88px);
   font-weight: 400;
   line-height: 0.94;
   letter-spacing: -0.042em;
@@ -5145,6 +5153,10 @@ img {
     width: 100%;
   }
 
+  .public-hero-lockup {
+    width: min(310px, 72vw);
+  }
+
   .public-hero h1 {
     max-width: 15ch;
     font-size: clamp(50px, 12vw, 76px);
@@ -5507,11 +5519,16 @@ img {
   }
 
   .public-hero {
-    min-height: max(680px, 100svh);
+    min-height: max(780px, 100svh);
+  }
+
+  .public-hero-lockup {
+    width: min(280px, 82vw);
+    margin: 0 0 12px -8px;
   }
 
   .public-hero h1 {
-    font-size: clamp(44px, 12.2vw, 60px);
+    font-size: clamp(42px, 11.4vw, 56px);
     letter-spacing: -0.035em;
   }
 
