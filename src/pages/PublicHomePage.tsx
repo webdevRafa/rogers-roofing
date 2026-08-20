@@ -422,16 +422,6 @@ export default function PublicHomePage() {
                   <ArrowUpRight size={16} />
                 </a>
               </motion.div>
-              <motion.div
-                className="public-hero-assurance"
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.75, delay: 0.4 }}
-                aria-label="Estimate experience"
-              >
-                <span><Check size={15} /> Clear written estimates</span>
-                <span><Check size={15} /> Materials explained</span>
-              </motion.div>
             </div>
 
             <motion.aside
