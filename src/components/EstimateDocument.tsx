@@ -1,5 +1,5 @@
 import type { EstimateRecord, RoofingUnit } from "../domain/roofing";
-import brandLogo from "../assets/rogers-logo-separated-v2.png";
+import brandLogo from "../assets/rogers-logo-separated-v3.png";
 
 type EstimateDocumentProps = {
   estimate: EstimateRecord;
