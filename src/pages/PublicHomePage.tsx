@@ -7,15 +7,14 @@ import {
   CalendarCheck,
   Check,
   ClipboardCheck,
+  Droplets,
   FileCheck2,
   Hammer,
-  HardHat,
   Home,
   MapPin,
   Menu,
   Phone,
   Ruler,
-  ShieldCheck,
   Sparkles,
   Wrench,
   X,
@@ -67,33 +66,33 @@ const initialLead: LeadFormState = {
 const services = [
   {
     icon: Home,
-    title: "Roof replacement",
-    copy: "A straightforward replacement plan based on your roof's condition, your home, and the materials that fit the job.",
+    title: "Residential",
+    copy: "Roofing work planned around your home, roof system, budget, and long-term needs—from the first inspection through cleanup and final walkthrough.",
   },
   {
-    icon: Wrench,
-    title: "Roof repair",
-    copy: "Practical repairs for leaks, flashing, vents, storm damage, and other problem areas—without pushing work you do not need.",
+    icon: Droplets,
+    title: "Water tests & leaks",
+    copy: "Targeted water testing and careful tracing help isolate difficult leak paths around flashing, penetrations, valleys, and roof transitions before repairs begin.",
   },
   {
-    icon: ShieldCheck,
-    title: "Storm damage",
-    copy: "A careful inspection, helpful photos, and a clear repair plan after hail, wind, or severe weather.",
+    icon: CalendarCheck,
+    title: "Roof maintenance",
+    copy: "Routine roof checks and small corrective work help address sealants, exposed fasteners, debris, and early wear before they become larger problems.",
   },
   {
     icon: Ruler,
-    title: "New roof installation",
-    copy: "Roofing for additions and new construction, coordinated from material selection through the final walkthrough.",
+    title: "Roof replacement",
+    copy: "A clear replacement plan based on your roof's condition, measurements, ventilation, decking needs, and the materials that make sense for your home.",
+  },
+  {
+    icon: Wrench,
+    title: "Repairs",
+    copy: "Focused residential repairs for damaged shingles, flashing, penetrations, valleys, and other localized problems—matched to what the inspection actually finds.",
   },
   {
     icon: ClipboardCheck,
     title: "Roof inspections",
-    copy: "A thorough look at the roof, ventilation, flashing, and visible trouble spots so you can make an informed decision.",
-  },
-  {
-    icon: HardHat,
-    title: "Commercial roofing",
-    copy: "Responsive roofing service and clear project planning for small commercial and managed properties.",
+    copy: "A documented assessment of shingles, flashing, penetrations, ventilation, and visible trouble spots so you understand the roof's condition and next steps.",
   },
 ];
 
@@ -518,21 +517,17 @@ export default function PublicHomePage() {
           </section>
 
           <section className="public-section public-services" id="services">
-          <Reveal className="public-section-heading">
+          <Reveal className="public-section-heading public-services-heading">
             <div>
               <span className="public-eyebrow">
                 Built for San Antonio and South Texas homes
               </span>
               <h2>
-                Roofing help that fits the problem—not a one-size-fits-all
-                pitch.
+                Every San Antonio roof is different. We inspect its actual
+                condition, explain what we find, and recommend the work and
+                materials that make sense for your property.
               </h2>
             </div>
-            <p>
-              Every San Antonio roof is different. We inspect its actual
-              condition, explain what we find, and recommend the work and
-              materials that make sense for your property.
-            </p>
           </Reveal>
 
           <div className="public-service-grid">
@@ -687,11 +682,10 @@ export default function PublicHomePage() {
                 <Check /> Free, no-obligation estimate request
               </span>
               <span>
-                <Check /> Homes and small commercial properties
+                <Check /> Residential homes and properties
               </span>
               <span>
-                <Check /> Repairs, replacements, storm damage, and new
-                construction
+                <Check /> Inspections, maintenance, repairs, and replacements
               </span>
             </div>
           </Reveal>
@@ -815,9 +809,10 @@ export default function PublicHomePage() {
                       <option value="storm_damage">Storm damage</option>
                       <option value="new_construction">New construction</option>
                       <option value="inspection">Roof inspection</option>
-                      <option value="commercial_roofing">Commercial roofing</option>
                       <option value="gutters">Gutters or drainage</option>
-                      <option value="other">Something else</option>
+                      <option value="other">
+                        Roof maintenance or something else
+                      </option>
                     </select>
                   </label>
                   <label>
