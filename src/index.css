@@ -4809,8 +4809,9 @@ img {
 }
 
 .job-fees-preview dt {
-  color: #5f6874;
+  color: var(--admin-ink, var(--ink));
   font-size: 10px;
+  font-weight: 800;
 }
 
 .job-fees-preview dd {
