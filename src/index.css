@@ -176,9 +176,12 @@ img {
 .public-brand img {
   width: 55px;
   height: 55px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: white;
   object-fit: contain;
+  padding: 5px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
 }
 
 .public-brand span {
@@ -1182,9 +1185,12 @@ img {
 .public-footer-brand img {
   width: 66px;
   height: 66px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: white;
   object-fit: contain;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
 }
 
 .public-footer-brand div {
@@ -1560,9 +1566,12 @@ img {
 .admin-sidebar-brand img {
   width: 48px;
   height: 48px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: white;
   object-fit: contain;
+  padding: 4px;
+  box-shadow: 0 8px 22px rgb(0 0 0 / 22%);
 }
 
 .admin-sidebar-brand span {

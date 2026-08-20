@@ -1,5 +1,5 @@
 import type { EstimateRecord, RoofingUnit } from "../domain/roofing";
-import fallbackLogo from "../assets/rogers-roofing.webp";
+import brandLogo from "../assets/rogers-logo.png";
 
 type EstimateDocumentProps = {
   estimate: EstimateRecord;
@@ -82,7 +82,7 @@ export default function EstimateDocument({
       <header className="estimate-document-header">
         <div className="estimate-business-block">
           <img
-            src={organization?.logoUrl || fallbackLogo}
+            src={brandLogo}
             alt={`${organization?.name || "Roger's Roofing"} logo`}
           />
           <div>
