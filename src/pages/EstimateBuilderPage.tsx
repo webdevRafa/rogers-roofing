@@ -2,17 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Calculator,
   Check,
   Eye,
   FileText,
   Loader2,
   Mail,
-  Plus,
   Ruler,
-  Save,
   Send,
-  Trash2,
 } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -42,12 +38,6 @@ import type {
 import { ESTIMATE_STATUS_LABELS } from "../domain/roofing";
 import type { Address, Job, Org } from "../types/types";
 
-type EditorMeasurement = {
-  id: string;
-  length: string;
-  width: string;
-};
-
 type FormState = {
   customerName: string;
   customerEmail: string;
@@ -65,7 +55,7 @@ type FormState = {
   exclusions: string;
 };
 
-type SaveMode = "draft" | "preview" | "send";
+type SaveMode = "preview" | "send";
 
 const unitLabels: Record<RoofingUnit, string> = {
   EA: "Each",
@@ -122,30 +112,8 @@ function initialForm(): FormState {
   };
 }
 
-function newMeasurement(
-  overrides: Partial<EditorMeasurement> = {}
-): EditorMeasurement {
-  return {
-    id: crypto.randomUUID(),
-    length: "",
-    width: "",
-    ...overrides,
-  };
-}
-
-function positiveNumber(value: string) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.max(0, number) : 0;
-}
-
 function roundMeasurement(value: number) {
   return Math.round(value * 100) / 100;
-}
-
-function measurementArea(measurement: EditorMeasurement) {
-  return roundMeasurement(
-    positiveNumber(measurement.length) * positiveNumber(measurement.width)
-  );
 }
 
 function formatMeasurement(value: number, maximumFractionDigits = 2) {
@@ -218,10 +186,6 @@ export default function EstimateBuilderPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [jobMaterials, setJobMaterials] = useState<JobMaterialActual[]>([]);
   const [materialSyncReady, setMaterialSyncReady] = useState(false);
-  const [measurements, setMeasurements] = useState<EditorMeasurement[]>([
-    newMeasurement(),
-  ]);
-  const [measurementsFinalized, setMeasurementsFinalized] = useState(false);
   const [organization, setOrganization] = useState<
     NonNullable<EstimateRecord["organizationSnapshot"]>
   >({ name: orgName || "Roger's Roofing" });
@@ -303,19 +267,6 @@ export default function EstimateBuilderPage() {
           assumptions: estimate.assumptions.join("\n"),
           exclusions: estimate.exclusions.join("\n"),
         });
-        const savedMeasurements = estimate.roofMeasurements || [];
-        setMeasurements(
-          savedMeasurements.length > 0
-            ? savedMeasurements.map((measurement) => ({
-                id: measurement.id,
-                length: String(measurement.lengthFt),
-                width: String(measurement.widthFt),
-              }))
-            : [newMeasurement()]
-        );
-        setMeasurementsFinalized(
-          Boolean(estimate.measurementsFinalized && savedMeasurements.length)
-        );
         initializedJob.current = true;
       })
       .catch((caught: unknown) => {
@@ -344,6 +295,17 @@ export default function EstimateBuilderPage() {
     () => jobs.find((job) => job.id === selectedJobId) || null,
     [jobs, selectedJobId]
   );
+
+  useEffect(() => {
+    if (!selectedJob) return;
+    setForm((current) => ({
+      ...current,
+      customerName: selectedJob.customer?.name || "",
+      customerEmail: selectedJob.customer?.email || "",
+      customerPhone: selectedJob.customer?.phone || "",
+      projectTitle: projectTypeLabel(selectedJob.projectType),
+    }));
+  }, [selectedJob]);
 
   useEffect(() => {
     setJobMaterials([]);
@@ -416,24 +378,29 @@ export default function EstimateBuilderPage() {
     };
   }, [form.deposit, form.discount, form.taxRate, lines]);
 
+  const measurements = useMemo(
+    () => selectedJob?.roofMeasurements || [],
+    [selectedJob?.roofMeasurements]
+  );
+  const measurementsFinalized = Boolean(
+    selectedJob?.measurementsFinalized && measurements.length
+  );
   const measurementTotals = useMemo(() => {
-    const completed = measurements.filter(
-      (measurement) =>
-        positiveNumber(measurement.length) > 0 &&
-        positiveNumber(measurement.width) > 0
-    );
     const squareFeet = roundMeasurement(
-      completed.reduce(
-        (total, measurement) => total + measurementArea(measurement),
-        0
-      )
+      selectedJob?.roofAreaSquareFeet ??
+        measurements.reduce(
+          (total, measurement) => total + measurement.areaSquareFeet,
+          0
+        )
     );
     return {
-      completedCount: completed.length,
+      completedCount: measurements.length,
       squareFeet,
-      roofingSquares: roundMeasurement(squareFeet / 100),
+      roofingSquares: roundMeasurement(
+        selectedJob?.roofSquares ?? squareFeet / 100
+      ),
     };
-  }, [measurements]);
+  }, [measurements, selectedJob?.roofAreaSquareFeet, selectedJob?.roofSquares]);
 
   const readiness = useMemo(
     () => [
@@ -444,6 +411,10 @@ export default function EstimateBuilderPage() {
         ready: materialSyncReady && syncedMaterialLines.length > 0,
       },
       {
+        label: "Roof dimensions ready",
+        ready: measurementsFinalized,
+      },
+      {
         label: "Delivery email ready",
         ready: Boolean(form.customerEmail.trim()),
       },
@@ -452,6 +423,7 @@ export default function EstimateBuilderPage() {
       form.customerEmail,
       form.customerName,
       materialSyncReady,
+      measurementsFinalized,
       selectedJob,
       syncedMaterialLines.length,
     ]
@@ -475,60 +447,6 @@ export default function EstimateBuilderPage() {
       customerPhone: job.customer?.phone || "",
       projectTitle: projectTypeLabel(job.projectType),
     }));
-  }
-
-  function updateMeasurement(
-    measurementId: string,
-    key: "length" | "width",
-    value: string
-  ) {
-    setMeasurements((current) =>
-      current.map((measurement) =>
-        measurement.id === measurementId
-          ? { ...measurement, [key]: value }
-          : measurement
-      )
-    );
-    setMeasurementsFinalized(false);
-  }
-
-  function removeMeasurement(measurementId: string) {
-    setMeasurements((current) => {
-      const remaining = current.filter(
-        (measurement) => measurement.id !== measurementId
-      );
-      return remaining.length > 0 ? remaining : [newMeasurement()];
-    });
-    setMeasurementsFinalized(false);
-  }
-
-  function finishMeasurements() {
-    const hasIncompleteMeasurement = measurements.some((measurement) => {
-      const hasLength = positiveNumber(measurement.length) > 0;
-      const hasWidth = positiveNumber(measurement.width) > 0;
-      return hasLength !== hasWidth;
-    });
-    if (hasIncompleteMeasurement) {
-      setError(
-        "Complete both dimensions for every roof area, or remove the incomplete row."
-      );
-      setSuccess(null);
-      return;
-    }
-    if (measurementTotals.completedCount === 0) {
-      setError(
-        "Add at least one complete roof dimension before marking pricing done."
-      );
-      setSuccess(null);
-      return;
-    }
-    setError(null);
-    setMeasurementsFinalized(true);
-    setSuccess(
-      "Pricing measurements complete: " +
-        formatMeasurement(measurementTotals.squareFeet) +
-        " sq. ft."
-    );
   }
 
   async function generateNumber() {
@@ -577,14 +495,9 @@ export default function EstimateBuilderPage() {
       );
       return;
     }
-    const hasIncompleteMeasurement = measurements.some((measurement) => {
-      const hasLength = positiveNumber(measurement.length) > 0;
-      const hasWidth = positiveNumber(measurement.width) > 0;
-      return hasLength !== hasWidth;
-    });
-    if (hasIncompleteMeasurement) {
+    if (!measurementsFinalized) {
       setError(
-        "Complete both dimensions for every roof area, or remove the incomplete row."
+        "Complete and save the roof takeoff in the Job Workspace Dimensions tab first."
       );
       return;
     }
@@ -609,26 +522,7 @@ export default function EstimateBuilderPage() {
         : doc(collection(db, "estimates"));
       const number = existing?.number || (await generateNumber());
       const lineItems: EstimateLineItem[] = completedLines;
-      const roofMeasurements: RoofMeasurement[] = measurements
-        .filter(
-          (measurement) =>
-            positiveNumber(measurement.length) > 0 &&
-            positiveNumber(measurement.width) > 0
-        )
-        .map((measurement) => {
-          const lengthFt = roundMeasurement(
-            positiveNumber(measurement.length)
-          );
-          const widthFt = roundMeasurement(positiveNumber(measurement.width));
-          const areaSquareFeet = roundMeasurement(lengthFt * widthFt);
-          return {
-            id: measurement.id,
-            lengthFt,
-            widthFt,
-            areaSquareFeet,
-            roofingSquares: roundMeasurement(areaSquareFeet / 100),
-          };
-        });
+      const roofMeasurements: RoofMeasurement[] = measurements;
       const nextStatus: EstimateStatus =
         mode === "send"
           ? "ready_to_send"
@@ -664,8 +558,7 @@ export default function EstimateBuilderPage() {
         roofMeasurements,
         roofAreaSquareFeet: measurementTotals.squareFeet,
         roofSquares: measurementTotals.roofingSquares,
-        measurementsFinalized:
-          measurementsFinalized && roofMeasurements.length > 0,
+        measurementsFinalized,
         lineItems,
         subtotalCents: totals.subtotalCents,
         discountCents: totals.discountCents,
@@ -709,9 +602,7 @@ export default function EstimateBuilderPage() {
         } else {
           window.open(`/estimate/${estimateRef.id}`, "_blank", "noopener");
         }
-        setSuccess("Draft saved and print preview opened.");
-      } else {
-        setSuccess(`Estimate ${number} saved as a draft.`);
+        setSuccess("Latest job data synced and print preview opened.");
       }
     } catch (caught) {
       previewWindow?.close();
@@ -741,19 +632,27 @@ export default function EstimateBuilderPage() {
                   : "/invoices-page"
               }
             >
-              <ArrowLeft size={14} /> Back to documents
+              <ArrowLeft size={14} /> Back to job documents
             </Link>
             <span className="admin-kicker">Estimate studio</span>
-            <h1>{existing ? `Edit ${existing.number}` : "Create an estimate"}</h1>
+            <h1>{existing ? `Preview ${existing.number}` : "Create an estimate"}</h1>
             <p>
-              Build a clear, itemized proposal that is ready to email, print,
-              or download as a professional PDF.
+              Review the job-sourced proposal, then print it or send it to the
+              customer.
             </p>
           </div>
           <div className="estimate-builder-status">
-            <span className={`admin-status status-${existing?.status || "draft"}`}>
+            <span
+              className={`admin-status status-${
+                existing?.status === "lead_received"
+                  ? "draft"
+                  : existing?.status || "draft"
+              }`}
+            >
               {existing
-                ? ESTIMATE_STATUS_LABELS[existing.status]
+                ? existing.status === "lead_received"
+                  ? "Draft"
+                  : ESTIMATE_STATUS_LABELS[existing.status]
                 : "New draft"}
             </span>
             {existing && <small>Version {existing.version}</small>}
@@ -779,7 +678,10 @@ export default function EstimateBuilderPage() {
                 <span>01</span>
                 <div>
                   <h2>Customer and project</h2>
-                  <p>Connect the estimate to a job and confirm who receives it.</p>
+                  <p>
+                    Synced from the Job Workspace so customer and property data
+                    stay consistent.
+                  </p>
                 </div>
               </div>
               <div className="estimate-form-grid">
@@ -788,6 +690,7 @@ export default function EstimateBuilderPage() {
                   <select
                     value={selectedJobId}
                     onChange={(event) => changeJob(event.target.value)}
+                    disabled={Boolean(existing)}
                   >
                     {jobs.length === 0 && <option value="">No jobs available</option>}
                     {jobs.map((job) => (
@@ -801,9 +704,7 @@ export default function EstimateBuilderPage() {
                   <span>Customer name</span>
                   <input
                     value={form.customerName}
-                    onChange={(event) =>
-                      updateForm("customerName", event.target.value)
-                    }
+                    readOnly
                     placeholder="Customer or company name"
                   />
                 </label>
@@ -812,9 +713,7 @@ export default function EstimateBuilderPage() {
                   <input
                     type="email"
                     value={form.customerEmail}
-                    onChange={(event) =>
-                      updateForm("customerEmail", event.target.value)
-                    }
+                    readOnly
                     placeholder="customer@example.com"
                   />
                 </label>
@@ -822,9 +721,7 @@ export default function EstimateBuilderPage() {
                   <span>Customer phone</span>
                   <input
                     value={form.customerPhone}
-                    onChange={(event) =>
-                      updateForm("customerPhone", event.target.value)
-                    }
+                    readOnly
                     placeholder="(210) 555-0123"
                   />
                 </label>
@@ -832,9 +729,7 @@ export default function EstimateBuilderPage() {
                   <span>Project title</span>
                   <input
                     value={form.projectTitle}
-                    onChange={(event) =>
-                      updateForm("projectTitle", event.target.value)
-                    }
+                    readOnly
                   />
                 </label>
                 <label className="estimate-field">
@@ -866,15 +761,23 @@ export default function EstimateBuilderPage() {
                 (measurementsFinalized ? " is-complete" : "")
               }
             >
-              <div className="estimate-section-heading">
+              <div className="estimate-section-heading estimate-section-heading-actions">
                 <span>02</span>
                 <div>
-                  <h2>Pricing</h2>
+                  <h2>Roof dimensions</h2>
                   <p>
-                    Enter each roof area in feet. Square footage and roofing SQ
-                    are calculated automatically.
+                    Synced from the job takeoff so the proposal always uses the
+                    approved roof measurements.
                   </p>
                 </div>
+                {selectedJob && (
+                  <Link
+                    className="estimate-manage-materials"
+                    to={`/job/${selectedJob.id}?tab=dimensions`}
+                  >
+                    Manage dimensions <ArrowRight size={14} />
+                  </Link>
+                )}
               </div>
 
               <div className="estimate-measurement-workspace">
@@ -886,8 +789,8 @@ export default function EstimateBuilderPage() {
                     <div>
                       <strong>Roof dimensions</strong>
                       <p>
-                        Break the roof into rectangular areas and enter only the
-                        two measured sides.
+                        Read-only here. Update the dimensions in the Job
+                        Workspace to keep every estimate in sync.
                       </p>
                     </div>
                   </div>
@@ -898,140 +801,73 @@ export default function EstimateBuilderPage() {
                   </div>
                 </div>
 
-                <div className="estimate-measurement-list">
-                  {measurements.map((measurement, index) => {
-                    const areaSquareFeet = measurementArea(measurement);
-                    const roofingSquares = roundMeasurement(
-                      areaSquareFeet / 100
-                    );
-                    return (
-                      <article key={measurement.id}>
-                        <div className="estimate-measurement-index">
-                          <span>Area</span>
-                          <strong>{String(index + 1).padStart(2, "0")}</strong>
-                        </div>
-                        <label>
-                          <span>Length</span>
-                          <div>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              inputMode="decimal"
-                              value={measurement.length}
-                              onChange={(event) =>
-                                updateMeasurement(
-                                  measurement.id,
-                                  "length",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="12"
-                              aria-label={
-                                "Area " + (index + 1) + " length in feet"
-                              }
-                            />
-                            <span>ft</span>
+                {measurements.length > 0 ? (
+                  <>
+                    <div className="estimate-measurement-list is-read-only">
+                      {measurements.map((measurement, index) => (
+                        <article key={measurement.id}>
+                          <div className="estimate-measurement-index">
+                            <span>Area</span>
+                            <strong>
+                              {String(index + 1).padStart(2, "0")}
+                            </strong>
                           </div>
-                        </label>
-                        <b aria-hidden="true">×</b>
-                        <label>
-                          <span>Width</span>
-                          <div>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              inputMode="decimal"
-                              value={measurement.width}
-                              onChange={(event) =>
-                                updateMeasurement(
-                                  measurement.id,
-                                  "width",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="8"
-                              aria-label={
-                                "Area " + (index + 1) + " width in feet"
-                              }
-                            />
-                            <span>ft</span>
+                          <div className="estimate-measurement-dimension">
+                            <span>Dimensions</span>
+                            <strong>
+                              {formatMeasurement(measurement.lengthFt)} ×{" "}
+                              {formatMeasurement(measurement.widthFt)} ft
+                            </strong>
                           </div>
-                        </label>
-                        <div className="estimate-measurement-result">
-                          <span>Square footage</span>
+                          <div className="estimate-measurement-result">
+                            <span>Square footage</span>
+                            <strong>
+                              {formatMeasurement(measurement.areaSquareFeet)} sq. ft.
+                            </strong>
+                          </div>
+                          <div className="estimate-measurement-result is-admin">
+                            <span>
+                              Roofing SQ <small>Admin only</small>
+                            </span>
+                            <strong>
+                              {formatMeasurement(measurement.roofingSquares)} SQ
+                            </strong>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+
+                    <div className="estimate-measurement-footer is-read-only">
+                      <div className="estimate-measurement-total">
+                        <div>
+                          <span>Total roof area</span>
                           <strong>
-                            {areaSquareFeet > 0
-                              ? formatMeasurement(areaSquareFeet) + " sq. ft."
-                              : "—"}
+                            {formatMeasurement(measurementTotals.squareFeet)} sq. ft.
                           </strong>
                         </div>
-                        <div className="estimate-measurement-result is-admin">
+                        <div>
                           <span>
-                            Roofing SQ <small>Admin only</small>
+                            Total roofing SQ <small>Admin only</small>
                           </span>
                           <strong>
-                            {areaSquareFeet > 0
-                              ? formatMeasurement(roofingSquares) + " SQ"
-                              : "—"}
+                            {formatMeasurement(measurementTotals.roofingSquares)} SQ
                           </strong>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeMeasurement(measurement.id)}
-                          aria-label={"Remove area " + (index + 1)}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </article>
-                    );
-                  })}
-                </div>
-
-                <div className="estimate-measurement-footer">
-                  <button
-                    className="estimate-add-measurement"
-                    type="button"
-                    onClick={() => {
-                      setMeasurements((current) => [
-                        ...current,
-                        newMeasurement(),
-                      ]);
-                      setMeasurementsFinalized(false);
-                    }}
-                  >
-                    <Plus size={15} /> Add another area
-                  </button>
-                  <div className="estimate-measurement-total">
-                    <div>
-                      <span>Total roof area</span>
-                      <strong>
-                        {formatMeasurement(measurementTotals.squareFeet)} sq. ft.
-                      </strong>
+                      </div>
                     </div>
+                  </>
+                ) : (
+                  <div className="estimate-material-sync-state is-empty">
+                    <Ruler size={23} />
                     <div>
+                      <strong>No roof dimensions have been saved.</strong>
                       <span>
-                        Total roofing SQ <small>Admin only</small>
+                        Complete the roof takeoff in the Job Workspace before
+                        previewing or sending this estimate.
                       </span>
-                      <strong>
-                        {formatMeasurement(measurementTotals.roofingSquares)} SQ
-                      </strong>
                     </div>
-                    <button
-                      type="button"
-                      onClick={finishMeasurements}
-                      disabled={measurementTotals.completedCount === 0}
-                    >
-                      {measurementsFinalized ? (
-                        <Check size={15} />
-                      ) : (
-                        <Calculator size={15} />
-                      )}
-                      {measurementsFinalized ? "Measurements complete" : "Done"}
-                    </button>
                   </div>
-                </div>
+                )}
               </div>
             </section>
 
@@ -1323,19 +1159,6 @@ export default function EstimateBuilderPage() {
             </span>
           </div>
           <div>
-            <button
-              type="button"
-              className="admin-secondary-button"
-              disabled={Boolean(savingMode)}
-              onClick={() => void persist("draft")}
-            >
-              {savingMode === "draft" ? (
-                <Loader2 className="estimate-spin" size={15} />
-              ) : (
-                <Save size={15} />
-              )}
-              Save draft
-            </button>
             <button
               type="button"
               className="admin-primary-button"

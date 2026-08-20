@@ -9,7 +9,8 @@ export type RoofingMaterialDefinition = {
   label: string;
   description: string;
   category: RoofingMaterialCategory;
-  pricingUnit: Extract<RoofingUnit, "EA" | "SQ" | "ROLL" | "BOX">;
+  pricingUnit: Extract<RoofingUnit, "EA" | "SQ" | "ROLL" | "BOX" | "BUNDLE">;
+  allowedPricingUnits?: Extract<RoofingUnit, "SQ" | "BUNDLE">[];
 };
 
 export const ROOFING_MATERIAL_DEFINITIONS: RoofingMaterialDefinition[] = [
@@ -30,9 +31,10 @@ export const ROOFING_MATERIAL_DEFINITIONS: RoofingMaterialDefinition[] = [
   {
     value: "STARTER_STRIP",
     label: "Starter strip",
-    description: "Starter-course material priced by the supplied unit.",
+    description: "Starter-course material measured by roofing square or bundle.",
     category: "STARTER",
-    pricingUnit: "EA",
+    pricingUnit: "BUNDLE",
+    allowedPricingUnits: ["SQ", "BUNDLE"],
   },
   {
     value: "FELT_UNDERLAYMENT",
@@ -118,5 +120,13 @@ export function getRoofingMaterialPricingUnit(
   type: RoofingMaterialType | null | undefined,
   fallback: RoofingUnit
 ): RoofingUnit {
-  return getRoofingMaterialDefinition(type)?.pricingUnit ?? fallback;
+  const definition = getRoofingMaterialDefinition(type);
+  if (
+    definition?.allowedPricingUnits?.includes(
+      fallback as Extract<RoofingUnit, "SQ" | "BUNDLE">
+    )
+  ) {
+    return fallback;
+  }
+  return definition?.pricingUnit ?? fallback;
 }

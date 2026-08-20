@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   BriefcaseBusiness,
+  Calculator,
   CalendarDays,
   Check,
   CircleDollarSign,
@@ -59,6 +60,7 @@ import {
   ESTIMATE_STATUS_LABELS,
   type EstimateRecord,
   type JobMaterialActual,
+  type RoofMeasurement,
   type RoofingMaterialType,
   type RoofingUnit,
   type WarrantyPacketSection,
@@ -74,6 +76,7 @@ import type {
 type WorkspaceTab =
   | "overview"
   | "financials"
+  | "dimensions"
   | "materials"
   | "payouts"
   | "warranty"
@@ -82,6 +85,7 @@ type WorkspaceTab =
 const workspaceTabs: WorkspaceTab[] = [
   "overview",
   "financials",
+  "dimensions",
   "materials",
   "payouts",
   "warranty",
@@ -104,6 +108,7 @@ type PhotoDoc = {
 
 type MaterialForm = {
   materialType: RoofingMaterialType | "";
+  unit: RoofingUnit | "";
   description: string;
   manufacturer: string;
   product: string;
@@ -112,8 +117,45 @@ type MaterialForm = {
   rate: string;
 };
 
+type EditorMeasurement = {
+  id: string;
+  length: string;
+  width: string;
+};
+
+function newMeasurement(
+  overrides: Partial<EditorMeasurement> = {}
+): EditorMeasurement {
+  return {
+    id: crypto.randomUUID(),
+    length: "",
+    width: "",
+    ...overrides,
+  };
+}
+
+function positiveNumber(value: string) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
+
+function roundMeasurement(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function measurementArea(measurement: EditorMeasurement) {
+  return roundMeasurement(
+    positiveNumber(measurement.length) * positiveNumber(measurement.width)
+  );
+}
+
+function formatMeasurement(value: number, maximumFractionDigits = 2) {
+  return value.toLocaleString("en-US", { maximumFractionDigits });
+}
+
 const initialMaterialForm: MaterialForm = {
   materialType: "",
+  unit: "",
   description: "",
   manufacturer: "",
   product: "",
@@ -190,6 +232,15 @@ function materialPricingCopy(unit: RoofingUnit) {
       guidanceTitle: "Measured and priced by box",
     };
   }
+  if (unit === "BUNDLE") {
+    return {
+      singular: "bundle",
+      plural: "bundles",
+      quantityLabel: "Quantity (bundles) *",
+      priceLabel: "Price per bundle ($) *",
+      guidanceTitle: "Measured and priced by bundle",
+    };
+  }
   return {
     singular: "unit",
     plural: "units",
@@ -208,6 +259,7 @@ function orderedMaterialUnitLabel(material: JobMaterialActual): string {
     return material.orderedQuantity === 1 ? "roll" : "rolls";
   }
   if (unit === "BOX") return "bx";
+  if (unit === "BUNDLE") return "Bnd";
   return unit;
 }
 
@@ -266,16 +318,50 @@ export default function JobWorkspacePage() {
   const [photoCaption, setPhotoCaption] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoMessage, setPhotoMessage] = useState<string | null>(null);
+  const [measurements, setMeasurements] = useState<EditorMeasurement[]>([
+    newMeasurement(),
+  ]);
+  const [measurementsFinalized, setMeasurementsFinalized] = useState(false);
+  const [measurementsDirty, setMeasurementsDirty] = useState(false);
+  const [measurementSaving, setMeasurementSaving] = useState(false);
+  const [measurementMessage, setMeasurementMessage] = useState<string | null>(
+    null
+  );
+  const migratedMeasurementEstimateId = useRef<string | null>(null);
 
   const selectedMaterialDefinition = getRoofingMaterialDefinition(
     materialForm.materialType || null
   );
-  const selectedMaterialPricing = selectedMaterialDefinition
-    ? materialPricingCopy(selectedMaterialDefinition.pricingUnit)
+  const selectedMaterialUnit = selectedMaterialDefinition
+    ? getRoofingMaterialPricingUnit(
+        selectedMaterialDefinition.value,
+        materialForm.unit || selectedMaterialDefinition.pricingUnit
+      )
+    : null;
+  const selectedMaterialPricing = selectedMaterialUnit
+    ? materialPricingCopy(selectedMaterialUnit)
     : null;
   const materialProductCostPreview =
     Math.max(0, Number(materialForm.quantity) || 0) *
     Math.max(0, Number(materialForm.rate) || 0);
+  const measurementTotals = useMemo(() => {
+    const completed = measurements.filter(
+      (measurement) =>
+        positiveNumber(measurement.length) > 0 &&
+        positiveNumber(measurement.width) > 0
+    );
+    const squareFeet = roundMeasurement(
+      completed.reduce(
+        (total, measurement) => total + measurementArea(measurement),
+        0
+      )
+    );
+    return {
+      completedCount: completed.length,
+      squareFeet,
+      roofingSquares: roundMeasurement(squareFeet / 100),
+    };
+  }, [measurements]);
 
   function selectTab(nextTab: WorkspaceTab) {
     setTab(nextTab);
@@ -296,6 +382,10 @@ export default function JobWorkspacePage() {
     setEditingMaterial(material);
     setMaterialForm({
       materialType: material.materialType ?? "",
+      unit: getRoofingMaterialPricingUnit(
+        material.materialType,
+        material.purchaseUnit
+      ),
       description: material.descriptionSnapshot,
       manufacturer: material.manufacturerSnapshot ?? "",
       product: material.productSnapshot ?? "",
@@ -327,6 +417,7 @@ export default function JobWorkspacePage() {
       return {
         ...current,
         materialType,
+        unit: definition?.pricingUnit ?? "",
         description: shouldUseDefaultDescription
           ? definition?.label ?? ""
           : current.description,
@@ -335,8 +426,130 @@ export default function JobWorkspacePage() {
     setError(null);
   }
 
+  function updateMeasurement(
+    measurementId: string,
+    key: "length" | "width",
+    value: string
+  ) {
+    setMeasurements((current) =>
+      current.map((measurement) =>
+        measurement.id === measurementId
+          ? { ...measurement, [key]: value }
+          : measurement
+      )
+    );
+    setMeasurementsFinalized(false);
+    setMeasurementsDirty(true);
+    setMeasurementMessage(null);
+  }
+
+  function addMeasurement() {
+    setMeasurements((current) => [...current, newMeasurement()]);
+    setMeasurementsFinalized(false);
+    setMeasurementsDirty(true);
+    setMeasurementMessage(null);
+  }
+
+  function removeMeasurement(measurementId: string) {
+    setMeasurements((current) => {
+      const remaining = current.filter(
+        (measurement) => measurement.id !== measurementId
+      );
+      return remaining.length > 0 ? remaining : [newMeasurement()];
+    });
+    setMeasurementsFinalized(false);
+    setMeasurementsDirty(true);
+    setMeasurementMessage(null);
+  }
+
+  async function saveDimensions() {
+    if (!job) return;
+    const hasIncompleteMeasurement = measurements.some((measurement) => {
+      const hasLength = positiveNumber(measurement.length) > 0;
+      const hasWidth = positiveNumber(measurement.width) > 0;
+      return hasLength !== hasWidth;
+    });
+    if (hasIncompleteMeasurement) {
+      setError(
+        "Complete both dimensions for every roof area, or remove the incomplete row."
+      );
+      return;
+    }
+    if (measurementTotals.completedCount === 0) {
+      setError("Add at least one complete roof dimension before continuing.");
+      return;
+    }
+
+    const roofMeasurements: RoofMeasurement[] = measurements
+      .filter(
+        (measurement) =>
+          positiveNumber(measurement.length) > 0 &&
+          positiveNumber(measurement.width) > 0
+      )
+      .map((measurement) => {
+        const lengthFt = roundMeasurement(positiveNumber(measurement.length));
+        const widthFt = roundMeasurement(positiveNumber(measurement.width));
+        const areaSquareFeet = roundMeasurement(lengthFt * widthFt);
+        return {
+          id: measurement.id,
+          lengthFt,
+          widthFt,
+          areaSquareFeet,
+          roofingSquares: roundMeasurement(areaSquareFeet / 100),
+        };
+      });
+
+    setMeasurementSaving(true);
+    setError(null);
+    setMeasurementMessage(null);
+    try {
+      const batch = writeBatch(db);
+      const measurementFields = {
+        roofMeasurements,
+        roofAreaSquareFeet: measurementTotals.squareFeet,
+        roofSquares: measurementTotals.roofingSquares,
+        measurementsFinalized: true,
+        updatedAt: serverTimestamp(),
+      };
+      batch.update(doc(db, "jobs", job.id), measurementFields);
+      estimates
+        .filter(
+          (estimate) =>
+            estimate.status !== "accepted" &&
+            estimate.status !== "converted_to_contract"
+        )
+        .forEach((estimate) => {
+          batch.update(doc(db, "estimates", estimate.id), measurementFields);
+        });
+      await batch.commit();
+      setJob((current) =>
+        current
+          ? {
+              ...current,
+              roofMeasurements,
+              roofAreaSquareFeet: measurementTotals.squareFeet,
+              roofSquares: measurementTotals.roofingSquares,
+              measurementsFinalized: true,
+            }
+          : current
+      );
+      setMeasurementsFinalized(true);
+      setMeasurementsDirty(false);
+      setMeasurementMessage(
+        `${formatMeasurement(measurementTotals.squareFeet)} sq. ft. saved to this job and synced to its estimates.`
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setMeasurementSaving(false);
+    }
+  }
+
   useEffect(() => {
     if (!id) return;
+    migratedMeasurementEstimateId.current = null;
+    setMeasurementsDirty(false);
+    setMeasurementMessage(null);
     const unsubscribe = onSnapshot(
       doc(db, "jobs", id),
       (snapshot) => {
@@ -360,6 +573,46 @@ export default function JobWorkspacePage() {
     );
     return unsubscribe;
   }, [id]);
+
+  useEffect(() => {
+    if (!job || measurementsDirty) return;
+    const savedMeasurements = job.roofMeasurements || [];
+    setMeasurements(
+      savedMeasurements.length > 0
+        ? savedMeasurements.map((measurement) => ({
+            id: measurement.id,
+            length: String(measurement.lengthFt),
+            width: String(measurement.widthFt),
+          }))
+        : [newMeasurement()]
+    );
+    setMeasurementsFinalized(
+      Boolean(job.measurementsFinalized && savedMeasurements.length)
+    );
+  }, [job, measurementsDirty]);
+
+  useEffect(() => {
+    if (!job || job.roofMeasurements?.length) return;
+    const sourceEstimate = estimates.find(
+      (estimate) => estimate.roofMeasurements?.length
+    );
+    if (
+      !sourceEstimate?.roofMeasurements?.length ||
+      migratedMeasurementEstimateId.current === sourceEstimate.id
+    ) {
+      return;
+    }
+    migratedMeasurementEstimateId.current = sourceEstimate.id;
+    void updateDoc(doc(db, "jobs", job.id), {
+      roofMeasurements: sourceEstimate.roofMeasurements,
+      roofAreaSquareFeet: sourceEstimate.roofAreaSquareFeet ?? 0,
+      roofSquares: sourceEstimate.roofSquares ?? 0,
+      measurementsFinalized: Boolean(sourceEstimate.measurementsFinalized),
+      updatedAt: serverTimestamp(),
+    }).catch((caught: unknown) => {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    });
+  }, [estimates, job]);
 
   useEffect(() => {
     if (!id) return;
@@ -638,7 +891,7 @@ export default function JobWorkspacePage() {
 
   async function saveMaterial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!job || !orgId || !selectedMaterialDefinition) {
+    if (!job || !orgId || !selectedMaterialDefinition || !selectedMaterialUnit) {
       setError("Choose a material type before continuing.");
       return;
     }
@@ -654,7 +907,7 @@ export default function JobWorkspacePage() {
     ) {
       setError(
         `Add a material description, quantity, and rate per ${materialPricingCopy(
-          selectedMaterialDefinition.pricingUnit
+          selectedMaterialUnit
         ).singular}.`
       );
       return;
@@ -677,7 +930,7 @@ export default function JobWorkspacePage() {
         productSnapshot: materialForm.product.trim() || null,
         colorSnapshot: materialForm.color.trim() || null,
         category: selectedMaterialDefinition.category,
-        purchaseUnit: selectedMaterialDefinition.pricingUnit,
+        purchaseUnit: selectedMaterialUnit,
         orderedQuantity: quantity,
         receivedQuantity: quantity,
         installedQuantity: quantity,
@@ -848,6 +1101,12 @@ export default function JobWorkspacePage() {
       label: "Estimates & invoices",
       icon: FileStack,
       count: estimates.length + invoices.length,
+    },
+    {
+      key: "dimensions",
+      label: "Dimensions",
+      icon: Ruler,
+      count: job.roofMeasurements?.length || 0,
     },
     {
       key: "materials",
@@ -1202,8 +1461,16 @@ export default function JobWorkspacePage() {
                           </small>
                         </p>
                         <b>{money(estimate.totalCents)}</b>
-                        <span className={`admin-status status-${estimate.status}`}>
-                          {ESTIMATE_STATUS_LABELS[estimate.status]}
+                        <span
+                          className={`admin-status status-${
+                            estimate.status === "lead_received"
+                              ? "draft"
+                              : estimate.status
+                          }`}
+                        >
+                          {estimate.status === "lead_received"
+                            ? "Draft"
+                            : ESTIMATE_STATUS_LABELS[estimate.status]}
                         </span>
                         <div className="job-document-actions">
                           {estimate.status !== "lead_received" && (
@@ -1218,9 +1485,13 @@ export default function JobWorkspacePage() {
                             to={`/estimates/${estimate.id}/edit`}
                             aria-label={`Edit ${estimate.number || "estimate"}`}
                           >
-                            <Pencil size={14} />
+                            {estimate.status === "lead_received" ? (
+                              <Eye size={14} />
+                            ) : (
+                              <Pencil size={14} />
+                            )}
                             {estimate.status === "lead_received"
-                              ? "Set up"
+                              ? "Preview"
                               : "Edit"}
                           </Link>
                         </div>
@@ -1275,6 +1546,182 @@ export default function JobWorkspacePage() {
               </Link>
             </aside>
           </div>
+        )}
+
+        {tab === "dimensions" && (
+          <section className="admin-card job-dimensions-card">
+            <div className="job-card-heading">
+              <div>
+                <span>Roof takeoff</span>
+                <h2>Dimensions</h2>
+              </div>
+              <div className="job-dimensions-summary">
+                <span>Job source of truth</span>
+                <strong>100 sq. ft. = 1 SQ</strong>
+              </div>
+            </div>
+
+            <div className="estimate-measurement-workspace">
+              <div className="estimate-measurement-intro">
+                <div>
+                  <i aria-hidden="true">
+                    <Ruler size={19} />
+                  </i>
+                  <div>
+                    <strong>Roof areas</strong>
+                    <p>
+                      Break the roof into rectangular areas. Enter each measured
+                      length and width; totals calculate automatically.
+                    </p>
+                  </div>
+                </div>
+                <div className="estimate-measurement-formula">
+                  <span>Estimate sync</span>
+                  <strong>Saved dimensions populate every job estimate</strong>
+                  <small>Admin only</small>
+                </div>
+              </div>
+
+              <div className="estimate-measurement-list">
+                {measurements.map((measurement, index) => {
+                  const areaSquareFeet = measurementArea(measurement);
+                  const roofingSquares = roundMeasurement(
+                    areaSquareFeet / 100
+                  );
+                  return (
+                    <article key={measurement.id}>
+                      <div className="estimate-measurement-index">
+                        <span>Area</span>
+                        <strong>{String(index + 1).padStart(2, "0")}</strong>
+                      </div>
+                      <label>
+                        <span>Length</span>
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            inputMode="decimal"
+                            value={measurement.length}
+                            onChange={(event) =>
+                              updateMeasurement(
+                                measurement.id,
+                                "length",
+                                event.target.value
+                              )
+                            }
+                            placeholder="12"
+                            aria-label={`Area ${index + 1} length in feet`}
+                          />
+                          <span>ft</span>
+                        </div>
+                      </label>
+                      <b aria-hidden="true">×</b>
+                      <label>
+                        <span>Width</span>
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            inputMode="decimal"
+                            value={measurement.width}
+                            onChange={(event) =>
+                              updateMeasurement(
+                                measurement.id,
+                                "width",
+                                event.target.value
+                              )
+                            }
+                            placeholder="8"
+                            aria-label={`Area ${index + 1} width in feet`}
+                          />
+                          <span>ft</span>
+                        </div>
+                      </label>
+                      <div className="estimate-measurement-result">
+                        <span>Square footage</span>
+                        <strong>
+                          {areaSquareFeet > 0
+                            ? `${formatMeasurement(areaSquareFeet)} sq. ft.`
+                            : "—"}
+                        </strong>
+                      </div>
+                      <div className="estimate-measurement-result is-admin">
+                        <span>
+                          Roofing SQ <small>Admin only</small>
+                        </span>
+                        <strong>
+                          {areaSquareFeet > 0
+                            ? `${formatMeasurement(roofingSquares)} SQ`
+                            : "—"}
+                        </strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeMeasurement(measurement.id)}
+                        aria-label={`Remove area ${index + 1}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <div className="estimate-measurement-footer">
+                <button
+                  className="estimate-add-measurement"
+                  type="button"
+                  onClick={addMeasurement}
+                >
+                  <Plus size={15} /> Add another area
+                </button>
+                <div className="estimate-measurement-total">
+                  <div>
+                    <span>Total roof area</span>
+                    <strong>
+                      {formatMeasurement(measurementTotals.squareFeet)} sq. ft.
+                    </strong>
+                  </div>
+                  <div>
+                    <span>
+                      Total roofing SQ <small>Admin only</small>
+                    </span>
+                    <strong>
+                      {formatMeasurement(measurementTotals.roofingSquares)} SQ
+                    </strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void saveDimensions()}
+                    disabled={
+                      measurementSaving ||
+                      measurementTotals.completedCount === 0 ||
+                      (measurementsFinalized && !measurementsDirty)
+                    }
+                  >
+                    {measurementSaving ? (
+                      "Saving…"
+                    ) : measurementsFinalized && !measurementsDirty ? (
+                      <>
+                        <Check size={15} /> Saved
+                      </>
+                    ) : (
+                      <>
+                        <Calculator size={15} /> Done
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+              {measurementMessage && (
+                <div className="job-dimensions-message">
+                  <Check size={15} /> {measurementMessage}
+                </div>
+              )}
+            </div>
+          </section>
         )}
 
         {tab === "materials" && (
@@ -1743,33 +2190,59 @@ export default function JobWorkspacePage() {
                     </small>
                   </div>
                 </div>
-                <label>
-                  Material type *
-                  <select
-                    required
-                    value={materialForm.materialType}
-                    onChange={(event) =>
-                      selectMaterialType(
-                        event.target.value as RoofingMaterialType
-                      )
-                    }
-                  >
-                    <option value="" disabled>
-                      Select a material type
-                    </option>
-                    {ROOFING_MATERIAL_DEFINITIONS.map((definition) => (
-                      <option value={definition.value} key={definition.value}>
-                        {definition.label}
+                <div
+                  className={`drawer-form-grid${
+                    selectedMaterialDefinition?.value === "STARTER_STRIP"
+                      ? ""
+                      : " is-single"
+                  }`}
+                >
+                  <label>
+                    Material type *
+                    <select
+                      required
+                      value={materialForm.materialType}
+                      onChange={(event) =>
+                        selectMaterialType(
+                          event.target.value as RoofingMaterialType
+                        )
+                      }
+                    >
+                      <option value="" disabled>
+                        Select a material type
                       </option>
-                    ))}
-                  </select>
-                </label>
+                      {ROOFING_MATERIAL_DEFINITIONS.map((definition) => (
+                        <option value={definition.value} key={definition.value}>
+                          {definition.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {selectedMaterialDefinition?.value === "STARTER_STRIP" && (
+                    <label>
+                      Unit type *
+                      <select
+                        required
+                        value={selectedMaterialUnit || "BUNDLE"}
+                        onChange={(event) =>
+                          setMaterialForm((current) => ({
+                            ...current,
+                            unit: event.target.value as RoofingUnit,
+                          }))
+                        }
+                      >
+                        <option value="SQ">SQ</option>
+                        <option value="BUNDLE">Bnd · Bundle</option>
+                      </select>
+                    </label>
+                  )}
+                </div>
 
                 {selectedMaterialDefinition ? (
                   <div className="material-type-guidance" aria-live="polite">
                     <span>
                       {["SQ", "ROLL"].includes(
-                        selectedMaterialDefinition.pricingUnit
+                        selectedMaterialUnit || selectedMaterialDefinition.pricingUnit
                       ) ? (
                         <Ruler size={18} />
                       ) : (
@@ -1781,7 +2254,7 @@ export default function JobWorkspacePage() {
                         {selectedMaterialPricing?.guidanceTitle}
                       </strong>
                       <p>{selectedMaterialDefinition.description}</p>
-                      {selectedMaterialDefinition.pricingUnit === "SQ" && (
+                      {selectedMaterialUnit === "SQ" && (
                         <small>1 roofing SQ = 100 square feet</small>
                       )}
                     </div>

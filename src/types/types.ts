@@ -599,6 +599,14 @@ export type AuditFields = {
   deletedAt?: FSDate | null;
 };
 
+export type JobRoofMeasurement = {
+  id: ID;
+  lengthFt: number;
+  widthFt: number;
+  areaSquareFeet: number;
+  roofingSquares: number;
+};
+
 export type Job = {
   id: ID;
   orgId?: ID; // multi-tenant future-proofing
@@ -620,6 +628,11 @@ export type Job = {
     | "maintenance";
   sourceLeadId?: ID | null;
   priority?: "normal" | "high" | "urgent";
+  /** Roof takeoff maintained in the job workspace as the source of truth. */
+  roofMeasurements?: JobRoofMeasurement[];
+  roofAreaSquareFeet?: number;
+  roofSquares?: number;
+  measurementsFinalized?: boolean;
 
   /** Final punch information (walkthrough / completion). */
   punchedAt?: Timestamp | Date | FieldValue | null;

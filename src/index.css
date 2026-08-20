@@ -3315,6 +3315,10 @@ img {
   gap: 13px;
 }
 
+.drawer-form-grid.is-single {
+  grid-template-columns: 1fr;
+}
+
 .drawer-form-grid-three {
   grid-template-columns: repeat(3, 1fr);
 }

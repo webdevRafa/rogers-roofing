@@ -74,6 +74,10 @@ function materialQuantityLabel(material: JobMaterialActual): string {
         ? material.orderedQuantity === 1
           ? "box"
           : "boxes"
+        : unit === "BUNDLE"
+          ? material.orderedQuantity === 1
+            ? "bundle"
+            : "bundles"
         : unit;
   return `${material.orderedQuantity.toLocaleString("en-US")} ${label}`;
 }

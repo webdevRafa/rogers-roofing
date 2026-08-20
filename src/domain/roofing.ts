@@ -1,4 +1,9 @@
-import type { Address, FirestoreTime, ID } from "../types/types";
+import type {
+  Address,
+  FirestoreTime,
+  ID,
+  JobRoofMeasurement,
+} from "../types/types";
 
 export type LeadStatus =
   | "new"
@@ -144,13 +149,7 @@ export type EstimateLineItem = {
   source: "manual" | "template" | "measurement" | "carrier" | "catalog";
 };
 
-export type RoofMeasurement = {
-  id: ID;
-  lengthFt: number;
-  widthFt: number;
-  areaSquareFeet: number;
-  roofingSquares: number;
-};
+export type RoofMeasurement = JobRoofMeasurement;
 
 export type EstimateRecord = {
   id: ID;
@@ -444,7 +443,7 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
 };
 
 export const ESTIMATE_STATUS_LABELS: Record<EstimateStatus, string> = {
-  lead_received: "Pending setup",
+  lead_received: "Draft",
   inspection_scheduled: "Inspection scheduled",
   inspection_complete: "Inspection complete",
   draft: "Draft",
