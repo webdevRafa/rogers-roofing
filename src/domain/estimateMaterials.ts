@@ -1,5 +1,6 @@
 import {
   getRoofingMaterialDefinition,
+  getRoofingMaterialPricingUnit,
   ROOFING_MATERIAL_DEFINITIONS,
 } from "./materials";
 import type { EstimateLineItem, JobMaterialActual, RoofingUnit } from "./roofing";
@@ -63,7 +64,11 @@ export function estimateLineItemsFromJobMaterials(
 
   return sortedMaterials.map((material) => {
     const sourceQuantity = safeQuantity(material.orderedQuantity);
-    const display = customerQuantity(sourceQuantity, material.purchaseUnit);
+    const sourceUnit = getRoofingMaterialPricingUnit(
+      material.materialType,
+      material.purchaseUnit
+    );
+    const display = customerQuantity(sourceQuantity, sourceUnit);
     const unitDivisor = display.quantity > 0 ? display.quantity : 1;
     const lineTotalCents = Math.max(0, material.netActualCostCents);
     const definition = getRoofingMaterialDefinition(material.materialType);
@@ -76,7 +81,7 @@ export function estimateLineItemsFromJobMaterials(
         definition?.label ||
         "Roofing material",
       customerDescription: lineDescription(material),
-      internalDescription: `Synced from job materials: ${sourceQuantity} ${material.purchaseUnit}`,
+      internalDescription: `Synced from job materials: ${sourceQuantity} ${sourceUnit}`,
       quantity: display.quantity,
       unit: display.unit,
       unitCostCents: Math.round(material.grossPurchaseCostCents / unitDivisor),

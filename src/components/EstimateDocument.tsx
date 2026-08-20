@@ -20,6 +20,7 @@ const unitLabels: Record<RoofingUnit, string> = {
   SHEET: "Sheet",
   GAL: "Gallon",
   ROLL: "Roll",
+  ROW: "Row",
   BUNDLE: "Bundle",
   OTHER: "Unit",
 };
@@ -59,7 +60,15 @@ function quantityLabel(quantity: number, unit: RoofingUnit) {
   const formatted = Number.isInteger(quantity)
     ? quantity.toLocaleString("en-US")
     : quantity.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  return `${formatted} ${unitLabels[unit]}`;
+  const label =
+    quantity === 1
+      ? unitLabels[unit]
+      : unit === "ROW"
+        ? "Rows"
+        : unit === "BOX"
+          ? "Boxes"
+          : unitLabels[unit];
+  return `${formatted} ${label}`;
 }
 
 export default function EstimateDocument({

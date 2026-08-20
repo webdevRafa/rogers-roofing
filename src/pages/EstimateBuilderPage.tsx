@@ -81,6 +81,7 @@ const unitLabels: Record<RoofingUnit, string> = {
   SHEET: "Sheet",
   GAL: "Gallon",
   ROLL: "Roll",
+  ROW: "Row",
   BUNDLE: "Bundle",
   OTHER: "Other",
 };

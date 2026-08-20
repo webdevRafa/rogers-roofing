@@ -4484,25 +4484,6 @@ img {
   backdrop-filter: blur(10px);
 }
 
-.job-material-warranty-check {
-  display: grid !important;
-  grid-template-columns: 18px 1fr;
-  align-items: center;
-  gap: 10px !important;
-  min-height: 44px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #fff8e9;
-  text-transform: none !important;
-}
-
-.job-material-warranty-check input {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--red);
-}
-
 .document-preview-page {
   min-height: calc(100svh - 72px);
   padding: 26px 20px 80px;

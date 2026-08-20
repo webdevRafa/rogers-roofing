@@ -50,6 +50,7 @@ import { useOrg } from "../contexts/OrgContext";
 import { db } from "../firebase/firebaseConfig";
 import {
   getRoofingMaterialDefinition,
+  getRoofingMaterialPricingUnit,
   ROOFING_MATERIAL_DEFINITIONS,
 } from "../domain/materials";
 import {
@@ -57,6 +58,7 @@ import {
   type EstimateRecord,
   type JobMaterialActual,
   type RoofingMaterialType,
+  type RoofingUnit,
   type WarrantyPacketSection,
 } from "../domain/roofing";
 import type {
@@ -106,11 +108,6 @@ type MaterialForm = {
   color: string;
   quantity: string;
   rate: string;
-  tax: string;
-  delivery: string;
-  freight: string;
-  supplier: string;
-  warrantyComponent: boolean;
 };
 
 const initialMaterialForm: MaterialForm = {
@@ -121,11 +118,6 @@ const initialMaterialForm: MaterialForm = {
   color: "",
   quantity: "",
   rate: "",
-  tax: "",
-  delivery: "",
-  freight: "",
-  supplier: "",
-  warrantyComponent: false,
 };
 
 type TimestampLike = { toDate?: () => Date; seconds?: number };
@@ -166,6 +158,55 @@ function materialUnitCostCents(material: JobMaterialActual): number {
   return material.orderedQuantity > 0
     ? material.grossPurchaseCostCents / material.orderedQuantity
     : 0;
+}
+
+function materialPricingCopy(unit: RoofingUnit) {
+  if (unit === "SQ") {
+    return {
+      singular: "SQ",
+      plural: "SQ",
+      quantityLabel: "Quantity (SQ) *",
+      priceLabel: "Price per SQ ($) *",
+      guidanceTitle: "Measured and priced by SQ",
+    };
+  }
+  if (unit === "ROW") {
+    return {
+      singular: "row",
+      plural: "rows",
+      quantityLabel: "Quantity (rows) *",
+      priceLabel: "Price per row ($) *",
+      guidanceTitle: "Measured and priced by row",
+    };
+  }
+  if (unit === "BOX") {
+    return {
+      singular: "box",
+      plural: "boxes",
+      quantityLabel: "Quantity (boxes) *",
+      priceLabel: "Price per box ($) *",
+      guidanceTitle: "Measured and priced by box",
+    };
+  }
+  return {
+    singular: "unit",
+    plural: "units",
+    quantityLabel: "Quantity (units) *",
+    priceLabel: "Price per unit ($) *",
+    guidanceTitle: "Measured and priced per unit",
+  };
+}
+
+function orderedMaterialUnitLabel(material: JobMaterialActual): string {
+  const unit = getRoofingMaterialPricingUnit(
+    material.materialType,
+    material.purchaseUnit
+  );
+  if (unit === "ROW") {
+    return material.orderedQuantity === 1 ? "row" : "rows";
+  }
+  if (unit === "BOX") return "bx";
+  return unit;
 }
 
 function addressLine(job: Job): string {
@@ -220,14 +261,12 @@ export default function JobWorkspacePage() {
   const selectedMaterialDefinition = getRoofingMaterialDefinition(
     materialForm.materialType || null
   );
+  const selectedMaterialPricing = selectedMaterialDefinition
+    ? materialPricingCopy(selectedMaterialDefinition.pricingUnit)
+    : null;
   const materialProductCostPreview =
     Math.max(0, Number(materialForm.quantity) || 0) *
     Math.max(0, Number(materialForm.rate) || 0);
-  const materialAddOnsPreview = [
-    materialForm.tax,
-    materialForm.delivery,
-    materialForm.freight,
-  ].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
 
   function selectTab(nextTab: WorkspaceTab) {
     setTab(nextTab);
@@ -570,9 +609,6 @@ export default function JobWorkspacePage() {
 
     const quantity = Number(materialForm.quantity);
     const rate = Number(materialForm.rate);
-    const tax = Number(materialForm.tax || 0);
-    const delivery = Number(materialForm.delivery || 0);
-    const freight = Number(materialForm.freight || 0);
     if (
       !materialForm.description.trim() ||
       !Number.isFinite(quantity) ||
@@ -581,27 +617,15 @@ export default function JobWorkspacePage() {
       rate <= 0
     ) {
       setError(
-        `Add a material description, quantity, and rate per ${
-          selectedMaterialDefinition.pricingUnit === "SQ" ? "SQ" : "unit"
-        }.`
+        `Add a material description, quantity, and rate per ${materialPricingCopy(
+          selectedMaterialDefinition.pricingUnit
+        ).singular}.`
       );
-      return;
-    }
-    if (
-      [tax, delivery, freight].some(
-        (amount) => !Number.isFinite(amount) || amount < 0
-      )
-    ) {
-      setError("Tax, delivery, and freight must be valid non-negative amounts.");
       return;
     }
 
     const grossPurchaseCostCents = Math.round(quantity * rate * 100);
-    const taxCents = Math.max(0, Math.round(tax * 100));
-    const deliveryCents = Math.max(0, Math.round(delivery * 100));
-    const freightCents = Math.max(0, Math.round(freight * 100));
-    const netActualCostCents =
-      grossPurchaseCostCents + taxCents + deliveryCents + freightCents;
+    const netActualCostCents = grossPurchaseCostCents;
 
     setSaving(true);
     setError(null);
@@ -625,9 +649,9 @@ export default function JobWorkspacePage() {
         returnedToInventoryQuantity: 0,
         wastedQuantity: null,
         grossPurchaseCostCents,
-        taxCents,
-        freightCents,
-        deliveryCents,
+        taxCents: 0,
+        freightCents: 0,
+        deliveryCents: 0,
         stockingCents: 0,
         surchargeCents: 0,
         restockingFeeCents: 0,
@@ -635,10 +659,10 @@ export default function JobWorkspacePage() {
         rebatesCents: 0,
         netActualCostCents,
         supplierId: null,
-        supplierName: materialForm.supplier.trim() || null,
+        supplierName: null,
         supplierInvoiceId: null,
         lotOrBatch: null,
-        warrantyComponent: materialForm.warrantyComponent,
+        warrantyComponent: false,
         installedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -1270,7 +1294,7 @@ export default function JobWorkspacePage() {
                               <strong>
                                 {material.orderedQuantity.toLocaleString("en-US")}
                               </strong>
-                              <small>({material.purchaseUnit})</small>
+                              <small>({orderedMaterialUnitLabel(material)})</small>
                             </span>
                           </td>
                           <td>
@@ -1634,7 +1658,9 @@ export default function JobWorkspacePage() {
                 {selectedMaterialDefinition ? (
                   <div className="material-type-guidance" aria-live="polite">
                     <span>
-                      {selectedMaterialDefinition.pricingUnit === "SQ" ? (
+                      {["SQ", "ROW"].includes(
+                        selectedMaterialDefinition.pricingUnit
+                      ) ? (
                         <Ruler size={18} />
                       ) : (
                         <PackageCheck size={18} />
@@ -1642,9 +1668,7 @@ export default function JobWorkspacePage() {
                     </span>
                     <div>
                       <strong>
-                        {selectedMaterialDefinition.pricingUnit === "SQ"
-                          ? "Measured and priced by SQ"
-                          : "Measured and priced per unit"}
+                        {selectedMaterialPricing?.guidanceTitle}
                       </strong>
                       <p>{selectedMaterialDefinition.description}</p>
                       {selectedMaterialDefinition.pricingUnit === "SQ" && (
@@ -1741,9 +1765,7 @@ export default function JobWorkspacePage() {
                     </div>
                     <div className="drawer-form-grid material-pricing-fields">
                       <label>
-                        {selectedMaterialDefinition.pricingUnit === "SQ"
-                          ? "Quantity (SQ) *"
-                          : "Quantity (units) *"}
+                        {selectedMaterialPricing?.quantityLabel}
                         <div className="material-rate-input">
                           <Ruler size={17} />
                           <input
@@ -1762,16 +1784,14 @@ export default function JobWorkspacePage() {
                             placeholder="0"
                           />
                           <span>
-                            {selectedMaterialDefinition.pricingUnit === "SQ"
-                              ? "SQ"
-                              : "units"}
+                            {Number(materialForm.quantity) === 1
+                              ? selectedMaterialPricing?.singular
+                              : selectedMaterialPricing?.plural}
                           </span>
                         </div>
                       </label>
                       <label>
-                        {selectedMaterialDefinition.pricingUnit === "SQ"
-                          ? "Price per SQ ($) *"
-                          : "Price per unit ($) *"}
+                        {selectedMaterialPricing?.priceLabel}
                         <div className="material-rate-input">
                           <CircleDollarSign size={17} />
                           <input
@@ -1790,134 +1810,21 @@ export default function JobWorkspacePage() {
                             placeholder="0.00"
                           />
                           <span>
-                            / {selectedMaterialDefinition.pricingUnit === "SQ"
-                              ? "SQ"
-                              : "unit"}
+                            / {selectedMaterialPricing?.singular}
                           </span>
                         </div>
                       </label>
                     </div>
                     <div className="material-pricing-note">
                       <Ruler size={16} />
-                      {selectedMaterialDefinition.pricingUnit === "SQ"
-                        ? "The quantity in SQ is multiplied by the price per SQ."
-                        : "The unit quantity is multiplied by the price per unit."}
+                      The quantity in {selectedMaterialPricing?.plural} is
+                      multiplied by the price per {selectedMaterialPricing?.singular}.
                     </div>
-                  </section>
-
-                  <section className="drawer-form-section">
-                    <div className="drawer-form-heading">
-                      <span>04</span>
-                      <div>
-                        <strong>Purchase details</strong>
-                        <small>
-                          Add supplier charges that belong in the actual job cost.
-                        </small>
-                      </div>
-                    </div>
-                    <div className="drawer-form-grid drawer-form-grid-three">
-                      <label>
-                        Tax ($)
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputMode="decimal"
-                          value={materialForm.tax}
-                          onChange={(event) =>
-                            setMaterialForm((current) => ({
-                              ...current,
-                              tax: event.target.value,
-                            }))
-                          }
-                          placeholder="0.00"
-                        />
-                      </label>
-                      <label>
-                        Delivery ($)
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputMode="decimal"
-                          value={materialForm.delivery}
-                          onChange={(event) =>
-                            setMaterialForm((current) => ({
-                              ...current,
-                              delivery: event.target.value,
-                            }))
-                          }
-                          placeholder="0.00"
-                        />
-                      </label>
-                      <label>
-                        Freight ($)
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputMode="decimal"
-                          value={materialForm.freight}
-                          onChange={(event) =>
-                            setMaterialForm((current) => ({
-                              ...current,
-                              freight: event.target.value,
-                            }))
-                          }
-                          placeholder="0.00"
-                        />
-                      </label>
-                    </div>
-                    <label>
-                      Supplier
-                      <input
-                        value={materialForm.supplier}
-                        onChange={(event) =>
-                          setMaterialForm((current) => ({
-                            ...current,
-                            supplier: event.target.value,
-                          }))
-                        }
-                        placeholder="e.g. Alamo Roofing Supplies"
-                      />
-                    </label>
-                    <label className="job-material-warranty-check">
-                      <input
-                        type="checkbox"
-                        checked={materialForm.warrantyComponent}
-                        onChange={(event) =>
-                          setMaterialForm((current) => ({
-                            ...current,
-                            warrantyComponent: event.target.checked,
-                          }))
-                        }
-                      />
-                      Required component for the selected warranty program
-                    </label>
-
                     <div className="material-expense-preview" aria-live="polite">
                       <div>
-                        <span>Product cost</span>
+                        <span>Material total</span>
                         <strong>
                           {money(Math.round(materialProductCostPreview * 100))}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Tax, delivery & freight</span>
-                        <strong>
-                          {money(Math.round(materialAddOnsPreview * 100))}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Actual material cost</span>
-                        <strong>
-                          {money(
-                            Math.round(
-                              (materialProductCostPreview +
-                                materialAddOnsPreview) *
-                                100
-                            )
-                          )}
                         </strong>
                       </div>
                     </div>

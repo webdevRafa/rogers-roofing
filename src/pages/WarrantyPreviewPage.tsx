@@ -10,6 +10,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
 
 import { db } from "../firebase/firebaseConfig";
+import { getRoofingMaterialPricingUnit } from "../domain/materials";
 import type {
   JobMaterialActual,
   WarrantyPacketRecord,
@@ -57,6 +58,24 @@ function money(cents: number): string {
     style: "currency",
     currency: "USD",
   });
+}
+
+function materialQuantityLabel(material: JobMaterialActual): string {
+  const unit = getRoofingMaterialPricingUnit(
+    material.materialType,
+    material.purchaseUnit
+  );
+  const label =
+    unit === "ROW"
+      ? material.orderedQuantity === 1
+        ? "row"
+        : "rows"
+      : unit === "BOX"
+        ? material.orderedQuantity === 1
+          ? "box"
+          : "boxes"
+        : unit;
+  return `${material.orderedQuantity.toLocaleString("en-US")} ${label}`;
 }
 
 export default function WarrantyPreviewPage() {
@@ -323,9 +342,7 @@ export default function WarrantyPreviewPage() {
                     </td>
                     <td>{material.manufacturerSnapshot || "Not recorded"}</td>
                     <td>{material.colorSnapshot || "—"}</td>
-                    <td>
-                      {material.orderedQuantity} {material.purchaseUnit}
-                    </td>
+                    <td>{materialQuantityLabel(material)}</td>
                     <td>{formatDate(material.installedAt)}</td>
                   </tr>
                 ))}

@@ -9,7 +9,7 @@ export type RoofingMaterialDefinition = {
   label: string;
   description: string;
   category: RoofingMaterialCategory;
-  pricingUnit: Extract<RoofingUnit, "EA" | "SQ">;
+  pricingUnit: Extract<RoofingUnit, "EA" | "SQ" | "ROW" | "BOX">;
 };
 
 export const ROOFING_MATERIAL_DEFINITIONS: RoofingMaterialDefinition[] = [
@@ -37,9 +37,9 @@ export const ROOFING_MATERIAL_DEFINITIONS: RoofingMaterialDefinition[] = [
   {
     value: "FELT_UNDERLAYMENT",
     label: "Felt / underlayment",
-    description: "Felt or synthetic roof underlayment measured by roofing square.",
+    description: "Felt or synthetic roof underlayment measured and priced by row.",
     category: "UNDERLAYMENT",
-    pricingUnit: "SQ",
+    pricingUnit: "ROW",
   },
   {
     value: "DRIP_EDGE",
@@ -100,9 +100,9 @@ export const ROOFING_MATERIAL_DEFINITIONS: RoofingMaterialDefinition[] = [
   {
     value: "ROOFING_COIL_NAILS",
     label: "Roofing coil nails",
-    description: "Coil-nail supplies priced by unit.",
+    description: "Coil-nail supplies measured and priced by box.",
     category: "FASTENER",
-    pricingUnit: "EA",
+    pricingUnit: "BOX",
   },
 ];
 
@@ -112,4 +112,11 @@ export function getRoofingMaterialDefinition(
   return ROOFING_MATERIAL_DEFINITIONS.find(
     (definition) => definition.value === type
   );
+}
+
+export function getRoofingMaterialPricingUnit(
+  type: RoofingMaterialType | null | undefined,
+  fallback: RoofingUnit
+): RoofingUnit {
+  return getRoofingMaterialDefinition(type)?.pricingUnit ?? fallback;
 }
