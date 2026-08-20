@@ -388,58 +388,100 @@ export default function PublicHomePage() {
             />
             <div className="public-hero-shade" />
           </div>
-          <div className="public-hero-content">
-            <motion.img
-              className="public-hero-emblem"
-              src={logo}
-              alt="Roger's Roofing & Contracting LLC emblem"
-              initial={{ opacity: 0, y: 18, scale: 0.985 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.8 }}
-            />
-            <motion.div
-              className="public-eyebrow public-eyebrow-light"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.08 }}
+          <div className="public-hero-shell">
+            <div className="public-hero-copy">
+              <motion.div
+                className="public-eyebrow public-eyebrow-light"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.08 }}
+              >
+                <MapPin size={15} />
+                San Antonio, Texas
+                <span />
+                Roofing specialists
+              </motion.div>
+              <motion.h1
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.85, delay: 0.16 }}
+              >
+                Roofing built to protect
+                {" "}
+                <em>what matters most.</em>
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.85, delay: 0.24 }}
+              >
+                Straightforward inspections, detailed estimates, and dependable
+                roofing work for repairs, replacements, and new construction.
+              </motion.p>
+              <motion.div
+                className="public-hero-actions"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.85, delay: 0.32 }}
+              >
+                <a className="public-button" href="#estimate">
+                  Request a free estimate
+                  <ArrowRight size={18} />
+                </a>
+                <a className="public-text-link public-text-link-light" href="#services">
+                  Explore our services
+                  <ArrowUpRight size={16} />
+                </a>
+              </motion.div>
+              <motion.div
+                className="public-hero-assurance"
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.75, delay: 0.4 }}
+                aria-label="Estimate experience"
+              >
+                <span><Check size={15} /> Clear written estimates</span>
+                <span><Check size={15} /> Materials explained</span>
+              </motion.div>
+            </div>
+
+            <motion.aside
+              className="public-hero-brand-card"
+              initial={{ opacity: 0, x: 30, scale: 0.985 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              transition={{ duration: 0.9, delay: 0.12 }}
+              aria-label="Roger's Roofing & Contracting LLC"
             >
-              <MapPin size={15} />
-              San Antonio, Texas
-              <span />
-              Roofing specialists
-            </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.16 }}
-            >
-              Roofing built to protect
-              {" "}
-              <em>what matters most.</em>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.24 }}
-            >
-              Straightforward inspections, detailed estimates, and dependable
-              roofing work for repairs, replacements, and new construction.
-            </motion.p>
-            <motion.div
-              className="public-hero-actions"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, delay: 0.32 }}
-            >
-              <a className="public-button" href="#estimate">
-                Request a free estimate
-                <ArrowRight size={18} />
-              </a>
-              <a className="public-text-link public-text-link-light" href="#services">
-                Explore our services
-                <ArrowUpRight size={16} />
-              </a>
-            </motion.div>
+              <div className="public-hero-brand-glow" aria-hidden="true" />
+              <img
+                className="public-hero-emblem"
+                src={logo}
+                alt="Roger's Roofing & Contracting LLC emblem"
+              />
+              <div className="public-hero-brand-copy">
+                <span>San Antonio roofing specialists</span>
+                <h2>
+                  Roger's Roofing
+                  <small>&amp; Contracting LLC</small>
+                </h2>
+                <p>
+                  Practical guidance and professional roofing for repairs,
+                  full replacements, and new construction.
+                </p>
+              </div>
+              <div className="public-hero-capabilities" aria-label="Primary services">
+                <span>Repairs</span>
+                <span>Replacements</span>
+                <span>New construction</span>
+              </div>
+              <div className="public-hero-brand-location">
+                <MapPin size={16} />
+                <span>
+                  <small>Based in</small>
+                  San Antonio, Texas
+                </span>
+              </div>
+            </motion.aside>
           </div>
 
         </section>
