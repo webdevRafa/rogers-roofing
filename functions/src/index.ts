@@ -13,7 +13,6 @@ import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 
 import { defineSecret } from "firebase-functions/params";
-import { renderEstimatePdf } from "./estimatePdf.js";
 import {
   buildEstimateSnapshot,
   estimateSnapshotHash,
@@ -1307,6 +1306,10 @@ async function ensureEstimatePdf(
   if (exists) {
     [buffer] = await file.download();
   } else {
+    // PDFKit is intentionally loaded only when a snapshot must be generated.
+    // Keeping it out of module initialization prevents Firebase's deployment
+    // discovery process from timing out on slower Windows/OneDrive workspaces.
+    const { renderEstimatePdf } = await import("./estimatePdf.js");
     buffer = await renderEstimatePdf(prepared.snapshot, {
       version: prepared.version,
       logo: await estimateLogo(),
