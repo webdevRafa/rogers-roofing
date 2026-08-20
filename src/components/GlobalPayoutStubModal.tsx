@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import type { Employee, PayoutDoc, EmployeeAddress, Job } from "../types/types";
-import logo from "../assets/rogers.svg";
+import logo from "../assets/rogers-roofing.webp";
 
 export type GlobalPayoutStubModalProps = {
   employee: Employee | null; // EmployeeDetailPage can just pass non-null

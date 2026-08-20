@@ -5,7 +5,7 @@ import { db } from "../firebase/firebaseConfig";
 import type { InvoiceDoc } from "../types/types";
 
 // ✅ Use same logo concept as InvoicesPage modal (adjust path if needed)
-import logo from "../assets/rogers.svg";
+import logo from "../assets/rogers-roofing.webp";
 
 // ---------- helpers ----------
 function money(cents: number | null | undefined) {

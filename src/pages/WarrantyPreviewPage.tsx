@@ -15,7 +15,7 @@ import type {
   WarrantyPacketRecord,
 } from "../domain/roofing";
 import type { InvoiceDoc, Job } from "../types/types";
-import logo from "../assets/rogers.svg";
+import logo from "../assets/rogers-roofing.webp";
 
 type PhotoDoc = {
   id: string;

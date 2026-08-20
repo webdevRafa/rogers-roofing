@@ -15,7 +15,7 @@ import { getAuth } from "firebase/auth";
 import { ClipboardList, LogOut, Menu, X, UserRound } from "lucide-react";
 
 import { useCurrentEmployee } from "../hooks/useCurrentEmployee";
-import logo from "../assets/rogers.svg";
+import logo from "../assets/rogers-roofing.webp"; // adjust if needed
 
 function navLinkBase(isActive: boolean) {
   return (
@@ -62,7 +62,7 @@ export default function CrewLayout({ children }: PropsWithChildren<{}>) {
                 <img
                   src={logo}
                   alt="Roger's Roofing logo"
-                  className="h-10 w-10 rounded-full bg-white p-1 object-contain shadow-md"
+                  className="h-10 w-10 rounded-xl shadow-md"
                 />
                 <div className="hidden sm:block">
                   <div className="text-sm font-semibold text-white leading-4">
