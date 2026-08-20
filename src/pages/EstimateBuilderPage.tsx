@@ -9,6 +9,7 @@ import {
   Mail,
   Ruler,
   Send,
+  ShieldCheck,
 } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -25,6 +26,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 
 import { useOrg } from "../contexts/OrgContext";
+import { calculateEstimateLaborFees } from "../domain/estimateFees";
 import { estimateLineItemsFromJobMaterials } from "../domain/estimateMaterials";
 import { db, functions } from "../firebase/firebaseConfig";
 import type {
@@ -36,7 +38,7 @@ import type {
   RoofingUnit,
 } from "../domain/roofing";
 import { ESTIMATE_STATUS_LABELS } from "../domain/roofing";
-import type { Address, Job, Org } from "../types/types";
+import type { Address, Job, Org, PayoutDoc } from "../types/types";
 
 type FormState = {
   customerName: string;
@@ -186,6 +188,8 @@ export default function EstimateBuilderPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [jobMaterials, setJobMaterials] = useState<JobMaterialActual[]>([]);
   const [materialSyncReady, setMaterialSyncReady] = useState(false);
+  const [jobPayouts, setJobPayouts] = useState<PayoutDoc[]>([]);
+  const [payoutSyncReady, setPayoutSyncReady] = useState(false);
   const [organization, setOrganization] = useState<
     NonNullable<EstimateRecord["organizationSnapshot"]>
   >({ name: orgName || "Roger's Roofing" });
@@ -332,6 +336,29 @@ export default function EstimateBuilderPage() {
     );
   }, [selectedJobId]);
 
+  useEffect(() => {
+    setJobPayouts([]);
+    setPayoutSyncReady(false);
+    if (!selectedJobId) return;
+
+    return onSnapshot(
+      query(collection(db, "payouts"), where("jobId", "==", selectedJobId)),
+      (snapshot) => {
+        setJobPayouts(
+          snapshot.docs.map((snapshotDocument) => ({
+            id: snapshotDocument.id,
+            ...(snapshotDocument.data() as Omit<PayoutDoc, "id">),
+          }))
+        );
+        setPayoutSyncReady(true);
+      },
+      (snapshotError) => {
+        setError(snapshotError.message);
+        setPayoutSyncReady(true);
+      }
+    );
+  }, [selectedJobId]);
+
   const syncedMaterialLines = useMemo(
     () => estimateLineItemsFromJobMaterials(jobMaterials),
     [jobMaterials]
@@ -351,16 +378,42 @@ export default function EstimateBuilderPage() {
     [existing, selectedJobId, syncedMaterialLines]
   );
 
+  const materialTotalCents = useMemo(
+    () =>
+      lines.reduce((sum, line) => {
+        if (
+          line.pricingMode === "included" ||
+          line.pricingMode === "no_charge"
+        ) {
+          return sum;
+        }
+        return sum + Math.max(0, line.lineTotalCents);
+      }, 0),
+    [lines]
+  );
+
+  const payoutTotalCents = useMemo(
+    () =>
+      jobPayouts.reduce(
+        (sum, payout) => sum + Math.max(0, payout.amountCents || 0),
+        0
+      ),
+    [jobPayouts]
+  );
+
+  const laborFeesSnapshot = useMemo(
+    () =>
+      calculateEstimateLaborFees(
+        materialTotalCents,
+        payoutTotalCents,
+        selectedJob?.estimateFees
+      ),
+    [materialTotalCents, payoutTotalCents, selectedJob?.estimateFees]
+  );
+
   const totals = useMemo(() => {
-    const subtotalCents = lines.reduce((sum, line) => {
-      if (
-        line.pricingMode === "included" ||
-        line.pricingMode === "no_charge"
-      ) {
-        return sum;
-      }
-      return sum + Math.max(0, line.lineTotalCents);
-    }, 0);
+    const subtotalCents =
+      materialTotalCents + laborFeesSnapshot.laborAndFeesTotalCents;
     const discountCents = Math.min(
       subtotalCents,
       centsFromInput(form.discount)
@@ -376,7 +429,13 @@ export default function EstimateBuilderPage() {
       totalCents,
       depositCents: Math.min(totalCents, centsFromInput(form.deposit)),
     };
-  }, [form.deposit, form.discount, form.taxRate, lines]);
+  }, [
+    form.deposit,
+    form.discount,
+    form.taxRate,
+    laborFeesSnapshot.laborAndFeesTotalCents,
+    materialTotalCents,
+  ]);
 
   const measurements = useMemo(
     () => selectedJob?.roofMeasurements || [],
@@ -415,6 +474,10 @@ export default function EstimateBuilderPage() {
         ready: measurementsFinalized,
       },
       {
+        label: "Labor & fees synced",
+        ready: payoutSyncReady && Boolean(selectedJob?.estimateFees),
+      },
+      {
         label: "Delivery email ready",
         ready: Boolean(form.customerEmail.trim()),
       },
@@ -424,6 +487,7 @@ export default function EstimateBuilderPage() {
       form.customerName,
       materialSyncReady,
       measurementsFinalized,
+      payoutSyncReady,
       selectedJob,
       syncedMaterialLines.length,
     ]
@@ -486,6 +550,10 @@ export default function EstimateBuilderPage() {
     }
     if (!materialSyncReady) {
       setError("Job materials are still syncing. Please try again in a moment.");
+      return;
+    }
+    if (!payoutSyncReady) {
+      setError("Job payouts are still syncing. Please try again in a moment.");
       return;
     }
     const completedLines = lines.filter((line) => line.title.trim());
@@ -560,6 +628,7 @@ export default function EstimateBuilderPage() {
         roofSquares: measurementTotals.roofingSquares,
         measurementsFinalized,
         lineItems,
+        laborFeesSnapshot,
         subtotalCents: totals.subtotalCents,
         discountCents: totals.discountCents,
         taxCents: totals.taxCents,
@@ -963,6 +1032,90 @@ export default function EstimateBuilderPage() {
                           </tr>
                         ))}
                       </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={4}>Materials Total</td>
+                          <td>{money(materialTotalCents)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className="admin-card estimate-form-section estimate-fees-section">
+              <div className="estimate-section-heading estimate-section-heading-actions">
+                <span>04</span>
+                <div>
+                  <h2>Labor &amp; fees</h2>
+                  <p>
+                    Synced from job payouts and fee controls. Private overhead
+                    is combined into the customer-facing labor cost.
+                  </p>
+                </div>
+                {selectedJob && (
+                  <Link
+                    className="estimate-manage-materials"
+                    to={`/job/${selectedJob.id}?tab=fees`}
+                  >
+                    Manage job fees <ArrowRight size={14} />
+                  </Link>
+                )}
+              </div>
+
+              {!payoutSyncReady ? (
+                <div className="estimate-material-sync-state">
+                  <Loader2 className="estimate-spin" size={20} />
+                  <div>
+                    <strong>Syncing job payouts and fees…</strong>
+                    <span>Preparing the customer-facing labor schedule.</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="estimate-fees-admin-note">
+                    <ShieldCheck size={15} />
+                    <span>
+                      <strong>Private calculation:</strong>{" "}
+                      {money(laborFeesSnapshot.payoutTotalCents ?? 0)} payouts +{" "}
+                      {money(laborFeesSnapshot.overheadAmountCents ?? 0)} overhead
+                      ({laborFeesSnapshot.overheadPercent ?? 0}%) ={" "}
+                      {money(laborFeesSnapshot.laborCostCents)} labor cost.
+                    </span>
+                  </div>
+                  <div className="estimate-editor-table-wrap">
+                    <table className="estimate-editor-table estimate-synced-fees-table">
+                      <thead>
+                        <tr>
+                          <th>Customer line</th>
+                          <th>Source</th>
+                          <th>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>Labor cost</strong></td>
+                          <td>Job payouts + private overhead</td>
+                          <td><strong>{money(laborFeesSnapshot.laborCostCents)}</strong></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Dumpster fee</strong></td>
+                          <td>Job fee control</td>
+                          <td><strong>{money(laborFeesSnapshot.dumpsterFeeCents)}</strong></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Roof load fee</strong></td>
+                          <td>Job fee control</td>
+                          <td><strong>{money(laborFeesSnapshot.roofLoadFeeCents)}</strong></td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={2}>Labor &amp; Fees Total</td>
+                          <td>{money(laborFeesSnapshot.laborAndFeesTotalCents)}</td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </>
@@ -971,7 +1124,7 @@ export default function EstimateBuilderPage() {
 
             <section className="admin-card estimate-form-section">
               <div className="estimate-section-heading">
-                <span>04</span>
+                <span>05</span>
                 <div>
                   <h2>Terms and totals</h2>
                   <p>Add the commercial details that make the estimate complete.</p>
@@ -1082,7 +1235,10 @@ export default function EstimateBuilderPage() {
                 <FileText size={18} />
               </div>
               <strong>{money(totals.totalCents)}</strong>
-              <small>{lines.filter((line) => line.title.trim()).length} line items</small>
+              <small>
+                {lines.filter((line) => line.title.trim()).length} materials · 3
+                labor &amp; fee lines
+              </small>
               <dl>
                 {measurementTotals.squareFeet > 0 && (
                   <>
@@ -1100,6 +1256,14 @@ export default function EstimateBuilderPage() {
                     </div>
                   </>
                 )}
+                <div>
+                  <dt>Materials</dt>
+                  <dd>{money(materialTotalCents)}</dd>
+                </div>
+                <div>
+                  <dt>Labor &amp; fees</dt>
+                  <dd>{money(laborFeesSnapshot.laborAndFeesTotalCents)}</dd>
+                </div>
                 <div>
                   <dt>Subtotal</dt>
                   <dd>{money(totals.subtotalCents)}</dd>

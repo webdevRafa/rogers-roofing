@@ -607,6 +607,13 @@ export type JobRoofMeasurement = {
   roofingSquares: number;
 };
 
+export type JobEstimateFees = {
+  /** Internal markup applied to materials plus job-linked payouts. */
+  overheadPercent: number;
+  dumpsterFeeCents: MoneyCents;
+  roofLoadFeeCents: MoneyCents;
+};
+
 export type Job = {
   id: ID;
   orgId?: ID; // multi-tenant future-proofing
@@ -633,6 +640,8 @@ export type Job = {
   roofAreaSquareFeet?: number;
   roofSquares?: number;
   measurementsFinalized?: boolean;
+  /** Job-level pricing controls used whenever an estimate snapshot is created. */
+  estimateFees?: JobEstimateFees;
 
   /** Final punch information (walkthrough / completion). */
   punchedAt?: Timestamp | Date | FieldValue | null;

@@ -1369,6 +1369,18 @@ export const getPublicEstimate = onCall(
             };
           })
       : [];
+    const laborFees = asRecord(estimate.laborFeesSnapshot);
+    const publicLaborFees = estimate.laborFeesSnapshot
+      ? {
+          materialTotalCents: Number(laborFees.materialTotalCents || 0),
+          laborCostCents: Number(laborFees.laborCostCents || 0),
+          dumpsterFeeCents: Number(laborFees.dumpsterFeeCents || 0),
+          roofLoadFeeCents: Number(laborFees.roofLoadFeeCents || 0),
+          laborAndFeesTotalCents: Number(
+            laborFees.laborAndFeesTotalCents || 0
+          ),
+        }
+      : null;
 
     return {
       estimate: {
@@ -1390,6 +1402,9 @@ export const getPublicEstimate = onCall(
         },
         roofAreaSquareFeet: Number(estimate.roofAreaSquareFeet || 0),
         lineItems: publicLineItems,
+        ...(publicLaborFees
+          ? { laborFeesSnapshot: publicLaborFees }
+          : {}),
         subtotalCents: Number(estimate.subtotalCents || 0),
         discountCents: Number(estimate.discountCents || 0),
         taxCents: Number(estimate.taxCents || 0),

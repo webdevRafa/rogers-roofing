@@ -80,6 +80,14 @@ export default function EstimateDocument({
   const visibleLines = estimate.lineItems.filter(
     (line) => line.customerVisible !== false && line.selected !== false
   );
+  const laborFees = estimate.laborFeesSnapshot;
+  const materialsTotalCents =
+    laborFees?.materialTotalCents ??
+    visibleLines.reduce((total, line) => {
+      const included =
+        line.pricingMode === "included" || line.pricingMode === "no_charge";
+      return included ? total : total + Math.max(0, line.lineTotalCents);
+    }, 0);
   const balanceAfterDeposit = Math.max(
     0,
     estimate.totalCents - (estimate.depositCents ?? 0)
@@ -186,8 +194,55 @@ export default function EstimateDocument({
               );
             })}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={3}>Materials Total</td>
+              <td>{money(materialsTotalCents)}</td>
+            </tr>
+          </tfoot>
         </table>
       </section>
+
+      {laborFees && (
+        <section className="estimate-line-items estimate-labor-fees">
+          <table>
+            <thead>
+              <tr>
+                <th>Labor &amp; Fees</th>
+                <th>Rate</th>
+                <th>Quantity</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Labor cost</strong></td>
+                <td>{money(laborFees.laborCostCents)}</td>
+                <td>1 Service</td>
+                <td>{money(laborFees.laborCostCents)}</td>
+              </tr>
+              <tr>
+                <td><strong>Dumpster fee</strong></td>
+                <td>{money(laborFees.dumpsterFeeCents)}</td>
+                <td>1 Fee</td>
+                <td>{money(laborFees.dumpsterFeeCents)}</td>
+              </tr>
+              <tr>
+                <td><strong>Roof load fee</strong></td>
+                <td>{money(laborFees.roofLoadFeeCents)}</td>
+                <td>1 Fee</td>
+                <td>{money(laborFees.roofLoadFeeCents)}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={3}>Labor &amp; Fees Total</td>
+                <td>{money(laborFees.laborAndFeesTotalCents)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+      )}
 
       <section className="estimate-document-bottom">
         <div className="estimate-terms-stack">
@@ -212,10 +267,12 @@ export default function EstimateDocument({
         </div>
 
         <dl className="estimate-totals">
-          <div>
-            <dt>Subtotal</dt>
-            <dd>{money(estimate.subtotalCents)}</dd>
-          </div>
+          {!laborFees && (
+            <div>
+              <dt>Subtotal</dt>
+              <dd>{money(estimate.subtotalCents)}</dd>
+            </div>
+          )}
           {(estimate.discountCents ?? 0) > 0 && (
             <div>
               <dt>Discount</dt>

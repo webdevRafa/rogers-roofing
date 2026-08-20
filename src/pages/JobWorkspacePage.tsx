@@ -51,6 +51,7 @@ import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
 
 import { useOrg } from "../contexts/OrgContext";
 import { db } from "../firebase/firebaseConfig";
+import { calculateEstimateLaborFees } from "../domain/estimateFees";
 import {
   getRoofingMaterialDefinition,
   getRoofingMaterialPricingUnit,
@@ -79,6 +80,7 @@ type WorkspaceTab =
   | "dimensions"
   | "materials"
   | "payouts"
+  | "fees"
   | "warranty"
   | "files";
 
@@ -88,6 +90,7 @@ const workspaceTabs: WorkspaceTab[] = [
   "dimensions",
   "materials",
   "payouts",
+  "fees",
   "warranty",
   "files",
 ];
@@ -121,6 +124,18 @@ type EditorMeasurement = {
   id: string;
   length: string;
   width: string;
+};
+
+type FeeForm = {
+  overheadPercent: string;
+  dumpsterFee: string;
+  roofLoadFee: string;
+};
+
+const initialFeeForm: FeeForm = {
+  overheadPercent: "0",
+  dumpsterFee: "0.00",
+  roofLoadFee: "0.00",
 };
 
 function newMeasurement(
@@ -196,6 +211,13 @@ function money(cents: number): string {
     style: "currency",
     currency: "USD",
   });
+}
+
+function centsFromDollars(value: string) {
+  const dollars = Number(value);
+  return Number.isFinite(dollars)
+    ? Math.max(0, Math.round(dollars * 100))
+    : 0;
 }
 
 function materialUnitCostCents(material: JobMaterialActual): number {
@@ -327,6 +349,10 @@ export default function JobWorkspacePage() {
   const [measurementMessage, setMeasurementMessage] = useState<string | null>(
     null
   );
+  const [feeForm, setFeeForm] = useState<FeeForm>(initialFeeForm);
+  const [feesDirty, setFeesDirty] = useState(false);
+  const [feeSaving, setFeeSaving] = useState(false);
+  const [feeMessage, setFeeMessage] = useState<string | null>(null);
   const migratedMeasurementEstimateId = useRef<string | null>(null);
 
   const selectedMaterialDefinition = getRoofingMaterialDefinition(
@@ -369,6 +395,13 @@ export default function JobWorkspacePage() {
     if (nextTab === "overview") nextParams.delete("tab");
     else nextParams.set("tab", nextTab);
     setSearchParams(nextParams, { replace: true });
+  }
+
+  function updateFeeForm(key: keyof FeeForm, value: string) {
+    setFeeForm((current) => ({ ...current, [key]: value }));
+    setFeesDirty(true);
+    setFeeMessage(null);
+    setError(null);
   }
 
   function openMaterialForm() {
@@ -592,6 +625,15 @@ export default function JobWorkspacePage() {
   }, [job, measurementsDirty]);
 
   useEffect(() => {
+    if (!job || feesDirty) return;
+    setFeeForm({
+      overheadPercent: String(job.estimateFees?.overheadPercent ?? 0),
+      dumpsterFee: ((job.estimateFees?.dumpsterFeeCents ?? 0) / 100).toFixed(2),
+      roofLoadFee: ((job.estimateFees?.roofLoadFeeCents ?? 0) / 100).toFixed(2),
+    });
+  }, [feesDirty, job]);
+
+  useEffect(() => {
     if (!job || job.roofMeasurements?.length) return;
     const sourceEstimate = estimates.find(
       (estimate) => estimate.roofMeasurements?.length
@@ -729,6 +771,48 @@ export default function JobWorkspacePage() {
       outstanding,
     };
   }, [invoices, job, materials, payouts]);
+
+  const feeCalculation = useMemo(
+    () =>
+      calculateEstimateLaborFees(financials.materialCost, financials.payoutCost, {
+        overheadPercent: positiveNumber(feeForm.overheadPercent),
+        dumpsterFeeCents: centsFromDollars(feeForm.dumpsterFee),
+        roofLoadFeeCents: centsFromDollars(feeForm.roofLoadFee),
+      }),
+    [feeForm, financials.materialCost, financials.payoutCost]
+  );
+
+  async function saveFees(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!job) return;
+
+    const estimateFees = {
+      overheadPercent: positiveNumber(feeForm.overheadPercent),
+      dumpsterFeeCents: centsFromDollars(feeForm.dumpsterFee),
+      roofLoadFeeCents: centsFromDollars(feeForm.roofLoadFee),
+    };
+
+    setFeeSaving(true);
+    setError(null);
+    setFeeMessage(null);
+    try {
+      await updateDoc(doc(db, "jobs", job.id), {
+        estimateFees,
+        updatedAt: serverTimestamp(),
+      });
+      setJob((current) =>
+        current ? { ...current, estimateFees } : current
+      );
+      setFeesDirty(false);
+      setFeeMessage(
+        "Pricing controls saved. The next estimate preview will use these fees."
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setFeeSaving(false);
+    }
+  }
 
   const assignedEmployees = useMemo(
     () =>
@@ -1119,6 +1203,11 @@ export default function JobWorkspacePage() {
       label: "Payouts",
       icon: HandCoins,
       count: payouts.length,
+    },
+    {
+      key: "fees",
+      label: "Fees",
+      icon: ReceiptText,
     },
     {
       key: "warranty",
@@ -1960,6 +2049,194 @@ export default function JobWorkspacePage() {
               </div>
             )}
           </section>
+        )}
+
+        {tab === "fees" && (
+          <div className="job-fees-layout">
+            <section className="admin-card job-fees-card">
+              <div className="job-card-heading">
+                <div>
+                  <span>Estimate pricing controls</span>
+                  <h2>Job fees</h2>
+                </div>
+                <span className="job-fees-private-badge">
+                  <ShieldCheck size={13} /> Internal pricing
+                </span>
+              </div>
+
+              <div className="job-fees-source-strip">
+                <div>
+                  <span>Material expenses</span>
+                  <strong>{money(financials.materialCost)}</strong>
+                  <small>From this job&apos;s Materials tab</small>
+                </div>
+                <Plus aria-hidden="true" size={17} />
+                <div>
+                  <span>Worker payouts</span>
+                  <strong>{money(financials.payoutCost)}</strong>
+                  <small>From this job&apos;s Payouts tab</small>
+                </div>
+                <span aria-hidden="true">=</span>
+                <div className="is-total">
+                  <span>Overhead calculation base</span>
+                  <strong>
+                    {money(financials.materialCost + financials.payoutCost)}
+                  </strong>
+                  <small>Materials plus payouts</small>
+                </div>
+              </div>
+
+              <form className="job-fees-form" onSubmit={saveFees}>
+                <label className="job-fee-field is-overhead">
+                  <span>
+                    Overhead / Expense
+                    <small>Private percentage</small>
+                  </span>
+                  <div className="job-fee-percent-input">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={feeForm.overheadPercent}
+                      onChange={(event) =>
+                        updateFeeForm("overheadPercent", event.target.value)
+                      }
+                      aria-label="Overhead and expense percentage"
+                    />
+                    <span>%</span>
+                  </div>
+                  <p>
+                    Applied to material expenses plus payouts. Customers never
+                    see this percentage or a separate overhead line.
+                  </p>
+                  <output>
+                    Calculated overhead
+                    <strong>{money(feeCalculation.overheadAmountCents)}</strong>
+                  </output>
+                </label>
+
+                <label className="job-fee-field">
+                  <span>
+                    Dumpster Fee
+                    <small>Fixed customer fee</small>
+                  </span>
+                  <div className="job-fee-money-input">
+                    <span>$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={feeForm.dumpsterFee}
+                      onChange={(event) =>
+                        updateFeeForm("dumpsterFee", event.target.value)
+                      }
+                      aria-label="Dumpster fee in dollars"
+                    />
+                  </div>
+                  <p>
+                    Covers the dumpster used for tear-off debris and jobsite
+                    cleanup.
+                  </p>
+                </label>
+
+                <label className="job-fee-field">
+                  <span>
+                    Roof Load Fee
+                    <small>Fixed customer fee</small>
+                  </span>
+                  <div className="job-fee-money-input">
+                    <span>$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={feeForm.roofLoadFee}
+                      onChange={(event) =>
+                        updateFeeForm("roofLoadFee", event.target.value)
+                      }
+                      aria-label="Roof load fee in dollars"
+                    />
+                  </div>
+                  <p>
+                    Covers supplier delivery and placement of roofing material
+                    on the roof.
+                  </p>
+                </label>
+
+                <div className="job-fees-form-footer">
+                  <p>
+                    <ReceiptText size={15} /> Saved values are picked up the next
+                    time this job&apos;s estimate is previewed or sent.
+                  </p>
+                  <button
+                    className="admin-primary-button"
+                    type="submit"
+                    disabled={feeSaving || !feesDirty}
+                  >
+                    {feeSaving ? "Saving…" : feesDirty ? "Save fees" : "Fees saved"}
+                    {!feeSaving && (feesDirty ? <ArrowRight size={14} /> : <Check size={14} />)}
+                  </button>
+                </div>
+              </form>
+
+              {feeMessage && (
+                <div className="job-fees-message">
+                  <Check size={15} /> {feeMessage}
+                </div>
+              )}
+            </section>
+
+            <aside className="admin-card job-fees-preview">
+              <span className="admin-kicker">Customer estimate preview</span>
+              <h2>Labor &amp; Fees</h2>
+              <p>
+                Overhead stays private and is rolled into the single labor cost
+                shown to the customer.
+              </p>
+              <dl>
+                <div>
+                  <dt>Worker payouts</dt>
+                  <dd>{money(feeCalculation.payoutTotalCents ?? 0)}</dd>
+                </div>
+                <div className="is-private">
+                  <dt>
+                    Overhead / Expense
+                    <small>Admin only</small>
+                  </dt>
+                  <dd>{money(feeCalculation.overheadAmountCents ?? 0)}</dd>
+                </div>
+                <div className="is-customer-line">
+                  <dt>Labor cost</dt>
+                  <dd>{money(feeCalculation.laborCostCents)}</dd>
+                </div>
+                <div>
+                  <dt>Dumpster fee</dt>
+                  <dd>{money(feeCalculation.dumpsterFeeCents)}</dd>
+                </div>
+                <div>
+                  <dt>Roof load fee</dt>
+                  <dd>{money(feeCalculation.roofLoadFeeCents)}</dd>
+                </div>
+              </dl>
+              <div className="job-fees-preview-total">
+                <span>Labor &amp; Fees Total</span>
+                <strong>{money(feeCalculation.laborAndFeesTotalCents)}</strong>
+              </div>
+              <div className="job-fees-estimate-total">
+                <span>Projected estimate subtotal</span>
+                <strong>
+                  {money(
+                    feeCalculation.materialTotalCents +
+                      feeCalculation.laborAndFeesTotalCents
+                  )}
+                </strong>
+                <small>Before estimate-level discount or sales tax</small>
+              </div>
+            </aside>
+          </div>
         )}
 
         {tab === "warranty" && (

@@ -151,6 +151,18 @@ export type EstimateLineItem = {
 
 export type RoofMeasurement = JobRoofMeasurement;
 
+export type EstimateLaborFeesSnapshot = {
+  materialTotalCents: number;
+  laborCostCents: number;
+  dumpsterFeeCents: number;
+  roofLoadFeeCents: number;
+  laborAndFeesTotalCents: number;
+  /** Internal calculation inputs. Omitted by the public estimate endpoint. */
+  payoutTotalCents?: number;
+  overheadPercent?: number;
+  overheadAmountCents?: number;
+};
+
 export type EstimateRecord = {
   id: ID;
   organizationId: ID;
@@ -185,6 +197,7 @@ export type EstimateRecord = {
   roofSquares?: number;
   measurementsFinalized?: boolean;
   lineItems: EstimateLineItem[];
+  laborFeesSnapshot?: EstimateLaborFeesSnapshot;
   subtotalCents: number;
   discountCents: number;
   taxCents: number;

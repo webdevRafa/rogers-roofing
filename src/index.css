@@ -4439,6 +4439,358 @@ img {
   min-width: 820px;
 }
 
+.job-fees-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.5fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.job-fees-card {
+  overflow: hidden;
+}
+
+.job-fees-private-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1px solid #c8d8cf;
+  border-radius: 999px;
+  background: #eef7f2;
+  color: #256247;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.job-fees-source-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.2fr);
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+  border-bottom: 1px solid var(--line);
+  background: #f7f3eb;
+}
+
+.job-fees-source-strip > div {
+  display: grid;
+  gap: 4px;
+}
+
+.job-fees-source-strip > svg,
+.job-fees-source-strip > span {
+  color: #9b9388;
+}
+
+.job-fees-source-strip > div > span,
+.job-fees-source-strip > div > small {
+  color: var(--muted);
+}
+
+.job-fees-source-strip > div > span {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.job-fees-source-strip > div > strong {
+  font-family: "griffon", Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.job-fees-source-strip > div > small {
+  font-size: 9px;
+}
+
+.job-fees-source-strip .is-total {
+  padding: 14px;
+  border: 1px solid #ded5c9;
+  border-radius: 9px;
+  background: var(--paper);
+}
+
+.job-fees-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 20px;
+}
+
+.job-fee-field {
+  display: grid;
+  align-content: start;
+  gap: 11px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdfa;
+}
+
+.job-fee-field.is-overhead {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.35fr);
+  align-items: center;
+  background: linear-gradient(120deg, #fffdfa 0%, #f5f8f6 100%);
+}
+
+.job-fee-field > span {
+  display: grid;
+  gap: 4px;
+  color: var(--ink);
+  font-family: "griffon", Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.job-fee-field > span small {
+  color: var(--muted);
+  font-family: "acumin-pro", "Helvetica Neue", Arial, sans-serif;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.job-fee-field > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.job-fee-field.is-overhead > p {
+  max-width: 610px;
+}
+
+.job-fee-money-input,
+.job-fee-percent-input {
+  display: grid;
+  min-height: 48px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 8px;
+  background: white;
+}
+
+.job-fee-money-input {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.job-fee-percent-input {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.job-fee-money-input > span,
+.job-fee-percent-input > span {
+  padding: 0 13px;
+  color: #767067;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.job-fee-money-input input,
+.job-fee-percent-input input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.job-fee-field output {
+  display: flex;
+  grid-column: 2;
+  grid-row: 2 / span 2;
+  align-self: stretch;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  padding: 15px;
+  border-radius: 8px;
+  background: #1f2823;
+  color: rgb(255 255 255 / 72%);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.job-fee-field output strong {
+  color: white;
+  font-family: "griffon", Georgia, serif;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.job-fees-form-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-top: 4px;
+}
+
+.job-fees-form-footer p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.job-fees-form-footer p svg {
+  flex: 0 0 auto;
+  color: var(--red);
+}
+
+.job-fees-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 20px 20px;
+  padding: 11px 13px;
+  border: 1px solid #bdd8c8;
+  border-radius: 8px;
+  background: #edf8f1;
+  color: #17623b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.job-fees-preview {
+  position: sticky;
+  top: 155px;
+  padding: 27px;
+}
+
+.job-fees-preview h2 {
+  margin: 13px 0 10px;
+  font-family: "griffon", Georgia, serif;
+  font-size: 29px;
+  font-weight: 500;
+}
+
+.job-fees-preview > p {
+  margin: 0 0 21px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.job-fees-preview dl {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.job-fees-preview dl > div {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.job-fees-preview dt {
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.job-fees-preview dt small {
+  color: #8a6658;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.job-fees-preview dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.job-fees-preview .is-private {
+  padding: 0 9px;
+  border: 1px dashed #d6c9bb;
+  background: #faf7f1;
+}
+
+.job-fees-preview .is-customer-line dt,
+.job-fees-preview .is-customer-line dd {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.job-fees-preview-total,
+.job-fees-estimate-total {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 2px solid var(--ink);
+}
+
+.job-fees-preview-total {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.job-fees-preview-total span,
+.job-fees-estimate-total span {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.job-fees-preview-total strong {
+  font-family: "griffon", Georgia, serif;
+  font-size: 23px;
+  font-weight: 500;
+}
+
+.job-fees-estimate-total {
+  margin-top: 22px;
+  padding: 16px;
+  border: 0;
+  border-radius: 9px;
+  background: #1d1d1a;
+  color: white;
+}
+
+.job-fees-estimate-total strong {
+  font-family: "griffon", Georgia, serif;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+.job-fees-estimate-total small {
+  color: rgb(255 255 255 / 60%);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
 .warranty-readiness-card {
   overflow: hidden;
 }
@@ -5201,7 +5553,8 @@ img {
 
 @media (max-width: 1200px) {
   .job-overview-layout,
-  .job-section-layout {
+  .job-section-layout,
+  .job-fees-layout {
     grid-template-columns: 1fr;
   }
 
@@ -5211,6 +5564,7 @@ img {
 
   .job-document-guidance,
   .job-material-guidance,
+  .job-fees-preview,
   .warranty-summary-card {
     position: static;
   }
@@ -5737,6 +6091,41 @@ img {
   .job-financial-summary,
   .job-material-summary {
     grid-template-columns: 1fr;
+  }
+
+  .job-fees-source-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .job-fees-source-strip > svg,
+  .job-fees-source-strip > span {
+    display: none;
+  }
+
+  .job-fees-form {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .job-fee-field.is-overhead {
+    grid-column: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .job-fee-field output {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .job-fees-form-footer {
+    grid-column: auto;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .job-fees-form-footer button {
+    width: 100%;
+    justify-content: center;
   }
 
   .job-milestones > div,
@@ -7758,6 +8147,111 @@ img {
   color: var(--red);
 }
 
+.estimate-manage-materials {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 8px;
+  background: white;
+  color: var(--admin-ink);
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.estimate-editor-table tfoot td {
+  padding: 13px 10px;
+  border-top: 2px solid #37342f;
+  border-bottom: 0;
+  background: #f7f3ed;
+  color: var(--admin-ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.estimate-editor-table tfoot td:first-child {
+  padding-left: 20px;
+}
+
+.estimate-editor-table tfoot td:last-child {
+  padding-top: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.estimate-fees-admin-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 18px 20px;
+  padding: 12px 13px;
+  border: 1px solid #c8d8cf;
+  border-radius: 8px;
+  background: #eef7f2;
+  color: #35644d;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.estimate-fees-admin-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.estimate-synced-fees-table {
+  min-width: 620px;
+}
+
+.estimate-synced-fees-table th:first-child {
+  width: 44%;
+}
+
+.estimate-synced-fees-table th:nth-child(2) {
+  width: auto;
+}
+
+.estimate-synced-fees-table th:nth-child(3) {
+  width: 140px;
+  text-align: right;
+}
+
+.estimate-synced-fees-table td {
+  padding: 15px 10px;
+  color: var(--admin-muted);
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.estimate-synced-fees-table td:first-child strong {
+  color: var(--admin-ink);
+  font-size: 12px;
+}
+
+.estimate-synced-fees-table td:nth-child(3) {
+  padding-top: 15px;
+  text-align: right;
+}
+
+.estimate-synced-fees-table td:nth-child(3) strong {
+  color: var(--admin-ink);
+  font-family: var(--brand-font-display);
+  font-size: 17px;
+  font-weight: 400;
+}
+
+.estimate-synced-fees-table tfoot td:last-child {
+  font-family: var(--brand-font-display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .estimate-add-line {
   display: inline-flex;
   align-items: center;
@@ -8285,6 +8779,42 @@ img {
   color: #5e5a54;
   font-size: 9px;
   line-height: 1.45;
+}
+
+.estimate-line-items tfoot td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-top: 2px solid #44413b;
+  border-bottom: 0;
+  background: #f7f5f1;
+  color: #2d2b27;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.estimate-line-items tfoot td:first-child {
+  text-align: right;
+}
+
+.estimate-line-items tfoot td:last-child {
+  color: #211f1b;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.estimate-labor-fees {
+  margin-top: 14px;
+}
+
+.estimate-labor-fees th:first-child {
+  color: #20201d;
+}
+
+.estimate-labor-fees td {
+  padding-top: 9px;
+  padding-bottom: 9px;
 }
 
 .estimate-document-bottom {
