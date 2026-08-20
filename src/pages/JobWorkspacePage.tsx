@@ -162,6 +162,12 @@ function money(cents: number): string {
   });
 }
 
+function materialUnitCostCents(material: JobMaterialActual): number {
+  return material.orderedQuantity > 0
+    ? material.grossPurchaseCostCents / material.orderedQuantity
+    : 0;
+}
+
 function addressLine(job: Job): string {
   if (typeof job.address === "string") return job.address;
   return job.address?.fullLine || "Address not added";
@@ -325,13 +331,21 @@ export default function JobWorkspacePage() {
       ),
       onSnapshot(
         query(collection(db, "jobMaterials"), where("jobId", "==", id)),
-        (snapshot) =>
-          setMaterials(
-            snapshot.docs.map((document) => ({
-              id: document.id,
-              ...(document.data() as Omit<JobMaterialActual, "id">),
-            }))
-          )
+        (snapshot) => {
+          const nextMaterials = snapshot.docs.map((document) => ({
+            id: document.id,
+            ...(document.data() as Omit<JobMaterialActual, "id">),
+          }));
+          nextMaterials.sort((a, b) => {
+            const aCreatedAt = toDate(a.createdAt)?.getTime();
+            const bCreatedAt = toDate(b.createdAt)?.getTime();
+
+            if (aCreatedAt == null) return bCreatedAt == null ? 0 : 1;
+            if (bCreatedAt == null) return -1;
+            return aCreatedAt - bCreatedAt;
+          });
+          setMaterials(nextMaterials);
+        }
       ),
       onSnapshot(
         query(collection(db, "jobPhotos"), where("jobId", "==", id)),
@@ -1230,11 +1244,8 @@ export default function JobWorkspacePage() {
                       <tr>
                         <th>Material</th>
                         <th>Ordered</th>
-                        <th>Received</th>
-                        <th>Installed</th>
-                        <th>Product cost</th>
-                        <th>Add-ons</th>
-                        <th>Net cost</th>
+                        <th>Price / unit</th>
+                        <th>Total cost</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1255,22 +1266,18 @@ export default function JobWorkspacePage() {
                             </div>
                           </td>
                           <td>
-                            {material.orderedQuantity} {material.purchaseUnit}
-                          </td>
-                          <td>{material.receivedQuantity}</td>
-                          <td>{material.installedQuantity ?? "—"}</td>
-                          <td>{money(material.grossPurchaseCostCents)}</td>
-                          <td>
-                            {money(
-                              material.taxCents +
-                                material.freightCents +
-                                material.deliveryCents +
-                                material.stockingCents +
-                                material.surchargeCents
-                            )}
+                            <span className="job-material-quantity">
+                              <strong>
+                                {material.orderedQuantity.toLocaleString("en-US")}
+                              </strong>
+                              <small>({material.purchaseUnit})</small>
+                            </span>
                           </td>
                           <td>
-                            <strong>{money(material.netActualCostCents)}</strong>
+                            {money(materialUnitCostCents(material))}
+                          </td>
+                          <td>
+                            <strong>{money(material.grossPurchaseCostCents)}</strong>
                           </td>
                         </tr>
                       ))}
@@ -1294,7 +1301,7 @@ export default function JobWorkspacePage() {
                 </div>
                 <div>
                   <dt>Actual</dt>
-                  <dd>Ordered, received, installed, returned, and credited</dd>
+                  <dd>Purchased quantity, unit price, and total product cost</dd>
                 </div>
                 <div>
                   <dt>Warranty</dt>

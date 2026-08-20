@@ -4223,7 +4223,28 @@ img {
 }
 
 .job-material-table {
-  min-width: 900px;
+  min-width: 640px;
+}
+
+.job-material-quantity {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.job-material-quantity strong {
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.job-material-quantity small {
+  color: var(--admin-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .job-material-guidance > p,
