@@ -4441,7 +4441,7 @@ img {
 
 .job-fees-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.5fr);
+  grid-template-columns: minmax(0, 1fr) 320px;
   align-items: start;
   gap: 18px;
 }
@@ -4454,128 +4454,187 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 9px;
-  border: 1px solid #c8d8cf;
+  padding: 8px 11px;
+  border: 1px solid #cfe2d7;
   border-radius: 999px;
-  background: #eef7f2;
-  color: #256247;
+  background: #f0f8f3;
+  color: #216448;
   font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
+  font-weight: 750;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .job-fees-source-strip {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.2fr);
-  align-items: center;
-  gap: 14px;
-  padding: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-bottom: 1px solid var(--line);
-  background: #f7f3eb;
+  background: #fbfcfd;
 }
 
-.job-fees-source-strip > div {
+.job-fees-source-metric {
+  position: relative;
   display: grid;
-  gap: 4px;
+  min-height: 122px;
+  align-content: center;
+  padding: 20px;
+  border-right: 1px solid var(--line);
 }
 
-.job-fees-source-strip > svg,
-.job-fees-source-strip > span {
-  color: #9b9388;
+.job-fees-source-metric:last-child {
+  border-right: 0;
 }
 
-.job-fees-source-strip > div > span,
-.job-fees-source-strip > div > small {
-  color: var(--muted);
+.job-fees-source-metric > svg {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  box-sizing: content-box;
+  padding: 8px;
+  border-radius: 9px;
+  background: #fff0f1;
+  color: var(--red);
 }
 
-.job-fees-source-strip > div > span {
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+.job-fees-source-metric > div {
+  display: grid;
+  gap: 5px;
+}
+
+.job-fees-source-metric span {
+  max-width: calc(100% - 38px);
+  color: #68717e;
+  font-family: var(--brand-font-sans);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.job-fees-source-strip > div > strong {
-  font-family: "griffon", Georgia, serif;
-  font-size: 22px;
-  font-weight: 500;
+.job-fees-source-metric strong {
+  margin-top: 8px;
+  color: var(--admin-ink, var(--ink));
+  font-family: var(--brand-font-sans);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 720;
+  letter-spacing: -0.035em;
 }
 
-.job-fees-source-strip > div > small {
-  font-size: 9px;
+.job-fees-source-metric small {
+  color: var(--admin-muted, var(--muted));
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 .job-fees-source-strip .is-total {
-  padding: 14px;
-  border: 1px solid #ded5c9;
-  border-radius: 9px;
-  background: var(--paper);
+  background: #fffafb;
+}
+
+.job-fees-source-strip .is-total > svg {
+  background: var(--red);
+  color: white;
 }
 
 .job-fees-form {
+  display: block;
+  background: white;
+}
+
+.job-fees-form-heading,
+.job-fee-field {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  padding: 20px;
+  grid-template-columns: minmax(190px, 1.1fr) minmax(210px, 1.3fr) minmax(135px, 0.7fr) minmax(165px, 0.95fr);
+  column-gap: 20px;
+  align-items: center;
+}
+
+.job-fees-form-heading {
+  min-height: 43px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: #f6f8fa;
+  color: #68717e;
+}
+
+.job-fees-form-heading span {
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .job-fee-field {
-  display: grid;
-  align-content: start;
-  gap: 11px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fffdfa;
+  min-height: 92px;
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--line);
+  background: white;
+  transition: background 160ms ease;
 }
 
-.job-fee-field.is-overhead {
-  grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.35fr);
+.job-fee-field:hover,
+.job-fee-field:focus-within {
+  background: #fcfdfe;
+}
+
+.job-fee-identity {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  background: linear-gradient(120deg, #fffdfa 0%, #f5f8f6 100%);
+  gap: 11px;
 }
 
-.job-fee-field > span {
+.job-fee-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #f0d9dc;
+  border-radius: 9px;
+  background: #fff4f5;
+  color: var(--red);
+}
+
+.job-fee-identity > span:last-child {
   display: grid;
   gap: 4px;
-  color: var(--ink);
-  font-family: "griffon", Georgia, serif;
-  font-size: 18px;
-  font-weight: 600;
+  min-width: 0;
 }
 
-.job-fee-field > span small {
-  color: var(--muted);
-  font-family: "acumin-pro", "Helvetica Neue", Arial, sans-serif;
+.job-fee-identity strong {
+  color: var(--admin-ink, var(--ink));
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.job-fee-identity small {
+  color: #7c8591;
   font-size: 8px;
-  font-weight: 800;
+  font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.job-fee-field > p {
+.job-fee-field .job-fee-method {
   margin: 0;
-  color: var(--muted);
+  color: #5f6874;
   font-size: 10px;
-  line-height: 1.55;
-}
-
-.job-fee-field.is-overhead > p {
-  max-width: 610px;
+  line-height: 1.6;
 }
 
 .job-fee-money-input,
 .job-fee-percent-input {
   display: grid;
-  min-height: 48px;
+  min-height: 44px;
   align-items: center;
   overflow: hidden;
   border: 1px solid var(--admin-border-strong);
-  border-radius: 8px;
+  border-radius: 9px;
   background: white;
+  box-shadow: 0 1px 2px rgb(23 23 20 / 3%);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .job-fee-money-input {
@@ -4588,9 +4647,9 @@ img {
 
 .job-fee-money-input > span,
 .job-fee-percent-input > span {
-  padding: 0 13px;
-  color: #767067;
-  font-size: 12px;
+  padding: 0 12px;
+  color: #68717e;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -4598,50 +4657,62 @@ img {
 .job-fee-percent-input input {
   width: 100%;
   min-width: 0;
-  height: 46px;
+  height: 42px;
   border: 0;
   outline: none;
   background: transparent;
-  color: var(--ink);
-  font-size: 15px;
+  color: var(--admin-ink, var(--ink));
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
 
-.job-fee-field output {
-  display: flex;
-  grid-column: 2;
-  grid-row: 2 / span 2;
-  align-self: stretch;
-  flex-direction: column;
-  justify-content: center;
-  gap: 7px;
-  padding: 15px;
-  border-radius: 8px;
-  background: #1f2823;
-  color: rgb(255 255 255 / 72%);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.job-fee-money-input:focus-within,
+.job-fee-percent-input:focus-within {
+  border-color: #bd4a51;
+  box-shadow: 0 0 0 3px rgb(189 74 81 / 10%);
 }
 
-.job-fee-field output strong {
-  color: white;
-  font-family: "griffon", Georgia, serif;
-  font-size: 24px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
+.job-fee-treatment {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-height: 44px;
+  padding: 8px 11px;
+  border: 1px solid #dce2e8;
+  border-radius: 9px;
+  background: #f7f9fb;
+}
+
+.job-fee-treatment strong {
+  color: #343b44;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.job-fee-treatment small {
+  color: #737c87;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.job-fee-treatment.is-private {
+  border-color: #cfe2d7;
+  background: #f0f8f3;
+}
+
+.job-fee-treatment.is-private strong {
+  color: #216448;
 }
 
 .job-fees-form-footer {
   display: flex;
-  grid-column: 1 / -1;
+  min-height: 74px;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding-top: 4px;
+  padding: 14px 20px;
+  background: #fbfcfd;
 }
 
 .job-fees-form-footer p {
@@ -4657,6 +4728,14 @@ img {
 .job-fees-form-footer p svg {
   flex: 0 0 auto;
   color: var(--red);
+}
+
+.job-fees-form-footer .admin-primary-button:disabled {
+  border: 1px solid #cfe2d7;
+  background: #f0f8f3;
+  box-shadow: none;
+  color: #216448;
+  opacity: 1;
 }
 
 .job-fees-message {
@@ -4676,64 +4755,94 @@ img {
 .job-fees-preview {
   position: sticky;
   top: 155px;
-  padding: 27px;
+  overflow: hidden;
+  padding: 0;
 }
 
-.job-fees-preview h2 {
-  margin: 13px 0 10px;
-  font-family: "griffon", Georgia, serif;
-  font-size: 29px;
-  font-weight: 500;
+.job-fees-preview-heading {
+  display: flex;
+  min-height: 91px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--line);
 }
 
-.job-fees-preview > p {
-  margin: 0 0 21px;
-  color: var(--muted);
+.job-fees-preview-heading h2 {
+  margin: 7px 0 0;
+  color: var(--admin-ink, var(--ink));
+  font-family: var(--brand-font-sans);
+  font-size: 20px;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+
+.job-fees-preview-heading > svg {
+  box-sizing: content-box;
+  padding: 9px;
+  border-radius: 9px;
+  background: #fff0f1;
+  color: var(--red);
+}
+
+.job-fees-preview-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 18px 20px 10px;
+  padding: 12px;
+  border: 1px solid #cfe2d7;
+  border-radius: 10px;
+  background: #f0f8f3;
+  color: #396350;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.job-fees-preview-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #27724f;
+}
+
+.job-fees-preview-note span {
+  display: grid;
+  gap: 2px;
+}
+
+.job-fees-preview-note strong {
+  color: #216448;
   font-size: 10px;
-  line-height: 1.65;
 }
 
 .job-fees-preview dl {
   display: grid;
   gap: 0;
   margin: 0;
+  padding: 0 20px;
 }
 
 .job-fees-preview dl > div {
   display: flex;
-  min-height: 46px;
+  min-height: 49px;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .job-fees-preview dt {
-  display: grid;
-  gap: 2px;
-  color: var(--muted);
-  font-size: 9px;
-}
-
-.job-fees-preview dt small {
-  color: #8a6658;
-  font-size: 7px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: #5f6874;
+  font-size: 10px;
 }
 
 .job-fees-preview dd {
   margin: 0;
-  color: var(--ink);
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.job-fees-preview .is-private {
-  padding: 0 9px;
-  border: 1px dashed #d6c9bb;
-  background: #faf7f1;
+  color: var(--admin-ink, var(--ink));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
 }
 
 .job-fees-preview .is-customer-line dt,
@@ -4744,49 +4853,79 @@ img {
 
 .job-fees-preview-total,
 .job-fees-estimate-total {
-  display: grid;
-  gap: 6px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 2px solid var(--ink);
+  margin: 16px 20px 0;
 }
 
 .job-fees-preview-total {
-  grid-template-columns: 1fr auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #e0e5ea;
+  border-radius: 10px;
+  background: #f7f9fb;
 }
 
 .job-fees-preview-total span,
 .job-fees-estimate-total span {
   font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
+  font-weight: 750;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .job-fees-preview-total strong {
-  font-family: "griffon", Georgia, serif;
-  font-size: 23px;
-  font-weight: 500;
+  color: var(--admin-ink, var(--ink));
+  font-family: var(--brand-font-sans);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 720;
 }
 
 .job-fees-estimate-total {
-  margin-top: 22px;
-  padding: 16px;
-  border: 0;
-  border-radius: 9px;
-  background: #1d1d1a;
-  color: white;
+  display: grid;
+  gap: 0;
+  margin-bottom: 20px;
+  padding: 5px 14px 12px;
+  border: 1px solid #e2e6eb;
+  border-radius: 10px;
+  background: white;
 }
 
-.job-fees-estimate-total strong {
-  font-family: "griffon", Georgia, serif;
-  font-size: 30px;
-  font-weight: 500;
+.job-fees-estimate-total > div {
+  display: flex;
+  min-height: 39px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #68717e;
+}
+
+.job-fees-estimate-total > div > strong {
+  color: var(--admin-ink, var(--ink));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+
+.job-fees-estimate-total .is-grand-total {
+  min-height: 57px;
+  margin-top: 4px;
+  border-top: 2px solid #252a31;
+  color: var(--admin-ink, var(--ink));
+}
+
+.job-fees-estimate-total .is-grand-total strong {
+  color: var(--red);
+  font-family: var(--brand-font-sans);
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
 }
 
 .job-fees-estimate-total small {
-  color: rgb(255 255 255 / 60%);
+  color: #7c8591;
   font-size: 8px;
   line-height: 1.45;
 }
@@ -5659,6 +5798,18 @@ img {
 }
 
 @media (max-width: 840px) {
+  .job-fees-source-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .job-fees-source-metric:nth-child(2) {
+    border-right: 0;
+  }
+
+  .job-fees-source-metric:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
   .job-title-row {
     align-items: flex-start;
     flex-direction: column;
@@ -6097,30 +6248,32 @@ img {
     grid-template-columns: 1fr;
   }
 
-  .job-fees-source-strip > svg,
-  .job-fees-source-strip > span {
+  .job-fees-source-metric,
+  .job-fees-source-metric:nth-child(2) {
+    min-height: 106px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .job-fees-source-metric:last-child {
+    border-bottom: 0;
+  }
+
+  .job-fees-form-heading {
     display: none;
   }
 
-  .job-fees-form {
-    grid-template-columns: 1fr;
-    padding: 14px;
-  }
-
+  .job-fee-field,
   .job-fee-field.is-overhead {
-    grid-column: auto;
     grid-template-columns: 1fr;
-  }
-
-  .job-fee-field output {
-    grid-column: auto;
-    grid-row: auto;
+    gap: 13px;
+    padding: 18px;
   }
 
   .job-fees-form-footer {
-    grid-column: auto;
     align-items: stretch;
     flex-direction: column;
+    padding: 18px;
   }
 
   .job-fees-form-footer button {

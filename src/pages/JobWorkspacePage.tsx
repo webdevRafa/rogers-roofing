@@ -2082,33 +2082,60 @@ export default function JobWorkspacePage() {
               </div>
 
               <div className="job-fees-source-strip">
-                <div>
-                  <span>Material expenses</span>
-                  <strong>{money(financials.materialCost)}</strong>
-                  <small>From this job&apos;s Materials tab</small>
+                <div className="job-fees-source-metric">
+                  <PackageSearch aria-hidden="true" size={17} />
+                  <div>
+                    <span>Material expenses</span>
+                    <strong>{money(financials.materialCost)}</strong>
+                    <small>Synced from Materials</small>
+                  </div>
                 </div>
-                <Plus aria-hidden="true" size={17} />
-                <div>
-                  <span>Worker payouts</span>
-                  <strong>{money(financials.payoutCost)}</strong>
-                  <small>From this job&apos;s Payouts tab</small>
+                <div className="job-fees-source-metric">
+                  <HandCoins aria-hidden="true" size={17} />
+                  <div>
+                    <span>Worker payouts</span>
+                    <strong>{money(financials.payoutCost)}</strong>
+                    <small>Synced from Payouts</small>
+                  </div>
                 </div>
-                <span aria-hidden="true">=</span>
-                <div className="is-total">
-                  <span>Overhead calculation base</span>
-                  <strong>
-                    {money(financials.materialCost + financials.payoutCost)}
-                  </strong>
-                  <small>Materials plus payouts</small>
+                <div className="job-fees-source-metric">
+                  <Calculator aria-hidden="true" size={17} />
+                  <div>
+                    <span>Pricing base</span>
+                    <strong>
+                      {money(financials.materialCost + financials.payoutCost)}
+                    </strong>
+                    <small>Materials + payouts</small>
+                  </div>
+                </div>
+                <div className="job-fees-source-metric is-total">
+                  <CircleDollarSign aria-hidden="true" size={17} />
+                  <div>
+                    <span>Calculated overhead</span>
+                    <strong>{money(feeCalculation.overheadAmountCents)}</strong>
+                    <small>{feeForm.overheadPercent || "0"}% of pricing base</small>
+                  </div>
                 </div>
               </div>
 
               <form className="job-fees-form" onSubmit={saveFees}>
+                <div className="job-fees-form-heading" aria-hidden="true">
+                  <span>Fee control</span>
+                  <span>Pricing method</span>
+                  <span>Value</span>
+                  <span>Estimate treatment</span>
+                </div>
                 <label className="job-fee-field is-overhead">
-                  <span>
-                    Overhead / Expense
-                    <small>Private percentage</small>
+                  <span className="job-fee-identity">
+                    <span className="job-fee-icon"><Calculator size={16} /></span>
+                    <span>
+                      <strong>Overhead / Expense</strong>
+                      <small>Internal calculation</small>
+                    </span>
                   </span>
+                  <p className="job-fee-method">
+                    Percentage of material expenses plus worker payouts.
+                  </p>
                   <div className="job-fee-percent-input">
                     <input
                       type="number"
@@ -2123,21 +2150,23 @@ export default function JobWorkspacePage() {
                     />
                     <span>%</span>
                   </div>
-                  <p>
-                    Applied to material expenses plus payouts. Customers never
-                    see this percentage or a separate overhead line.
-                  </p>
-                  <output>
-                    Calculated overhead
-                    <strong>{money(feeCalculation.overheadAmountCents)}</strong>
-                  </output>
+                  <span className="job-fee-treatment is-private">
+                    <strong>Rolled into labor</strong>
+                    <small>{money(feeCalculation.overheadAmountCents)} · Admin only</small>
+                  </span>
                 </label>
 
                 <label className="job-fee-field">
-                  <span>
-                    Dumpster Fee
-                    <small>Fixed customer fee</small>
+                  <span className="job-fee-identity">
+                    <span className="job-fee-icon"><Trash2 size={16} /></span>
+                    <span>
+                      <strong>Dumpster fee</strong>
+                      <small>Customer-facing fee</small>
+                    </span>
                   </span>
+                  <p className="job-fee-method">
+                    Fixed charge for tear-off debris and jobsite cleanup.
+                  </p>
                   <div className="job-fee-money-input">
                     <span>$</span>
                     <input
@@ -2152,17 +2181,23 @@ export default function JobWorkspacePage() {
                       aria-label="Dumpster fee in dollars"
                     />
                   </div>
-                  <p>
-                    Covers the dumpster used for tear-off debris and jobsite
-                    cleanup.
-                  </p>
+                  <span className="job-fee-treatment">
+                    <strong>Separate estimate line</strong>
+                    <small>{money(feeCalculation.dumpsterFeeCents)}</small>
+                  </span>
                 </label>
 
                 <label className="job-fee-field">
-                  <span>
-                    Roof Load Fee
-                    <small>Fixed customer fee</small>
+                  <span className="job-fee-identity">
+                    <span className="job-fee-icon"><PackageCheck size={16} /></span>
+                    <span>
+                      <strong>Roof load fee</strong>
+                      <small>Customer-facing fee</small>
+                    </span>
                   </span>
+                  <p className="job-fee-method">
+                    Fixed charge for delivery and rooftop material placement.
+                  </p>
                   <div className="job-fee-money-input">
                     <span>$</span>
                     <input
@@ -2177,10 +2212,10 @@ export default function JobWorkspacePage() {
                       aria-label="Roof load fee in dollars"
                     />
                   </div>
-                  <p>
-                    Covers supplier delivery and placement of roofing material
-                    on the roof.
-                  </p>
+                  <span className="job-fee-treatment">
+                    <strong>Separate estimate line</strong>
+                    <small>{money(feeCalculation.roofLoadFeeCents)}</small>
+                  </span>
                 </label>
 
                 <div className="job-fees-form-footer">
@@ -2207,24 +2242,21 @@ export default function JobWorkspacePage() {
             </section>
 
             <aside className="admin-card job-fees-preview">
-              <span className="admin-kicker">Customer estimate preview</span>
-              <h2>Labor &amp; Fees</h2>
-              <p>
-                Overhead stays private and is rolled into the single labor cost
-                shown to the customer.
-              </p>
-              <dl>
+              <div className="job-fees-preview-heading">
                 <div>
-                  <dt>Worker payouts</dt>
-                  <dd>{money(feeCalculation.payoutTotalCents ?? 0)}</dd>
+                  <span className="admin-kicker">Customer estimate</span>
+                  <h2>Pricing preview</h2>
                 </div>
-                <div className="is-private">
-                  <dt>
-                    Overhead / Expense
-                    <small>Admin only</small>
-                  </dt>
-                  <dd>{money(feeCalculation.overheadAmountCents ?? 0)}</dd>
-                </div>
+                <Eye aria-hidden="true" size={18} />
+              </div>
+              <div className="job-fees-preview-note">
+                <ShieldCheck aria-hidden="true" size={16} />
+                <span>
+                  <strong>Private overhead stays private.</strong>
+                  It is included in the customer&apos;s labor cost.
+                </span>
+              </div>
+              <dl>
                 <div className="is-customer-line">
                   <dt>Labor cost</dt>
                   <dd>{money(feeCalculation.laborCostCents)}</dd>
@@ -2243,13 +2275,23 @@ export default function JobWorkspacePage() {
                 <strong>{money(feeCalculation.laborAndFeesTotalCents)}</strong>
               </div>
               <div className="job-fees-estimate-total">
-                <span>Projected estimate subtotal</span>
-                <strong>
-                  {money(
-                    feeCalculation.materialTotalCents +
-                      feeCalculation.laborAndFeesTotalCents
-                  )}
-                </strong>
+                <div>
+                  <span>Materials</span>
+                  <strong>{money(feeCalculation.materialTotalCents)}</strong>
+                </div>
+                <div>
+                  <span>Labor &amp; fees</span>
+                  <strong>{money(feeCalculation.laborAndFeesTotalCents)}</strong>
+                </div>
+                <div className="is-grand-total">
+                  <span>Projected subtotal</span>
+                  <strong>
+                    {money(
+                      feeCalculation.materialTotalCents +
+                        feeCalculation.laborAndFeesTotalCents
+                    )}
+                  </strong>
+                </div>
                 <small>Before estimate-level discount or sales tax</small>
               </div>
             </aside>
