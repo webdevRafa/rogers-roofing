@@ -412,6 +412,8 @@ export default function PublicHomePage() {
               className="public-hero-image"
               src={finishedRoof}
               alt=""
+              decoding="async"
+              fetchPriority="high"
             />
             <div className="public-hero-shade" />
           </div>
@@ -431,8 +433,8 @@ export default function PublicHomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.85, delay: 0.24 }}
               >
-                Straightforward inspections, detailed estimates, and dependable
-                roofing work for repairs, replacements, and new construction.
+                Professional San Antonio roof inspections, detailed estimates,
+                and dependable roof repair, replacement, and new construction.
               </motion.p>
               <motion.div
                 className="public-hero-actions"
@@ -518,16 +520,18 @@ export default function PublicHomePage() {
           <section className="public-section public-services" id="services">
           <Reveal className="public-section-heading">
             <div>
-              <span className="public-eyebrow">Built for South Texas homes</span>
+              <span className="public-eyebrow">
+                Built for San Antonio and South Texas homes
+              </span>
               <h2>
                 Roofing help that fits the problem—not a one-size-fits-all
                 pitch.
               </h2>
             </div>
             <p>
-              Every roof is different. We inspect the actual condition, explain
-              what we find, and recommend the work and materials that make sense
-              for your property.
+              Every San Antonio roof is different. We inspect its actual
+              condition, explain what we find, and recommend the work and
+              materials that make sense for your property.
             </p>
           </Reveal>
 
@@ -915,6 +919,7 @@ export default function PublicHomePage() {
           <a href="#services">Services</a>
           <a href="#process">Process</a>
           <a href="#estimate">Free estimate</a>
+          <a href="tel:+19565433258">Call 956-543-3258</a>
         </div>
         <p>
           © {new Date().getFullYear()} Roger&apos;s Roofing &amp; Contracting

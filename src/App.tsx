@@ -12,6 +12,7 @@ import CrewLayout from "../src/layouts/CrewLayout";
 import CrewDashboardPage from "../src/pages/CrewDashboardPage";
 import CrewJobDetailPage from "../src/pages/CrewJobDetailPage";
 import ScrollToTop from "./components/ScrollToTop";
+import SeoRouteManager from "./components/SeoRouteManager";
 import JobsPage from "./pages/JobsPage";
 import AdminLayout from "./layouts/AdminLayout";
 import FinancialOverviewPage from "./pages/FinancialOverviewPage";
@@ -36,6 +37,7 @@ export default function App() {
     <div>
       <BrowserRouter>
         <ScrollToTop />
+        <SeoRouteManager />
         <Routes>
           <Route path="/" element={<PublicHomePage />} />
           <Route path="/login" element={<LoginPage />} />
