@@ -66,10 +66,10 @@ function materialQuantityLabel(material: JobMaterialActual): string {
     material.purchaseUnit
   );
   const label =
-    unit === "ROW"
+    unit === "ROLL"
       ? material.orderedQuantity === 1
-        ? "row"
-        : "rows"
+        ? "roll"
+        : "rolls"
       : unit === "BOX"
         ? material.orderedQuantity === 1
           ? "box"

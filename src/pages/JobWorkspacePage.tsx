@@ -23,6 +23,7 @@ import {
   ReceiptText,
   Ruler,
   ShieldCheck,
+  Trash2,
   UploadCloud,
   Users,
   X,
@@ -43,6 +44,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { getStorage, ref as storageRef, uploadBytes } from "firebase/storage";
 
@@ -170,13 +172,13 @@ function materialPricingCopy(unit: RoofingUnit) {
       guidanceTitle: "Measured and priced by SQ",
     };
   }
-  if (unit === "ROW") {
+  if (unit === "ROLL") {
     return {
-      singular: "row",
-      plural: "rows",
-      quantityLabel: "Quantity (rows) *",
-      priceLabel: "Price per row ($) *",
-      guidanceTitle: "Measured and priced by row",
+      singular: "roll",
+      plural: "rolls",
+      quantityLabel: "Quantity (rolls) *",
+      priceLabel: "Price per roll ($) *",
+      guidanceTitle: "Measured and priced by roll",
     };
   }
   if (unit === "BOX") {
@@ -202,8 +204,8 @@ function orderedMaterialUnitLabel(material: JobMaterialActual): string {
     material.materialType,
     material.purchaseUnit
   );
-  if (unit === "ROW") {
-    return material.orderedQuantity === 1 ? "row" : "rows";
+  if (unit === "ROLL") {
+    return material.orderedQuantity === 1 ? "roll" : "rolls";
   }
   if (unit === "BOX") return "bx";
   return unit;
@@ -253,6 +255,13 @@ export default function JobWorkspacePage() {
   const [notes, setNotes] = useState("");
   const [materialOpen, setMaterialOpen] = useState(false);
   const [materialForm, setMaterialForm] = useState(initialMaterialForm);
+  const [editingMaterial, setEditingMaterial] =
+    useState<JobMaterialActual | null>(null);
+  const [deleteCandidate, setDeleteCandidate] =
+    useState<JobMaterialActual | null>(null);
+  const [deletingMaterialId, setDeletingMaterialId] = useState<string | null>(
+    null
+  );
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoCaption, setPhotoCaption] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -277,13 +286,30 @@ export default function JobWorkspacePage() {
   }
 
   function openMaterialForm() {
+    setEditingMaterial(null);
     setMaterialForm(initialMaterialForm);
+    setError(null);
+    setMaterialOpen(true);
+  }
+
+  function openMaterialEdit(material: JobMaterialActual) {
+    setEditingMaterial(material);
+    setMaterialForm({
+      materialType: material.materialType ?? "",
+      description: material.descriptionSnapshot,
+      manufacturer: material.manufacturerSnapshot ?? "",
+      product: material.productSnapshot ?? "",
+      color: material.colorSnapshot ?? "",
+      quantity: String(material.orderedQuantity),
+      rate: (materialUnitCostCents(material) / 100).toFixed(2),
+    });
     setError(null);
     setMaterialOpen(true);
   }
 
   function closeMaterialForm() {
     if (saving) return;
+    setEditingMaterial(null);
     setMaterialForm(initialMaterialForm);
     setError(null);
     setMaterialOpen(false);
@@ -291,10 +317,20 @@ export default function JobWorkspacePage() {
 
   function selectMaterialType(materialType: RoofingMaterialType) {
     const definition = getRoofingMaterialDefinition(materialType);
-    setMaterialForm({
-      ...initialMaterialForm,
-      materialType,
-      description: definition?.label ?? "",
+    setMaterialForm((current) => {
+      const previousDefinition = getRoofingMaterialDefinition(
+        current.materialType || null
+      );
+      const shouldUseDefaultDescription =
+        !current.description.trim() ||
+        current.description === previousDefinition?.label;
+      return {
+        ...current,
+        materialType,
+        description: shouldUseDefaultDescription
+          ? definition?.label ?? ""
+          : current.description,
+      };
     });
     setError(null);
   }
@@ -600,7 +636,7 @@ export default function JobWorkspacePage() {
     }
   }
 
-  async function addMaterial(event: FormEvent<HTMLFormElement>) {
+  async function saveMaterial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!job || !orgId || !selectedMaterialDefinition) {
       setError("Choose a material type before continuing.");
@@ -630,11 +666,11 @@ export default function JobWorkspacePage() {
     setSaving(true);
     setError(null);
     try {
-      const materialRef = doc(collection(db, "jobMaterials"));
-      const record: Omit<JobMaterialActual, "id"> = {
-        organizationId: orgId,
-        jobId: job.id,
-        catalogItemId: null,
+      const batch = writeBatch(db);
+      const materialRef = editingMaterial
+        ? doc(db, "jobMaterials", editingMaterial.id)
+        : doc(collection(db, "jobMaterials"));
+      const materialFields = {
         materialType: selectedMaterialDefinition.value,
         descriptionSnapshot: materialForm.description.trim(),
         manufacturerSnapshot: materialForm.manufacturer.trim() || null,
@@ -658,29 +694,70 @@ export default function JobWorkspacePage() {
         supplierCreditsCents: 0,
         rebatesCents: 0,
         netActualCostCents,
-        supplierId: null,
-        supplierName: null,
-        supplierInvoiceId: null,
-        lotOrBatch: null,
-        warrantyComponent: false,
-        installedAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      await setDoc(materialRef, record);
-      await updateDoc(doc(db, "jobs", job.id), {
-        "expenses.totalMaterialsCents": increment(netActualCostCents),
-        "computed.totalExpensesCents": increment(netActualCostCents),
-        "computed.netProfitCents": increment(-netActualCostCents),
+      if (editingMaterial) {
+        batch.update(materialRef, materialFields);
+      } else {
+        const record: Omit<JobMaterialActual, "id"> = {
+          organizationId: orgId,
+          jobId: job.id,
+          catalogItemId: null,
+          ...materialFields,
+          supplierId: null,
+          supplierName: null,
+          supplierInvoiceId: null,
+          lotOrBatch: null,
+          warrantyComponent: false,
+          installedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        };
+        batch.set(materialRef, record);
+      }
+
+      const previousCostCents = editingMaterial?.netActualCostCents ?? 0;
+      const costDeltaCents = netActualCostCents - previousCostCents;
+      batch.update(doc(db, "jobs", job.id), {
+        "expenses.totalMaterialsCents": increment(costDeltaCents),
+        "computed.totalExpensesCents": increment(costDeltaCents),
+        "computed.netProfitCents": increment(-costDeltaCents),
         updatedAt: serverTimestamp(),
       });
+      await batch.commit();
+      setEditingMaterial(null);
       setMaterialForm(initialMaterialForm);
       setMaterialOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteMaterial(material: JobMaterialActual) {
+    if (!job) return;
+    setDeletingMaterialId(material.id);
+    setError(null);
+    try {
+      const batch = writeBatch(db);
+      batch.delete(doc(db, "jobMaterials", material.id));
+      batch.update(doc(db, "jobs", job.id), {
+        "expenses.totalMaterialsCents": increment(
+          -material.netActualCostCents
+        ),
+        "computed.totalExpensesCents": increment(
+          -material.netActualCostCents
+        ),
+        "computed.netProfitCents": increment(material.netActualCostCents),
+        updatedAt: serverTimestamp(),
+      });
+      await batch.commit();
+      setDeleteCandidate(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setDeletingMaterialId(null);
     }
   }
 
@@ -1270,6 +1347,7 @@ export default function JobWorkspacePage() {
                         <th>Ordered</th>
                         <th>Price / unit</th>
                         <th>Total cost</th>
+                        <th className="job-material-actions-heading">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1302,6 +1380,30 @@ export default function JobWorkspacePage() {
                           </td>
                           <td>
                             <strong>{money(material.grossPurchaseCostCents)}</strong>
+                          </td>
+                          <td>
+                            <div className="job-material-actions">
+                              <button
+                                type="button"
+                                onClick={() => openMaterialEdit(material)}
+                                aria-label={`Edit ${material.descriptionSnapshot}`}
+                                title="Edit material"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                className="is-danger"
+                                type="button"
+                                onClick={() => {
+                                  setError(null);
+                                  setDeleteCandidate(material);
+                                }}
+                                aria-label={`Delete ${material.descriptionSnapshot}`}
+                                title="Delete material"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1611,18 +1713,26 @@ export default function JobWorkspacePage() {
           />
           <aside
             className="admin-drawer material-form-drawer"
-            aria-label="Add a material expense"
+            aria-label={
+              editingMaterial
+                ? "Edit a material expense"
+                : "Add a material expense"
+            }
           >
             <div className="admin-drawer-header">
               <div>
                 <span>Job cost</span>
-                <h2>Add material expense</h2>
+                <h2>
+                  {editingMaterial
+                    ? "Edit material expense"
+                    : "Add material expense"}
+                </h2>
               </div>
               <button type="button" onClick={closeMaterialForm} aria-label="Close">
                 ×
               </button>
             </div>
-            <form onSubmit={addMaterial}>
+            <form onSubmit={saveMaterial}>
               <section className="drawer-form-section material-type-section">
                 <div className="drawer-form-heading">
                   <span>01</span>
@@ -1658,7 +1768,7 @@ export default function JobWorkspacePage() {
                 {selectedMaterialDefinition ? (
                   <div className="material-type-guidance" aria-live="polite">
                     <span>
-                      {["SQ", "ROW"].includes(
+                      {["SQ", "ROLL"].includes(
                         selectedMaterialDefinition.pricingUnit
                       ) ? (
                         <Ruler size={18} />
@@ -1839,12 +1949,71 @@ export default function JobWorkspacePage() {
                   type="submit"
                   disabled={saving || !selectedMaterialDefinition}
                 >
-                  {saving ? "Adding material…" : "Add material to job"}
+                  {saving
+                    ? editingMaterial
+                      ? "Updating material…"
+                      : "Adding material…"
+                    : editingMaterial
+                      ? "Update material"
+                      : "Add material to job"}
                   {!saving && <ArrowRight size={16} />}
                 </button>
               </div>
             </form>
           </aside>
+        </>
+      )}
+
+      {deleteCandidate && (
+        <>
+          <button
+            className="material-delete-scrim"
+            type="button"
+            onClick={() => {
+              if (!deletingMaterialId) setDeleteCandidate(null);
+            }}
+            aria-label="Cancel deleting material"
+          />
+          <section
+            className="material-delete-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="material-delete-title"
+            aria-describedby="material-delete-description"
+          >
+            <span className="material-delete-icon">
+              <Trash2 size={21} />
+            </span>
+            <div>
+              <span className="admin-kicker">Remove material</span>
+              <h2 id="material-delete-title">Delete this material expense?</h2>
+              <p id="material-delete-description">
+                <strong>{deleteCandidate.descriptionSnapshot}</strong> and its{" "}
+                {money(deleteCandidate.netActualCostCents)} cost will be removed
+                from this job. This cannot be undone.
+              </p>
+            </div>
+            {error && <div className="admin-inline-error">{error}</div>}
+            <div className="material-delete-actions">
+              <button
+                className="admin-secondary-button"
+                type="button"
+                onClick={() => setDeleteCandidate(null)}
+                disabled={Boolean(deletingMaterialId)}
+              >
+                Cancel
+              </button>
+              <button
+                className="admin-primary-button is-danger"
+                type="button"
+                onClick={() => deleteMaterial(deleteCandidate)}
+                disabled={Boolean(deletingMaterialId)}
+              >
+                {deletingMaterialId ? "Deleting…" : "Delete material"}
+                {!deletingMaterialId && <Trash2 size={15} />}
+              </button>
+            </div>
+          </section>
         </>
       )}
     </main>

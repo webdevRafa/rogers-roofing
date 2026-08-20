@@ -9,7 +9,7 @@ export type RoofingMaterialDefinition = {
   label: string;
   description: string;
   category: RoofingMaterialCategory;
-  pricingUnit: Extract<RoofingUnit, "EA" | "SQ" | "ROW" | "BOX">;
+  pricingUnit: Extract<RoofingUnit, "EA" | "SQ" | "ROLL" | "BOX">;
 };
 
 export const ROOFING_MATERIAL_DEFINITIONS: RoofingMaterialDefinition[] = [
@@ -37,9 +37,9 @@ export const ROOFING_MATERIAL_DEFINITIONS: RoofingMaterialDefinition[] = [
   {
     value: "FELT_UNDERLAYMENT",
     label: "Felt / underlayment",
-    description: "Felt or synthetic roof underlayment measured and priced by row.",
+    description: "Felt or synthetic roof underlayment measured and priced by roll.",
     category: "UNDERLAYMENT",
-    pricingUnit: "ROW",
+    pricingUnit: "ROLL",
   },
   {
     value: "DRIP_EDGE",

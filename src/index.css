@@ -4223,7 +4223,7 @@ img {
 }
 
 .job-material-table {
-  min-width: 640px;
+  min-width: 760px;
 }
 
 .job-material-quantity {
@@ -4245,6 +4245,116 @@ img {
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.02em;
+}
+
+.job-material-actions-heading {
+  text-align: right;
+}
+
+.job-material-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.job-material-actions button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 8px;
+  background: white;
+  color: var(--admin-ink);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.job-material-actions button:hover {
+  border-color: #bdb4a8;
+  background: #f4efe7;
+  color: var(--red);
+  transform: translateY(-1px);
+}
+
+.job-material-actions button.is-danger:hover {
+  border-color: #e2aeb1;
+  background: #fff0f1;
+  color: #a9131b;
+}
+
+.material-delete-scrim {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  border: 0;
+  background: rgb(13 13 11 / 48%);
+  backdrop-filter: blur(4px);
+}
+
+.material-delete-dialog {
+  position: fixed;
+  z-index: 85;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: min(440px, calc(100vw - 32px));
+  gap: 18px;
+  padding: 26px;
+  border: 1px solid var(--admin-border);
+  border-radius: 16px;
+  background: var(--admin-panel);
+  box-shadow: 0 28px 90px rgb(13 13 11 / 30%);
+  transform: translate(-50%, -50%);
+}
+
+.material-delete-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 12px;
+  background: #fff0f1;
+  color: var(--red);
+}
+
+.material-delete-dialog h2 {
+  margin: 7px 0 8px;
+  color: var(--admin-ink);
+  font-family: var(--brand-font-display);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.material-delete-dialog p {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.material-delete-dialog p strong {
+  color: var(--admin-ink);
+}
+
+.material-delete-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 10px;
+}
+
+.material-delete-actions button {
+  width: 100%;
+}
+
+.material-delete-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .job-material-guidance > p,

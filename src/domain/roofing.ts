@@ -107,7 +107,6 @@ export type RoofingUnit =
   | "SHEET"
   | "GAL"
   | "ROLL"
-  | "ROW"
   | "BUNDLE"
   | "OTHER";
 
