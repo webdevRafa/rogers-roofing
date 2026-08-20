@@ -1578,26 +1578,11 @@ export default function JobWorkspacePage() {
                               : ESTIMATE_STATUS_LABELS[estimate.status]}
                           </span>
                           <div className="job-document-actions">
-                            {estimate.status !== "lead_received" && (
-                              <Link
-                                to={`/estimate/${estimate.id}`}
-                                aria-label={`View ${estimate.number || "estimate"}`}
-                              >
-                                <Eye size={14} /> View
-                              </Link>
-                            )}
                             <Link
-                              to={`/estimates/${estimate.id}/edit`}
-                              aria-label={`Edit ${estimate.number || "estimate"}`}
+                              to={`/estimate/${estimate.id}`}
+                              aria-label={`View ${estimate.number || "estimate"}`}
                             >
-                              {estimate.status === "lead_received" ? (
-                                <Eye size={14} />
-                              ) : (
-                                <Pencil size={14} />
-                              )}
-                              {estimate.status === "lead_received"
-                                ? "Preview"
-                                : "Edit"}
+                              <Eye size={14} /> View
                             </Link>
                           </div>
                         </article>

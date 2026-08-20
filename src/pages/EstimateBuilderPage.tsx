@@ -6,9 +6,7 @@ import {
   Eye,
   FileText,
   Loader2,
-  Mail,
   Ruler,
-  Send,
   ShieldCheck,
 } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -1315,30 +1313,6 @@ export default function EstimateBuilderPage() {
           </aside>
         </div>
 
-        <div className="estimate-builder-actions">
-          <div>
-            <Mail size={15} />
-            <span>
-              {form.customerEmail || "Add a customer email to enable delivery"}
-            </span>
-          </div>
-          <div>
-            <button
-              type="button"
-              className="admin-primary-button"
-              disabled={Boolean(savingMode)}
-              onClick={() => void persist("send")}
-            >
-              {savingMode === "send" ? (
-                <Loader2 className="estimate-spin" size={15} />
-              ) : (
-                <Send size={15} />
-              )}
-              Save & send
-              {!savingMode && <ArrowRight size={14} />}
-            </button>
-          </div>
-        </div>
       </div>
     </main>
   );

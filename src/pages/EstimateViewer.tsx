@@ -6,6 +6,7 @@ import {
   Download,
   Loader2,
   LockKeyhole,
+  Send,
 } from "lucide-react";
 import {
   collection,
@@ -38,6 +39,13 @@ export default function EstimateViewer() {
   const [estimate, setEstimate] = useState<EstimateRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deliveryState, setDeliveryState] = useState<
+    "idle" | "sending" | "sent"
+  >("idle");
+  const [deliveryNotice, setDeliveryNotice] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -162,6 +170,87 @@ export default function EstimateViewer() {
     window.setTimeout(() => setCopied(false), 1400);
   }
 
+  async function sendToCustomer() {
+    if (!estimate || token || deliveryState === "sending") return;
+
+    const email = estimate.customerSnapshot?.email?.trim() || "";
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setDeliveryNotice({
+        tone: "error",
+        message: "Add a valid customer email in the Job Workspace before sending.",
+      });
+      return;
+    }
+    if (
+      estimate.status === "accepted" ||
+      estimate.status === "converted_to_contract"
+    ) {
+      setDeliveryNotice({
+        tone: "error",
+        message: "Accepted estimates are locked. Create a revision before sending again.",
+      });
+      return;
+    }
+
+    setDeliveryState("sending");
+    setDeliveryNotice(null);
+    try {
+      await setDoc(
+        doc(db, "estimates", estimate.id),
+        {
+          ...estimateJobSyncFields(estimate),
+          status: "ready_to_send",
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      const sendEstimate = httpsCallable<
+        { estimateId: string; email: string },
+        { ok: boolean; publicUrl?: string }
+      >(functions, "sendEstimateEmail");
+      const result = await sendEstimate({
+        estimateId: estimate.id,
+        email,
+      });
+
+      let publicToken = estimate.publicToken;
+      if (result.data.publicUrl) {
+        try {
+          publicToken =
+            new URL(result.data.publicUrl).searchParams.get("token") ||
+            publicToken;
+        } catch {
+          // The estimate was sent successfully; copying the returned link can
+          // remain unavailable until the next refresh if its URL is malformed.
+        }
+      }
+      setEstimate((current) =>
+        current
+          ? {
+              ...current,
+              status: "sent",
+              ...(publicToken ? { publicToken } : {}),
+            }
+          : current
+      );
+      setDeliveryState("sent");
+      setDeliveryNotice({
+        tone: "success",
+        message: `Estimate sent to ${email}.`,
+      });
+    } catch (caught) {
+      setDeliveryState("idle");
+      setDeliveryNotice({
+        tone: "error",
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "The estimate could not be sent. Please try again.",
+      });
+    }
+  }
+
   if (error) {
     return (
       <main className="estimate-viewer-state">
@@ -190,8 +279,15 @@ export default function EstimateViewer() {
       <div className="estimate-preview-toolbar">
         <div>
           {!token ? (
-            <Link to={`/estimates/${estimate.id}/edit`}>
-              <ArrowLeft size={15} /> Return to editor
+            <Link
+              to={
+                estimate.jobId
+                  ? `/job/${estimate.jobId}?tab=financials`
+                  : "/invoices-page"
+              }
+            >
+              <ArrowLeft size={15} />
+              {estimate.jobId ? "Back to job documents" : "Back to documents"}
             </Link>
           ) : (
             <span>
@@ -217,8 +313,36 @@ export default function EstimateViewer() {
           >
             <Download size={15} /> Print / Download PDF
           </button>
+          {!token && (
+            <button
+              type="button"
+              className="estimate-send-button"
+              disabled={deliveryState === "sending" || deliveryState === "sent"}
+              onClick={() => void sendToCustomer()}
+            >
+              {deliveryState === "sending" ? (
+                <Loader2 className="estimate-spin" size={15} />
+              ) : (
+                <Send size={15} />
+              )}
+              {deliveryState === "sending"
+                ? "Sending…"
+                : deliveryState === "sent"
+                  ? "Sent to Customer"
+                  : "Send to Customer"}
+            </button>
+          )}
         </div>
       </div>
+
+      {deliveryNotice && !token && (
+        <div
+          className={`estimate-delivery-notice is-${deliveryNotice.tone}`}
+          role={deliveryNotice.tone === "error" ? "alert" : "status"}
+        >
+          {deliveryNotice.message}
+        </div>
+      )}
 
       <div className="estimate-print-root">
         <EstimateDocument
