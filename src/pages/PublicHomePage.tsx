@@ -23,8 +23,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import Reveal from "../components/Reveal";
 import { functions } from "../firebase/firebaseConfig";
-import logo from "../assets/rogers-logo.png";
-import heroBrandLockup from "../assets/brand/rogers-lockup-white-text.svg";
+import logo from "../assets/rogers-logo-separated-v2.png";
+import heroBrandLockup from "../assets/brand/rogers-lockup-separated-white-text.svg";
 import finishedRoof from "../assets/AdobeStock_102630327.webp";
 import roofWorksite from "../assets/AdobeStock_356783144.webp";
 

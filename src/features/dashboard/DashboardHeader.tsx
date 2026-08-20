@@ -1,4 +1,4 @@
-import logo from "../../assets/rogers-logo.png";
+import logo from "../../assets/rogers-logo-separated-v2.png";
 import { LogOut, CalendarDays, Users } from "lucide-react";
 
 type DashboardHeaderProps = {

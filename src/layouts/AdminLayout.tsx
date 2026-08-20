@@ -26,7 +26,7 @@ import {
 import { OrgProvider } from "../contexts/OrgContext";
 import { useCurrentEmployee } from "../hooks/useCurrentEmployee";
 import { useMembership } from "../hooks/useMembership";
-import logo from "../assets/rogers-logo.png";
+import logo from "../assets/rogers-logo-separated-v2.png";
 
 const navigation = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard },

@@ -47,7 +47,7 @@ import { createPortal } from "react-dom";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
 // Import logo for invoice printing. Using import rather than require avoids bundler issues and ensures the asset is included properly.
-import logo from "../assets/rogers-logo.png";
+import logo from "../assets/rogers-logo-separated-v2.png";
 import {
   ESTIMATE_STATUS_LABELS,
   type EstimateRecord,

@@ -15,7 +15,7 @@ import { getAuth } from "firebase/auth";
 import { ClipboardList, LogOut, Menu, X, UserRound } from "lucide-react";
 
 import { useCurrentEmployee } from "../hooks/useCurrentEmployee";
-import logo from "../assets/rogers-logo.png";
+import logo from "../assets/rogers-logo-separated-v2.png";
 
 function navLinkBase(isActive: boolean) {
   return (
