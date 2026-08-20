@@ -390,17 +390,6 @@ export default function PublicHomePage() {
           </div>
           <div className="public-hero-shell">
             <div className="public-hero-copy">
-              <motion.div
-                className="public-eyebrow public-eyebrow-light"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.08 }}
-              >
-                <MapPin size={15} />
-                San Antonio, Texas
-                <span />
-                Roofing specialists
-              </motion.div>
               <motion.h1
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -452,7 +441,6 @@ export default function PublicHomePage() {
               transition={{ duration: 0.9, delay: 0.12 }}
               aria-label="Roger's Roofing & Contracting LLC"
             >
-              <div className="public-hero-brand-glow" aria-hidden="true" />
               <img
                 className="public-hero-emblem"
                 src={logo}
@@ -465,8 +453,8 @@ export default function PublicHomePage() {
                   <small>&amp; Contracting LLC</small>
                 </h2>
                 <p>
-                  Practical guidance and professional roofing for repairs,
-                  full replacements, and new construction.
+                  Professional roofing for repairs, full replacements, and
+                  new construction.
                 </p>
               </div>
               <div className="public-hero-capabilities" aria-label="Primary services">
