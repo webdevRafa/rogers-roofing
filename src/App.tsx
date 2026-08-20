@@ -25,7 +25,6 @@ import AcceptInvitePage from "./pages/AcceptInvitePage";
 import CompleteSignupPage from "./pages/CompleteSignupPage";
 import InvoicesPage from "./pages/InvoicesPage";
 import LeadsPage from "./pages/LeadsPage";
-import MaterialsPage from "./pages/MaterialsPage";
 import PayoutsPage from "./pages/PayoutsPage";
 import JobWorkspacePage from "./pages/JobWorkspacePage";
 import WarrantyPreviewPage from "./pages/WarrantyPreviewPage";
@@ -63,7 +62,7 @@ export default function App() {
             <Route path="/schedule" element={<PunchCalendarPage />} />
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/leads" element={<LeadsPage />} />
-            <Route path="/materials" element={<MaterialsPage />} />
+            <Route path="/materials" element={<Navigate to="/jobs" replace />} />
             <Route path="/payouts" element={<PayoutsPage />} />
             <Route path="/schedule/:date" element={<PunchDayPage />} />
             <Route path="/employees" element={<EmployeesPage />} />

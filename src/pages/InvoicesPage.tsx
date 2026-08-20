@@ -34,14 +34,25 @@ import type {
 } from "../types/types";
 import { jobConverter } from "../types/types";
 
-import { X, FileText, CheckCircle, Plus, Printer } from "lucide-react";
+import {
+  ArrowRight,
+  X,
+  FileText,
+  CheckCircle,
+  Plus,
+  Printer,
+} from "lucide-react";
 import { createPortal } from "react-dom";
 // Import Firebase functions to call our invoice email cloud function.
 import { getFunctions, httpsCallable } from "firebase/functions";
 
 // Import logo for invoice printing. Using import rather than require avoids bundler issues and ensures the asset is included properly.
 import logo from "../assets/rogers-roofing.webp";
-import type { EstimateRecord } from "../domain/roofing";
+import {
+  ESTIMATE_STATUS_LABELS,
+  type EstimateRecord,
+  type EstimateStatus,
+} from "../domain/roofing";
 
 // Helper to format money from cents to dollars
 function money(cents: number | null | undefined): string {
@@ -908,6 +919,10 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<InvoiceDoc[]>([]);
   const [estimates, setEstimates] = useState<EstimateRecord[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [estimateSearch, setEstimateSearch] = useState("");
+  const [estimateStatusFilter, setEstimateStatusFilter] = useState<
+    "all" | "needs_action" | EstimateStatus
+  >("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"all" | InvoiceStatus>(
     "all"
@@ -998,10 +1013,38 @@ export default function InvoicesPage() {
 
   // Derived stats
   const totalInvoices = invoices.length;
-  const totalEstimateValue = estimates.reduce(
-    (sum, estimate) => sum + estimate.totalCents,
-    0
-  );
+  const estimateNeedsAction = estimates.filter((estimate) =>
+    ["lead_received", "draft", "internal_review", "revising"].includes(
+      estimate.status
+    )
+  ).length;
+  const filteredEstimates = useMemo(() => {
+    const term = estimateSearch.trim().toLowerCase();
+    return estimates.filter((estimate) => {
+      const job = jobs.find((item) => item.id === estimate.jobId);
+      const matchesStatus =
+        estimateStatusFilter === "all" ||
+        (estimateStatusFilter === "needs_action"
+          ? ["lead_received", "draft", "internal_review", "revising"].includes(
+              estimate.status
+            )
+          : estimate.status === estimateStatusFilter);
+      if (!matchesStatus) return false;
+      if (!term) return true;
+      return [
+        estimate.number,
+        estimate.customerSnapshot?.name,
+        estimate.customerSnapshot?.email,
+        job?.customer?.name,
+        job ? jobAddress(job) : "",
+        ESTIMATE_STATUS_LABELS[estimate.status],
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [estimateSearch, estimateStatusFilter, estimates, jobs]);
   const outstandingAmount = invoices.reduce((sum, inv) => {
     if (inv.status === "draft" || inv.status === "sent")
       return sum + (inv.money?.totalCents ?? 0);
@@ -1092,11 +1135,12 @@ export default function InvoicesPage() {
       <div className="admin-content-width documents-content">
         <header className="admin-page-header">
           <div>
-            <span className="admin-kicker">Billing and receivables</span>
+            <span className="admin-kicker">Cross-job record center</span>
             <h1>Documents</h1>
             <p>
-              Create professional invoices, track payment status, and keep every
-              customer document connected to its job.
+              Review every estimate and invoice across the company. New
+              estimates begin from a request conversion or a job workspace so
+              their ownership is always clear.
             </p>
           </div>
           <div className="documents-header-actions">
@@ -1108,9 +1152,9 @@ export default function InvoicesPage() {
               <Plus className="h-4 w-4" />
               New invoice
             </button>
-            <Link to="/estimates/new" className="admin-primary-button">
-              <FileText className="h-4 w-4" />
-              New estimate
+            <Link to="/jobs" className="admin-primary-button">
+              Open jobs
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </header>
@@ -1130,10 +1174,10 @@ export default function InvoicesPage() {
             </div>
             <div className="documents-metric">
               <div className="text-xl font-semibold text-[var(--color-text)]">
-                {money(totalEstimateValue)}
+                {estimateNeedsAction}
               </div>
               <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                Quoted value
+                Estimates needing action
               </div>
             </div>
             <div className="documents-metric">
@@ -1158,15 +1202,49 @@ export default function InvoicesPage() {
           <div className="documents-section-heading">
             <div>
               <span className="admin-kicker">Estimate pipeline</span>
-              <h2>Customer proposals</h2>
+              <h2>All estimates</h2>
               <p>
-                Draft, preview, and deliver professional itemized estimates
-                before a job moves into invoicing.
+                Monitor status across every job. Open a job to create an
+                estimate; use this portfolio to review and continue existing
+                documents.
               </p>
             </div>
-            <Link className="admin-secondary-button" to="/estimates/new">
-              <Plus size={15} /> Create estimate
+            <Link className="admin-secondary-button" to="/jobs">
+              Open job workspace <ArrowRight size={15} />
             </Link>
+          </div>
+          <div className="documents-estimate-toolbar">
+            <input
+              type="search"
+              value={estimateSearch}
+              onChange={(event) => setEstimateSearch(event.target.value)}
+              placeholder="Search estimate, customer, or property"
+              aria-label="Search estimates"
+            />
+            <select
+              value={estimateStatusFilter}
+              onChange={(event) =>
+                setEstimateStatusFilter(
+                  event.target.value as
+                    | "all"
+                    | "needs_action"
+                    | EstimateStatus
+                )
+              }
+              aria-label="Filter estimates by status"
+            >
+              <option value="all">All estimate statuses</option>
+              <option value="needs_action">Needs action</option>
+              {Object.entries(ESTIMATE_STATUS_LABELS).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <span>
+              {filteredEstimates.length}{" "}
+              {filteredEstimates.length === 1 ? "estimate" : "estimates"}
+            </span>
           </div>
           {estimates.length === 0 ? (
             <div className="documents-estimate-empty">
@@ -1174,18 +1252,36 @@ export default function InvoicesPage() {
               <div>
                 <strong>No estimates created yet</strong>
                 <p>
-                  Start with a job, add the roofing scope and pricing, then
-                  preview the exact document your customer will receive.
+                  Convert a request or open an existing job to begin its first
+                  estimate. It will appear here automatically.
                 </p>
               </div>
-              <Link to="/estimates/new">
-                Build the first estimate <Plus size={14} />
+              <Link to="/jobs">
+                Open jobs <ArrowRight size={14} />
               </Link>
+            </div>
+          ) : filteredEstimates.length === 0 ? (
+            <div className="documents-estimate-empty">
+              <FileText size={28} />
+              <div>
+                <strong>No estimates match these filters</strong>
+                <p>Try another customer, property, or estimate status.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEstimateSearch("");
+                  setEstimateStatusFilter("all");
+                }}
+              >
+                Clear filters
+              </button>
             </div>
           ) : (
             <div className="documents-estimate-list">
-              {estimates.map((estimate) => {
+              {filteredEstimates.map((estimate) => {
                 const job = jobs.find((item) => item.id === estimate.jobId);
+                const pendingSetup = estimate.status === "lead_received";
                 return (
                   <article key={estimate.id}>
                     <span className="documents-estimate-icon">
@@ -1205,11 +1301,21 @@ export default function InvoicesPage() {
                     </p>
                     <b>{money(estimate.totalCents)}</b>
                     <span className={`admin-status status-${estimate.status}`}>
-                      {estimate.status.replaceAll("_", " ")}
+                      {ESTIMATE_STATUS_LABELS[estimate.status]}
                     </span>
                     <div className="documents-estimate-actions">
-                      <Link to={`/estimate/${estimate.id}`}>Preview</Link>
-                      <Link to={`/estimates/${estimate.id}/edit`}>Edit</Link>
+                      <Link
+                        to={
+                          pendingSetup
+                            ? `/job/${estimate.jobId}?tab=financials`
+                            : `/estimate/${estimate.id}`
+                        }
+                      >
+                        {pendingSetup ? "Open job" : "Preview"}
+                      </Link>
+                      <Link to={`/estimates/${estimate.id}/edit`}>
+                        {pendingSetup ? "Continue" : "Edit"}
+                      </Link>
                     </div>
                   </article>
                 );
@@ -1219,6 +1325,15 @@ export default function InvoicesPage() {
         </section>
         {/* Filters and actions */}
         <section className="admin-card documents-toolbar-card">
+          <div className="documents-invoice-heading">
+            <div>
+              <span className="admin-kicker">Invoice ledger</span>
+              <h2>All invoices</h2>
+            </div>
+            <p>
+              Track issued balances and payment status across every job.
+            </p>
+          </div>
           <div className="documents-toolbar">
             <input
               type="text"

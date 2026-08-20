@@ -120,6 +120,17 @@ export default function EstimateDocument({
             <span>Project</span>
             <strong>{estimate.projectTitle || "Roofing project"}</strong>
           </div>
+          {(estimate.roofAreaSquareFeet ?? 0) > 0 && (
+            <div>
+              <span>Measured roof area</span>
+              <strong>
+                {estimate.roofAreaSquareFeet?.toLocaleString("en-US", {
+                  maximumFractionDigits: 2,
+                })}{" "}
+                sq. ft.
+              </strong>
+            </div>
+          )}
         </div>
 
         <div className="estimate-bill-to">
@@ -141,9 +152,9 @@ export default function EstimateDocument({
         <table>
           <thead>
             <tr>
-              <th>Description</th>
-              <th>Rate</th>
-              <th>Qty</th>
+              <th>Material</th>
+              <th>Rate / unit</th>
+              <th>Quantity</th>
               <th>Amount</th>
             </tr>
           </thead>

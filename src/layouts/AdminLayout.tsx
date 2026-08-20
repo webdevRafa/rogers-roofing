@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  PackageSearch,
   Search,
   Users,
   UserRoundSearch,
@@ -36,7 +35,6 @@ const navigation = [
   { to: "/invoices-page", label: "Documents", icon: FileStack },
   { to: "/payouts", label: "Payouts", icon: HandCoins },
   { to: "/employees", label: "Members", icon: Users },
-  { to: "/materials", label: "Materials", icon: PackageSearch },
   { to: "/schedule", label: "Schedule", icon: CalendarDays },
   { to: "/financial-overview", label: "Reports", icon: BarChart3 },
 ];
@@ -51,7 +49,6 @@ const routeLabels: Record<string, string> = {
   estimates: "Estimate studio",
   payouts: "Payouts",
   employees: "Members",
-  materials: "Materials",
   schedule: "Schedule",
   "financial-overview": "Reports",
 };

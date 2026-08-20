@@ -44,6 +44,8 @@ export type CustomerLead = {
   assignedEmployeeId?: ID | null;
   linkedCustomerId?: ID | null;
   linkedJobId?: ID | null;
+  linkedEstimateId?: ID | null;
+  convertedAt?: FirestoreTime;
   createdAt?: FirestoreTime;
   updatedAt?: FirestoreTime;
   lastContactedAt?: FirestoreTime;
@@ -142,11 +144,20 @@ export type EstimateLineItem = {
   source: "manual" | "template" | "measurement" | "carrier" | "catalog";
 };
 
+export type RoofMeasurement = {
+  id: ID;
+  lengthFt: number;
+  widthFt: number;
+  areaSquareFeet: number;
+  roofingSquares: number;
+};
+
 export type EstimateRecord = {
   id: ID;
   organizationId: ID;
   orgId?: ID;
   jobId: ID;
+  sourceLeadId?: ID | null;
   customerId?: ID | null;
   number: string;
   version: number;
@@ -170,6 +181,10 @@ export type EstimateRecord = {
     address?: Address | null;
     logoUrl?: string | null;
   };
+  roofMeasurements?: RoofMeasurement[];
+  roofAreaSquareFeet?: number;
+  roofSquares?: number;
+  measurementsFinalized?: boolean;
   lineItems: EstimateLineItem[];
   subtotalCents: number;
   discountCents: number;
@@ -293,10 +308,26 @@ export type RoofingMaterialCategory =
   | "PERMIT_FEE"
   | "MISCELLANEOUS";
 
+export type RoofingMaterialType =
+  | "FIELD_SHINGLES"
+  | "HIP_RIDGE_SHINGLES"
+  | "STARTER_STRIP"
+  | "FELT_UNDERLAYMENT"
+  | "DRIP_EDGE"
+  | "PIPE_FLASHING_ROOF_JACK"
+  | "ATTIC_VENT"
+  | "EXHAUST_VENT"
+  | "L_FLASHING"
+  | "J_STEP_FLASHING"
+  | "COUNTER_FLASHING"
+  | "TIN_CAPS"
+  | "ROOFING_COIL_NAILS";
+
 export type MaterialCatalogItem = {
   id: ID;
   organizationId: ID;
   active: boolean;
+  materialType?: RoofingMaterialType | null;
   internalCode: string;
   category: RoofingMaterialCategory;
   genericName: string;
@@ -329,6 +360,8 @@ export type JobMaterialActual = {
   organizationId: ID;
   jobId: ID;
   catalogItemId?: ID | null;
+  materialType?: RoofingMaterialType | null;
+  category?: RoofingMaterialCategory | null;
   descriptionSnapshot: string;
   manufacturerSnapshot?: string | null;
   productSnapshot?: string | null;
@@ -351,8 +384,10 @@ export type JobMaterialActual = {
   rebatesCents: number;
   netActualCostCents: number;
   supplierId?: ID | null;
+  supplierName?: string | null;
   supplierInvoiceId?: ID | null;
   lotOrBatch?: string | null;
+  warrantyComponent?: boolean;
   installedAt?: FirestoreTime;
   createdAt?: FirestoreTime;
   updatedAt?: FirestoreTime;
@@ -406,4 +441,21 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   won: "Won",
   lost: "Lost",
   archived: "Archived",
+};
+
+export const ESTIMATE_STATUS_LABELS: Record<EstimateStatus, string> = {
+  lead_received: "Pending setup",
+  inspection_scheduled: "Inspection scheduled",
+  inspection_complete: "Inspection complete",
+  draft: "Draft",
+  internal_review: "Internal review",
+  ready_to_send: "Ready to send",
+  sent: "Sent",
+  viewed: "Viewed",
+  revising: "Revising",
+  accepted: "Accepted",
+  declined: "Declined",
+  expired: "Expired",
+  cancelled: "Cancelled",
+  converted_to_contract: "Converted to contract",
 };

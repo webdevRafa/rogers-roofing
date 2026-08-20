@@ -2,17 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Calculator,
   Check,
-  Copy,
   Eye,
   FileText,
-  GripVertical,
   Loader2,
   Mail,
   Plus,
+  Ruler,
   Save,
   Send,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -30,23 +29,23 @@ import {
 import { httpsCallable } from "firebase/functions";
 
 import { useOrg } from "../contexts/OrgContext";
+import { estimateLineItemsFromJobMaterials } from "../domain/estimateMaterials";
 import { db, functions } from "../firebase/firebaseConfig";
 import type {
   EstimateLineItem,
   EstimateRecord,
   EstimateStatus,
+  JobMaterialActual,
+  RoofMeasurement,
   RoofingUnit,
 } from "../domain/roofing";
+import { ESTIMATE_STATUS_LABELS } from "../domain/roofing";
 import type { Address, Job, Org } from "../types/types";
 
-type EditorLine = {
+type EditorMeasurement = {
   id: string;
-  title: string;
-  description: string;
-  quantity: string;
-  unit: RoofingUnit;
-  rate: string;
-  pricingMode: "unit_price" | "included";
+  length: string;
+  width: string;
 };
 
 type FormState = {
@@ -67,24 +66,6 @@ type FormState = {
 };
 
 type SaveMode = "draft" | "preview" | "send";
-
-const units: RoofingUnit[] = [
-  "SQ",
-  "SF",
-  "LF",
-  "EA",
-  "PIECE",
-  "BUNDLE",
-  "ROLL",
-  "BOX",
-  "LS",
-  "HR",
-  "DAY",
-  "SHEET",
-  "GAL",
-  "TON",
-  "OTHER",
-];
 
 const unitLabels: Record<RoofingUnit, string> = {
   EA: "Each",
@@ -141,101 +122,37 @@ function initialForm(): FormState {
   };
 }
 
-function newLine(overrides: Partial<EditorLine> = {}): EditorLine {
+function newMeasurement(
+  overrides: Partial<EditorMeasurement> = {}
+): EditorMeasurement {
   return {
     id: crypto.randomUUID(),
-    title: "",
-    description: "",
-    quantity: "1",
-    unit: "LS",
-    rate: "",
-    pricingMode: "unit_price",
+    length: "",
+    width: "",
     ...overrides,
   };
 }
 
-const roofingTemplate: Omit<EditorLine, "id">[] = [
-  {
-    title: "Architectural field shingles",
-    description: "30-year architectural shingles in the customer-approved color.",
-    quantity: "1",
-    unit: "SQ",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Hip and ridge cap shingles",
-    description: "Matching ridge material for hips and ridgelines.",
-    quantity: "1",
-    unit: "SQ",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Starter strip",
-    description: "Starter course installed at required roof edges.",
-    quantity: "1",
-    unit: "BUNDLE",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Metal drip edge",
-    description: "Color-matched edge metal installed at eaves and rakes.",
-    quantity: "1",
-    unit: "PIECE",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Underlayment",
-    description: "Roofing underlayment installed over the prepared roof deck.",
-    quantity: "1",
-    unit: "ROLL",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Valley metal",
-    description: "Metal valley material installed where required by the roof design.",
-    quantity: "1",
-    unit: "ROLL",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Coil roofing nails",
-    description: "Approved roofing fasteners for the specified roof system.",
-    quantity: "1",
-    unit: "BOX",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Rooftop delivery",
-    description: "Material delivery and rooftop loading for the scheduled installation.",
-    quantity: "1",
-    unit: "LS",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Complete labor and installation",
-    description: "Tear-off, installation, flashing details, cleanup, and final magnetic sweep.",
-    quantity: "1",
-    unit: "LS",
-    rate: "",
-    pricingMode: "unit_price",
-  },
-  {
-    title: "Workmanship warranty",
-    description: "Contractor workmanship coverage as described in this estimate.",
-    quantity: "1",
-    unit: "LS",
-    rate: "0",
-    pricingMode: "included",
-  },
-];
+function positiveNumber(value: string) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
+
+function roundMeasurement(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function measurementArea(measurement: EditorMeasurement) {
+  return roundMeasurement(
+    positiveNumber(measurement.length) * positiveNumber(measurement.width)
+  );
+}
+
+function formatMeasurement(value: number, maximumFractionDigits = 2) {
+  return value.toLocaleString("en-US", {
+    maximumFractionDigits,
+  });
+}
 
 function centsFromInput(value: string) {
   const number = Number(value);
@@ -299,7 +216,12 @@ export default function EstimateBuilderPage() {
     searchParams.get("jobId") || ""
   );
   const [form, setForm] = useState<FormState>(initialForm);
-  const [lines, setLines] = useState<EditorLine[]>([newLine()]);
+  const [jobMaterials, setJobMaterials] = useState<JobMaterialActual[]>([]);
+  const [materialSyncReady, setMaterialSyncReady] = useState(false);
+  const [measurements, setMeasurements] = useState<EditorMeasurement[]>([
+    newMeasurement(),
+  ]);
+  const [measurementsFinalized, setMeasurementsFinalized] = useState(false);
   const [organization, setOrganization] = useState<
     NonNullable<EstimateRecord["organizationSnapshot"]>
   >({ name: orgName || "Roger's Roofing" });
@@ -381,20 +303,18 @@ export default function EstimateBuilderPage() {
           assumptions: estimate.assumptions.join("\n"),
           exclusions: estimate.exclusions.join("\n"),
         });
-        setLines(
-          estimate.lineItems.map((line) => ({
-            id: line.id,
-            title: line.title,
-            description: line.customerDescription,
-            quantity: String(line.quantity),
-            unit: line.unit,
-            rate: String(line.unitPriceCents / 100),
-            pricingMode:
-              line.pricingMode === "included" ||
-              line.pricingMode === "no_charge"
-                ? "included"
-                : "unit_price",
-          }))
+        const savedMeasurements = estimate.roofMeasurements || [];
+        setMeasurements(
+          savedMeasurements.length > 0
+            ? savedMeasurements.map((measurement) => ({
+                id: measurement.id,
+                length: String(measurement.lengthFt),
+                width: String(measurement.widthFt),
+              }))
+            : [newMeasurement()]
+        );
+        setMeasurementsFinalized(
+          Boolean(estimate.measurementsFinalized && savedMeasurements.length)
         );
         initializedJob.current = true;
       })
@@ -425,11 +345,59 @@ export default function EstimateBuilderPage() {
     [jobs, selectedJobId]
   );
 
+  useEffect(() => {
+    setJobMaterials([]);
+    setMaterialSyncReady(false);
+    if (!selectedJobId) return;
+
+    return onSnapshot(
+      query(
+        collection(db, "jobMaterials"),
+        where("jobId", "==", selectedJobId)
+      ),
+      (snapshot) => {
+        const nextMaterials = snapshot.docs.map((snapshotDocument) => ({
+          id: snapshotDocument.id,
+          ...(snapshotDocument.data() as Omit<JobMaterialActual, "id">),
+        }));
+        setJobMaterials(nextMaterials);
+        setMaterialSyncReady(true);
+      },
+      (snapshotError) => {
+        setError(snapshotError.message);
+        setMaterialSyncReady(true);
+      }
+    );
+  }, [selectedJobId]);
+
+  const syncedMaterialLines = useMemo(
+    () => estimateLineItemsFromJobMaterials(jobMaterials),
+    [jobMaterials]
+  );
+  const usingSavedSnapshot =
+    materialSyncReady &&
+    syncedMaterialLines.length === 0 &&
+    existing?.jobId === selectedJobId &&
+    existing.lineItems.length > 0;
+  const lines = useMemo(
+    () =>
+      syncedMaterialLines.length > 0
+        ? syncedMaterialLines
+        : existing?.jobId === selectedJobId
+          ? existing.lineItems
+          : [],
+    [existing, selectedJobId, syncedMaterialLines]
+  );
+
   const totals = useMemo(() => {
     const subtotalCents = lines.reduce((sum, line) => {
-      if (line.pricingMode === "included") return sum;
-      const quantity = Math.max(0, Number(line.quantity) || 0);
-      return sum + Math.round(quantity * centsFromInput(line.rate));
+      if (
+        line.pricingMode === "included" ||
+        line.pricingMode === "no_charge"
+      ) {
+        return sum;
+      }
+      return sum + Math.max(0, line.lineTotalCents);
     }, 0);
     const discountCents = Math.min(
       subtotalCents,
@@ -448,20 +416,45 @@ export default function EstimateBuilderPage() {
     };
   }, [form.deposit, form.discount, form.taxRate, lines]);
 
+  const measurementTotals = useMemo(() => {
+    const completed = measurements.filter(
+      (measurement) =>
+        positiveNumber(measurement.length) > 0 &&
+        positiveNumber(measurement.width) > 0
+    );
+    const squareFeet = roundMeasurement(
+      completed.reduce(
+        (total, measurement) => total + measurementArea(measurement),
+        0
+      )
+    );
+    return {
+      completedCount: completed.length,
+      squareFeet,
+      roofingSquares: roundMeasurement(squareFeet / 100),
+    };
+  }, [measurements]);
+
   const readiness = useMemo(
     () => [
       { label: "Customer selected", ready: Boolean(form.customerName.trim()) },
       { label: "Project connected", ready: Boolean(selectedJob) },
       {
-        label: "Scope itemized",
-        ready: lines.some((line) => line.title.trim()),
+        label: "Job materials synced",
+        ready: materialSyncReady && syncedMaterialLines.length > 0,
       },
       {
         label: "Delivery email ready",
         ready: Boolean(form.customerEmail.trim()),
       },
     ],
-    [form.customerEmail, form.customerName, lines, selectedJob]
+    [
+      form.customerEmail,
+      form.customerName,
+      materialSyncReady,
+      selectedJob,
+      syncedMaterialLines.length,
+    ]
   );
 
   function updateForm<Key extends keyof FormState>(
@@ -484,35 +477,58 @@ export default function EstimateBuilderPage() {
     }));
   }
 
-  function updateLine<Key extends keyof EditorLine>(
-    lineId: string,
-    key: Key,
-    value: EditorLine[Key]
+  function updateMeasurement(
+    measurementId: string,
+    key: "length" | "width",
+    value: string
   ) {
-    setLines((current) =>
-      current.map((line) =>
-        line.id === lineId ? { ...line, [key]: value } : line
+    setMeasurements((current) =>
+      current.map((measurement) =>
+        measurement.id === measurementId
+          ? { ...measurement, [key]: value }
+          : measurement
       )
     );
+    setMeasurementsFinalized(false);
   }
 
-  function duplicateLine(line: EditorLine) {
-    const index = lines.findIndex((item) => item.id === line.id);
-    const next = [...lines];
-    next.splice(index + 1, 0, { ...line, id: crypto.randomUUID() });
-    setLines(next);
+  function removeMeasurement(measurementId: string) {
+    setMeasurements((current) => {
+      const remaining = current.filter(
+        (measurement) => measurement.id !== measurementId
+      );
+      return remaining.length > 0 ? remaining : [newMeasurement()];
+    });
+    setMeasurementsFinalized(false);
   }
 
-  function loadTemplate() {
-    const meaningfulLines = lines.filter(
-      (line) => line.title.trim() || line.rate.trim()
+  function finishMeasurements() {
+    const hasIncompleteMeasurement = measurements.some((measurement) => {
+      const hasLength = positiveNumber(measurement.length) > 0;
+      const hasWidth = positiveNumber(measurement.width) > 0;
+      return hasLength !== hasWidth;
+    });
+    if (hasIncompleteMeasurement) {
+      setError(
+        "Complete both dimensions for every roof area, or remove the incomplete row."
+      );
+      setSuccess(null);
+      return;
+    }
+    if (measurementTotals.completedCount === 0) {
+      setError(
+        "Add at least one complete roof dimension before marking pricing done."
+      );
+      setSuccess(null);
+      return;
+    }
+    setError(null);
+    setMeasurementsFinalized(true);
+    setSuccess(
+      "Pricing measurements complete: " +
+        formatMeasurement(measurementTotals.squareFeet) +
+        " sq. ft."
     );
-    const templateLines = roofingTemplate.map((line) => ({
-      ...line,
-      id: crypto.randomUUID(),
-    }));
-    setLines([...meaningfulLines, ...templateLines]);
-    setSuccess("Roof replacement scope added. Review quantities and pricing.");
   }
 
   async function generateNumber() {
@@ -550,9 +566,26 @@ export default function EstimateBuilderPage() {
       setError("Add the customer name before saving the estimate.");
       return;
     }
+    if (!materialSyncReady) {
+      setError("Job materials are still syncing. Please try again in a moment.");
+      return;
+    }
     const completedLines = lines.filter((line) => line.title.trim());
     if (completedLines.length === 0) {
-      setError("Add at least one scope item with a description.");
+      setError(
+        "Add at least one material to this job before creating its estimate."
+      );
+      return;
+    }
+    const hasIncompleteMeasurement = measurements.some((measurement) => {
+      const hasLength = positiveNumber(measurement.length) > 0;
+      const hasWidth = positiveNumber(measurement.width) > 0;
+      return hasLength !== hasWidth;
+    });
+    if (hasIncompleteMeasurement) {
+      setError(
+        "Complete both dimensions for every roof area, or remove the incomplete row."
+      );
       return;
     }
     if (mode === "send" && !/^\S+@\S+\.\S+$/.test(form.customerEmail)) {
@@ -575,28 +608,27 @@ export default function EstimateBuilderPage() {
         ? doc(db, "estimates", existing.id)
         : doc(collection(db, "estimates"));
       const number = existing?.number || (await generateNumber());
-      const lineItems: EstimateLineItem[] = completedLines.map((line) => {
-        const quantity = Math.max(0, Number(line.quantity) || 0);
-        const unitPriceCents =
-          line.pricingMode === "included" ? 0 : centsFromInput(line.rate);
-        return {
-          id: line.id,
-          category: "roofing_scope",
-          title: line.title.trim(),
-          customerDescription: line.description.trim(),
-          quantity,
-          unit: line.unit,
-          unitPriceCents,
-          lineTotalCents: Math.round(quantity * unitPriceCents),
-          discountCents: 0,
-          pricingMode: line.pricingMode,
-          selectionType: "base",
-          selected: true,
-          customerVisible: true,
-          taxable: true,
-          source: "manual",
-        };
-      });
+      const lineItems: EstimateLineItem[] = completedLines;
+      const roofMeasurements: RoofMeasurement[] = measurements
+        .filter(
+          (measurement) =>
+            positiveNumber(measurement.length) > 0 &&
+            positiveNumber(measurement.width) > 0
+        )
+        .map((measurement) => {
+          const lengthFt = roundMeasurement(
+            positiveNumber(measurement.length)
+          );
+          const widthFt = roundMeasurement(positiveNumber(measurement.width));
+          const areaSquareFeet = roundMeasurement(lengthFt * widthFt);
+          return {
+            id: measurement.id,
+            lengthFt,
+            widthFt,
+            areaSquareFeet,
+            roofingSquares: roundMeasurement(areaSquareFeet / 100),
+          };
+        });
       const nextStatus: EstimateStatus =
         mode === "send"
           ? "ready_to_send"
@@ -629,6 +661,11 @@ export default function EstimateBuilderPage() {
         },
         propertyAddressSnapshot: addressSnapshot(selectedJob),
         organizationSnapshot: organization,
+        roofMeasurements,
+        roofAreaSquareFeet: measurementTotals.squareFeet,
+        roofSquares: measurementTotals.roofingSquares,
+        measurementsFinalized:
+          measurementsFinalized && roofMeasurements.length > 0,
         lineItems,
         subtotalCents: totals.subtotalCents,
         discountCents: totals.discountCents,
@@ -697,7 +734,13 @@ export default function EstimateBuilderPage() {
       <div className="admin-content-width estimate-builder-shell">
         <header className="estimate-builder-header">
           <div>
-            <Link to={selectedJob ? `/job/${selectedJob.id}` : "/invoices-page"}>
+            <Link
+              to={
+                selectedJob
+                  ? `/job/${selectedJob.id}?tab=financials`
+                  : "/invoices-page"
+              }
+            >
               <ArrowLeft size={14} /> Back to documents
             </Link>
             <span className="admin-kicker">Estimate studio</span>
@@ -709,7 +752,9 @@ export default function EstimateBuilderPage() {
           </div>
           <div className="estimate-builder-status">
             <span className={`admin-status status-${existing?.status || "draft"}`}>
-              {existing?.status?.replaceAll("_", " ") || "New draft"}
+              {existing
+                ? ESTIMATE_STATUS_LABELS[existing.status]
+                : "New draft"}
             </span>
             {existing && <small>Version {existing.version}</small>}
           </div>
@@ -815,185 +860,282 @@ export default function EstimateBuilderPage() {
               </div>
             </section>
 
-            <section className="admin-card estimate-form-section estimate-line-section">
-              <div className="estimate-section-heading estimate-section-heading-actions">
+            <section
+              className={
+                "admin-card estimate-form-section estimate-measurement-section" +
+                (measurementsFinalized ? " is-complete" : "")
+              }
+            >
+              <div className="estimate-section-heading">
                 <span>02</span>
                 <div>
-                  <h2>Scope and pricing</h2>
+                  <h2>Pricing</h2>
                   <p>
-                    Use quantities and per-unit rates so the customer can see
-                    exactly what the bid includes.
+                    Enter each roof area in feet. Square footage and roofing SQ
+                    are calculated automatically.
                   </p>
                 </div>
-                <button type="button" onClick={loadTemplate}>
-                  <Sparkles size={15} /> Load roof template
-                </button>
               </div>
 
-              <div className="estimate-editor-table-wrap">
-                <table className="estimate-editor-table">
-                  <thead>
-                    <tr>
-                      <th>Description</th>
-                      <th>Qty</th>
-                      <th>Unit</th>
-                      <th>Rate</th>
-                      <th>Amount</th>
-                      <th aria-label="Row actions" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((line, index) => {
-                      const lineTotal =
-                        line.pricingMode === "included"
-                          ? 0
-                          : Math.round(
-                              Math.max(0, Number(line.quantity) || 0) *
-                                centsFromInput(line.rate)
-                            );
-                      return (
-                        <tr key={line.id}>
-                          <td>
-                            <div className="estimate-line-description">
-                              <GripVertical size={15} aria-hidden="true" />
-                              <div>
-                                <input
-                                  value={line.title}
-                                  onChange={(event) =>
-                                    updateLine(line.id, "title", event.target.value)
-                                  }
-                                  placeholder={`Scope item ${index + 1}`}
-                                  aria-label={`Item ${index + 1} title`}
-                                />
-                                <textarea
-                                  rows={2}
-                                  value={line.description}
-                                  onChange={(event) =>
-                                    updateLine(
-                                      line.id,
-                                      "description",
-                                      event.target.value
-                                    )
-                                  }
-                                  placeholder="Customer-facing details"
-                                  aria-label={`Item ${index + 1} details`}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td data-label="Qty">
+              <div className="estimate-measurement-workspace">
+                <div className="estimate-measurement-intro">
+                  <div>
+                    <i aria-hidden="true">
+                      <Ruler size={19} />
+                    </i>
+                    <div>
+                      <strong>Roof dimensions</strong>
+                      <p>
+                        Break the roof into rectangular areas and enter only the
+                        two measured sides.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="estimate-measurement-formula">
+                    <span>Roofing reference</span>
+                    <strong>100 sq. ft. = 1 SQ</strong>
+                    <small>Admin only</small>
+                  </div>
+                </div>
+
+                <div className="estimate-measurement-list">
+                  {measurements.map((measurement, index) => {
+                    const areaSquareFeet = measurementArea(measurement);
+                    const roofingSquares = roundMeasurement(
+                      areaSquareFeet / 100
+                    );
+                    return (
+                      <article key={measurement.id}>
+                        <div className="estimate-measurement-index">
+                          <span>Area</span>
+                          <strong>{String(index + 1).padStart(2, "0")}</strong>
+                        </div>
+                        <label>
+                          <span>Length</span>
+                          <div>
                             <input
                               type="number"
                               min="0"
                               step="0.01"
-                              value={line.quantity}
+                              inputMode="decimal"
+                              value={measurement.length}
                               onChange={(event) =>
-                                updateLine(line.id, "quantity", event.target.value)
-                              }
-                              aria-label={`Item ${index + 1} quantity`}
-                            />
-                          </td>
-                          <td data-label="Unit">
-                            <select
-                              value={line.unit}
-                              onChange={(event) =>
-                                updateLine(
-                                  line.id,
-                                  "unit",
-                                  event.target.value as RoofingUnit
+                                updateMeasurement(
+                                  measurement.id,
+                                  "length",
+                                  event.target.value
                                 )
                               }
-                              aria-label={`Item ${index + 1} unit`}
-                            >
-                              {units.map((unit) => (
-                                <option value={unit} key={unit}>
-                                  {unitLabels[unit]}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td data-label="Rate">
-                            <div className="estimate-money-input">
-                              <span>$</span>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={line.rate}
-                                disabled={line.pricingMode === "included"}
-                                onChange={(event) =>
-                                  updateLine(line.id, "rate", event.target.value)
-                                }
-                                placeholder="0.00"
-                                aria-label={`Item ${index + 1} rate`}
-                              />
-                            </div>
-                            <label className="estimate-included-toggle">
-                              <input
-                                type="checkbox"
-                                checked={line.pricingMode === "included"}
-                                onChange={(event) =>
-                                  updateLine(
-                                    line.id,
-                                    "pricingMode",
-                                    event.target.checked
-                                      ? "included"
-                                      : "unit_price"
-                                  )
-                                }
-                              />
-                              Included
-                            </label>
-                          </td>
-                          <td data-label="Amount">
-                            <strong>
-                              {line.pricingMode === "included"
-                                ? "Included"
-                                : money(lineTotal)}
-                            </strong>
-                          </td>
-                          <td>
-                            <div className="estimate-line-actions">
-                              <button
-                                type="button"
-                                onClick={() => duplicateLine(line)}
-                                aria-label={`Duplicate ${line.title || `item ${index + 1}`}`}
-                              >
-                                <Copy size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setLines((current) =>
-                                    current.length === 1
-                                      ? [newLine()]
-                                      : current.filter((item) => item.id !== line.id)
-                                  )
-                                }
-                                aria-label={`Remove ${line.title || `item ${index + 1}`}`}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                              placeholder="12"
+                              aria-label={
+                                "Area " + (index + 1) + " length in feet"
+                              }
+                            />
+                            <span>ft</span>
+                          </div>
+                        </label>
+                        <b aria-hidden="true">×</b>
+                        <label>
+                          <span>Width</span>
+                          <div>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              inputMode="decimal"
+                              value={measurement.width}
+                              onChange={(event) =>
+                                updateMeasurement(
+                                  measurement.id,
+                                  "width",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="8"
+                              aria-label={
+                                "Area " + (index + 1) + " width in feet"
+                              }
+                            />
+                            <span>ft</span>
+                          </div>
+                        </label>
+                        <div className="estimate-measurement-result">
+                          <span>Square footage</span>
+                          <strong>
+                            {areaSquareFeet > 0
+                              ? formatMeasurement(areaSquareFeet) + " sq. ft."
+                              : "—"}
+                          </strong>
+                        </div>
+                        <div className="estimate-measurement-result is-admin">
+                          <span>
+                            Roofing SQ <small>Admin only</small>
+                          </span>
+                          <strong>
+                            {areaSquareFeet > 0
+                              ? formatMeasurement(roofingSquares) + " SQ"
+                              : "—"}
+                          </strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeMeasurement(measurement.id)}
+                          aria-label={"Remove area " + (index + 1)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="estimate-measurement-footer">
+                  <button
+                    className="estimate-add-measurement"
+                    type="button"
+                    onClick={() => {
+                      setMeasurements((current) => [
+                        ...current,
+                        newMeasurement(),
+                      ]);
+                      setMeasurementsFinalized(false);
+                    }}
+                  >
+                    <Plus size={15} /> Add another area
+                  </button>
+                  <div className="estimate-measurement-total">
+                    <div>
+                      <span>Total roof area</span>
+                      <strong>
+                        {formatMeasurement(measurementTotals.squareFeet)} sq. ft.
+                      </strong>
+                    </div>
+                    <div>
+                      <span>
+                        Total roofing SQ <small>Admin only</small>
+                      </span>
+                      <strong>
+                        {formatMeasurement(measurementTotals.roofingSquares)} SQ
+                      </strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={finishMeasurements}
+                      disabled={measurementTotals.completedCount === 0}
+                    >
+                      {measurementsFinalized ? (
+                        <Check size={15} />
+                      ) : (
+                        <Calculator size={15} />
+                      )}
+                      {measurementsFinalized ? "Measurements complete" : "Done"}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button
-                className="estimate-add-line"
-                type="button"
-                onClick={() => setLines((current) => [...current, newLine()])}
-              >
-                <Plus size={15} /> Add line item
-              </button>
+            </section>
+
+            <section className="admin-card estimate-form-section estimate-line-section">
+              <div className="estimate-section-heading estimate-section-heading-actions">
+                <span>03</span>
+                <div>
+                  <h2>Job materials</h2>
+                  <p>
+                    Synced automatically from this job. Roofing SQ is converted
+                    to customer-friendly square footage on the estimate.
+                  </p>
+                </div>
+                {selectedJob && (
+                  <Link
+                    className="estimate-manage-materials"
+                    to={`/job/${selectedJob.id}?tab=materials`}
+                  >
+                    Manage job materials <ArrowRight size={14} />
+                  </Link>
+                )}
+              </div>
+
+              {!materialSyncReady ? (
+                <div className="estimate-material-sync-state">
+                  <Loader2 className="estimate-spin" size={20} />
+                  <div>
+                    <strong>Syncing job materials…</strong>
+                    <span>Preparing the customer-facing material schedule.</span>
+                  </div>
+                </div>
+              ) : lines.length === 0 ? (
+                <div className="estimate-material-sync-state is-empty">
+                  <FileText size={23} />
+                  <div>
+                    <strong>No materials have been added to this job.</strong>
+                    <span>
+                      Add material expenses in the job workspace, then they will
+                      appear here automatically.
+                    </span>
+                  </div>
+                  {selectedJob && (
+                    <Link to={`/job/${selectedJob.id}?tab=materials`}>
+                      Add job materials <ArrowRight size={14} />
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="estimate-material-sync-note">
+                    <Check size={15} />
+                    <span>
+                      {usingSavedSnapshot
+                        ? "Showing this estimate’s saved material snapshot because the job has no current material records."
+                        : `${jobMaterials.length} job material${jobMaterials.length === 1 ? "" : "s"} synced. Changes are made from the job’s Materials tab.`}
+                    </span>
+                  </div>
+                  <div className="estimate-editor-table-wrap">
+                    <table className="estimate-editor-table estimate-synced-materials-table">
+                      <thead>
+                        <tr>
+                          <th>Material</th>
+                          <th>Quantity</th>
+                          <th>Unit</th>
+                          <th>Rate / unit</th>
+                          <th>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lines.map((line) => (
+                          <tr key={line.id}>
+                            <td>
+                              <div className="estimate-synced-material">
+                                <span><Check size={13} /></span>
+                                <div>
+                                  <strong>{line.title}</strong>
+                                  {line.customerDescription && (
+                                    <small>{line.customerDescription}</small>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td data-label="Quantity">
+                              {formatMeasurement(line.quantity)}
+                            </td>
+                            <td data-label="Unit">{unitLabels[line.unit]}</td>
+                            <td data-label="Rate / unit">
+                              {money(line.unitPriceCents)}
+                            </td>
+                            <td data-label="Amount">
+                              <strong>{money(line.lineTotalCents)}</strong>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </section>
 
             <section className="admin-card estimate-form-section">
               <div className="estimate-section-heading">
-                <span>03</span>
+                <span>04</span>
                 <div>
                   <h2>Terms and totals</h2>
                   <p>Add the commercial details that make the estimate complete.</p>
@@ -1104,8 +1246,24 @@ export default function EstimateBuilderPage() {
                 <FileText size={18} />
               </div>
               <strong>{money(totals.totalCents)}</strong>
-              <small>{lines.filter((line) => line.title.trim()).length} scope items</small>
+              <small>{lines.filter((line) => line.title.trim()).length} line items</small>
               <dl>
+                {measurementTotals.squareFeet > 0 && (
+                  <>
+                    <div>
+                      <dt>Roof area</dt>
+                      <dd>
+                        {formatMeasurement(measurementTotals.squareFeet)} sq. ft.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Roofing SQ · admin</dt>
+                      <dd>
+                        {formatMeasurement(measurementTotals.roofingSquares)} SQ
+                      </dd>
+                    </div>
+                  </>
+                )}
                 <div>
                   <dt>Subtotal</dt>
                   <dd>{money(totals.subtotalCents)}</dd>
