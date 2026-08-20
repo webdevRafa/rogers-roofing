@@ -2076,9 +2076,6 @@ export default function JobWorkspacePage() {
                   <span>Estimate pricing controls</span>
                   <h2>Job fees</h2>
                 </div>
-                <span className="job-fees-private-badge">
-                  <ShieldCheck size={13} /> Internal pricing
-                </span>
               </div>
 
               <div className="job-fees-source-strip">
@@ -2151,8 +2148,12 @@ export default function JobWorkspacePage() {
                     <span>%</span>
                   </div>
                   <span className="job-fee-treatment is-private">
-                    <strong>Rolled into labor</strong>
-                    <small>{money(feeCalculation.overheadAmountCents)} · Admin only</small>
+                    <strong>
+                      {money(feeCalculation.overheadAmountCents)} rolled into Labor Cost
+                    </strong>
+                    <small>
+                      {money(feeCalculation.overheadAmountCents)} added to Labor Cost
+                    </small>
                   </span>
                 </label>
 
@@ -2273,26 +2274,6 @@ export default function JobWorkspacePage() {
               <div className="job-fees-preview-total">
                 <span>Labor &amp; Fees Total</span>
                 <strong>{money(feeCalculation.laborAndFeesTotalCents)}</strong>
-              </div>
-              <div className="job-fees-estimate-total">
-                <div>
-                  <span>Materials</span>
-                  <strong>{money(feeCalculation.materialTotalCents)}</strong>
-                </div>
-                <div>
-                  <span>Labor &amp; fees</span>
-                  <strong>{money(feeCalculation.laborAndFeesTotalCents)}</strong>
-                </div>
-                <div className="is-grand-total">
-                  <span>Projected subtotal</span>
-                  <strong>
-                    {money(
-                      feeCalculation.materialTotalCents +
-                        feeCalculation.laborAndFeesTotalCents
-                    )}
-                  </strong>
-                </div>
-                <small>Before estimate-level discount or sales tax</small>
               </div>
             </aside>
           </div>

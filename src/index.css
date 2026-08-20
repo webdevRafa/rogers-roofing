@@ -4450,21 +4450,6 @@ img {
   overflow: hidden;
 }
 
-.job-fees-private-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 11px;
-  border: 1px solid #cfe2d7;
-  border-radius: 999px;
-  background: #f0f8f3;
-  color: #216448;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .job-fees-source-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -4525,15 +4510,6 @@ img {
   color: var(--admin-muted, var(--muted));
   font-size: 10px;
   line-height: 1.4;
-}
-
-.job-fees-source-strip .is-total {
-  background: #fffafb;
-}
-
-.job-fees-source-strip .is-total > svg {
-  background: var(--red);
-  color: white;
 }
 
 .job-fees-form {
@@ -4851,9 +4827,8 @@ img {
   font-weight: 800;
 }
 
-.job-fees-preview-total,
-.job-fees-estimate-total {
-  margin: 16px 20px 0;
+.job-fees-preview-total {
+  margin: 16px 20px 20px;
 }
 
 .job-fees-preview-total {
@@ -4867,8 +4842,7 @@ img {
   background: #f7f9fb;
 }
 
-.job-fees-preview-total span,
-.job-fees-estimate-total span {
+.job-fees-preview-total span {
   font-size: 9px;
   font-weight: 750;
   letter-spacing: 0.07em;
@@ -4881,53 +4855,6 @@ img {
   font-size: 18px;
   font-variant-numeric: tabular-nums;
   font-weight: 720;
-}
-
-.job-fees-estimate-total {
-  display: grid;
-  gap: 0;
-  margin-bottom: 20px;
-  padding: 5px 14px 12px;
-  border: 1px solid #e2e6eb;
-  border-radius: 10px;
-  background: white;
-}
-
-.job-fees-estimate-total > div {
-  display: flex;
-  min-height: 39px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: #68717e;
-}
-
-.job-fees-estimate-total > div > strong {
-  color: var(--admin-ink, var(--ink));
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 750;
-}
-
-.job-fees-estimate-total .is-grand-total {
-  min-height: 57px;
-  margin-top: 4px;
-  border-top: 2px solid #252a31;
-  color: var(--admin-ink, var(--ink));
-}
-
-.job-fees-estimate-total .is-grand-total strong {
-  color: var(--red);
-  font-family: var(--brand-font-sans);
-  font-size: 22px;
-  font-weight: 750;
-  letter-spacing: -0.03em;
-}
-
-.job-fees-estimate-total small {
-  color: #7c8591;
-  font-size: 8px;
-  line-height: 1.45;
 }
 
 .warranty-readiness-card {
