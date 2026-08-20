@@ -53,6 +53,10 @@ import { useOrg } from "../contexts/OrgContext";
 import { db } from "../firebase/firebaseConfig";
 import { calculateEstimateLaborFees } from "../domain/estimateFees";
 import {
+  estimateUsesLiveJobSources,
+  synchronizeEstimateFromJobSources,
+} from "../domain/estimateJobSync";
+import {
   getRoofingMaterialDefinition,
   getRoofingMaterialPricingUnit,
   ROOFING_MATERIAL_DEFINITIONS,
@@ -1536,56 +1540,69 @@ export default function JobWorkspacePage() {
                   </div>
                 ) : (
                   <div className="job-documents">
-                    {estimates.map((estimate) => (
-                      <article className="job-document-row" key={estimate.id}>
-                        <span>
-                          <FileStack size={17} />
-                        </span>
-                        <p>
-                          <strong>
-                            {estimate.number || `Estimate v${estimate.version}`}
-                          </strong>
-                          <small>
-                            Estimate · Version {estimate.version} · Updated {formatDate(estimate.updatedAt || estimate.createdAt)}
-                          </small>
-                        </p>
-                        <b>{money(estimate.totalCents)}</b>
-                        <span
-                          className={`admin-status status-${
-                            estimate.status === "lead_received"
-                              ? "draft"
-                              : estimate.status
-                          }`}
-                        >
-                          {estimate.status === "lead_received"
-                            ? "Draft"
-                            : ESTIMATE_STATUS_LABELS[estimate.status]}
-                        </span>
-                        <div className="job-document-actions">
-                          {estimate.status !== "lead_received" && (
-                            <Link
-                              to={`/estimate/${estimate.id}`}
-                              aria-label={`View ${estimate.number || "estimate"}`}
-                            >
-                              <Eye size={14} /> View
-                            </Link>
-                          )}
-                          <Link
-                            to={`/estimates/${estimate.id}/edit`}
-                            aria-label={`Edit ${estimate.number || "estimate"}`}
+                    {estimates.map((estimate) => {
+                      const displayedEstimate = estimateUsesLiveJobSources(
+                        estimate.status
+                      )
+                        ? synchronizeEstimateFromJobSources(
+                            estimate,
+                            job,
+                            materials,
+                            payouts
+                          )
+                        : estimate;
+
+                      return (
+                        <article className="job-document-row" key={estimate.id}>
+                          <span>
+                            <FileStack size={17} />
+                          </span>
+                          <p>
+                            <strong>
+                              {estimate.number || `Estimate v${estimate.version}`}
+                            </strong>
+                            <small>
+                              Estimate · Version {estimate.version} · Updated {formatDate(estimate.updatedAt || estimate.createdAt)}
+                            </small>
+                          </p>
+                          <b>{money(displayedEstimate.totalCents)}</b>
+                          <span
+                            className={`admin-status status-${
+                              estimate.status === "lead_received"
+                                ? "draft"
+                                : estimate.status
+                            }`}
                           >
-                            {estimate.status === "lead_received" ? (
-                              <Eye size={14} />
-                            ) : (
-                              <Pencil size={14} />
-                            )}
                             {estimate.status === "lead_received"
-                              ? "Preview"
-                              : "Edit"}
-                          </Link>
-                        </div>
-                      </article>
-                    ))}
+                              ? "Draft"
+                              : ESTIMATE_STATUS_LABELS[estimate.status]}
+                          </span>
+                          <div className="job-document-actions">
+                            {estimate.status !== "lead_received" && (
+                              <Link
+                                to={`/estimate/${estimate.id}`}
+                                aria-label={`View ${estimate.number || "estimate"}`}
+                              >
+                                <Eye size={14} /> View
+                              </Link>
+                            )}
+                            <Link
+                              to={`/estimates/${estimate.id}/edit`}
+                              aria-label={`Edit ${estimate.number || "estimate"}`}
+                            >
+                              {estimate.status === "lead_received" ? (
+                                <Eye size={14} />
+                              ) : (
+                                <Pencil size={14} />
+                              )}
+                              {estimate.status === "lead_received"
+                                ? "Preview"
+                                : "Edit"}
+                            </Link>
+                          </div>
+                        </article>
+                      );
+                    })}
                     {invoices.map((invoice) => (
                       <article className="job-document-row" key={invoice.id}>
                         <span>

@@ -7,13 +7,29 @@ import {
   Loader2,
   LockKeyhole,
 } from "lucide-react";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import EstimateDocument from "../components/EstimateDocument";
+import {
+  estimateJobSourcesAreCurrent,
+  estimateJobSyncFields,
+  estimateUsesLiveJobSources,
+  synchronizeEstimateFromJobSources,
+} from "../domain/estimateJobSync";
 import { db, functions } from "../firebase/firebaseConfig";
-import type { EstimateRecord } from "../domain/roofing";
+import type { EstimateRecord, JobMaterialActual } from "../domain/roofing";
+import type { Job, PayoutDoc } from "../types/types";
 
 export default function EstimateViewer() {
   const { id = "" } = useParams();
@@ -36,14 +52,77 @@ export default function EstimateViewer() {
           const result = await getPublicEstimate({ estimateId: id, token });
           if (active) setEstimate(result.data.estimate);
         } else {
-          const snapshot = await getDoc(doc(db, "estimates", id));
+          const estimateRef = doc(db, "estimates", id);
+          const snapshot = await getDoc(estimateRef);
           if (!snapshot.exists()) throw new Error("Estimate not found.");
-          if (active) {
-            setEstimate({
-              id: snapshot.id,
-              ...(snapshot.data() as Omit<EstimateRecord, "id">),
-            });
+          const savedEstimate = {
+            id: snapshot.id,
+            ...(snapshot.data() as Omit<EstimateRecord, "id">),
+          };
+          let currentEstimate = savedEstimate;
+
+          if (
+            savedEstimate.jobId &&
+            estimateUsesLiveJobSources(savedEstimate.status)
+          ) {
+            const [jobSnapshot, materialsSnapshot, payoutsSnapshot] =
+              await Promise.all([
+                getDoc(doc(db, "jobs", savedEstimate.jobId)),
+                getDocs(
+                  query(
+                    collection(db, "jobMaterials"),
+                    where("jobId", "==", savedEstimate.jobId)
+                  )
+                ),
+                getDocs(
+                  query(
+                    collection(db, "payouts"),
+                    where("jobId", "==", savedEstimate.jobId)
+                  )
+                ),
+              ]);
+
+            if (jobSnapshot.exists()) {
+              const job = {
+                id: jobSnapshot.id,
+                ...(jobSnapshot.data() as Omit<Job, "id">),
+              };
+              const materials = materialsSnapshot.docs.map((material) => ({
+                id: material.id,
+                ...(material.data() as Omit<JobMaterialActual, "id">),
+              }));
+              const payouts = payoutsSnapshot.docs.map((payout) => ({
+                id: payout.id,
+                ...(payout.data() as Omit<PayoutDoc, "id">),
+              }));
+              currentEstimate = synchronizeEstimateFromJobSources(
+                savedEstimate,
+                job,
+                materials,
+                payouts
+              );
+
+              if (
+                !estimateJobSourcesAreCurrent(savedEstimate, currentEstimate)
+              ) {
+                try {
+                  await setDoc(
+                    estimateRef,
+                    {
+                      ...estimateJobSyncFields(currentEstimate),
+                      updatedAt: serverTimestamp(),
+                    },
+                    { merge: true }
+                  );
+                } catch {
+                  // The live admin preview remains accurate even if a snapshot
+                  // write is interrupted; the next preview/send will retry it.
+                }
+              }
+            }
           }
+
+          if (active) setEstimate(currentEstimate);
         }
       } catch (caught) {
         if (active) {
