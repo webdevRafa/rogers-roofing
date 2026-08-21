@@ -241,16 +241,19 @@ export default function PayoutsPage() {
     setError(null);
     try {
       const payoutRef = doc(collection(db, "payouts"));
+      const note = form.note.trim();
       const payout: Omit<PayoutDoc, "id"> = {
         orgId,
         jobId: job?.id || null,
         employeeId: employee.id,
         employeeNameSnapshot: employee.name,
-        jobAddressSnapshot: job?.address,
+        ...(job?.address !== undefined
+          ? { jobAddressSnapshot: job.address }
+          : {}),
         category: form.category,
         amountCents: Math.round(amount * 100),
         method: form.method,
-        note: form.note.trim() || undefined,
+        ...(note ? { note } : {}),
         createdAt: serverTimestamp() as unknown as FieldValue,
         paidAt: null,
       };
